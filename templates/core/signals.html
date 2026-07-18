@@ -1,0 +1,34 @@
+{% extends "base_app.html" %}
+{% block title %}Signals — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Trading signals{% endblock %}
+{% block page_subtitle %}Curated ideas from the team (not financial advice){% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  {% for s in signals %}
+  <div class="col-md-6 col-xl-4">
+    <div class="glass-card p-3 h-100">
+      <div class="d-flex justify-content-between mb-2">
+        <span class="font-mono fw-semibold">{{ s.symbol }}</span>
+        <span class="badge badge-status badge-info text-uppercase">{{ s.get_side_display }}</span>
+      </div>
+      <h6 class="mb-1">{{ s.title }}</h6>
+      {% if s.entry_note %}<p class="small text-muted">{{ s.entry_note|truncatechars:160 }}</p>{% endif %}
+      <div class="d-flex gap-3 small">
+        {% if s.target %}<span>Target <strong class="font-mono">{{ s.target }}</strong></span>{% endif %}
+        {% if s.stop_loss %}<span>SL <strong class="font-mono">{{ s.stop_loss }}</strong></span>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="empty-state glass-card">
+      <i class="bi bi-broadcast"></i>
+      <p>No published signals right now. Check back soon.</p>
+      <a href="{% url 'markets:overview' %}" class="btn btn-outline-ci btn-sm">Browse markets</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% if disclaimer %}<p class="small text-muted mt-3">{{ disclaimer }}</p>{% endif %}
+{% endblock %}

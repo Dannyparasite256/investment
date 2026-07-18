@@ -1,0 +1,42 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}Promo codes{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="glass-card p-4">
+      <h6 class="mb-3">Create promo</h6>
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-2"><label class="form-label">Code</label><input class="form-control text-uppercase" name="code" required placeholder="WELCOME10"></div>
+        <div class="mb-2"><label class="form-label">Description</label><input class="form-control" name="description"></div>
+        <div class="mb-2"><label class="form-label">Bonus %</label><input class="form-control" name="bonus_percent" value="5"></div>
+        <div class="mb-2"><label class="form-label">Bonus fixed</label><input class="form-control" name="bonus_fixed" value="0"></div>
+        <div class="mb-2"><label class="form-label">Min deposit</label><input class="form-control" name="min_deposit" value="0"></div>
+        <div class="mb-3"><label class="form-label">Max uses (blank = unlimited)</label><input class="form-control" name="max_uses"></div>
+        <button class="btn btn-ci w-100" type="submit">Create</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="glass-card p-0 overflow-hidden">
+      <table class="table table-ci mb-0">
+        <thead><tr><th>Code</th><th>%</th><th>Fixed</th><th>Uses</th><th>Active</th></tr></thead>
+        <tbody>
+          {% for p in promos %}
+          <tr>
+            <td class="font-mono">{{ p.code }}</td>
+            <td>{{ p.bonus_percent }}</td>
+            <td>{{ p.bonus_fixed }}</td>
+            <td>{{ p.uses_count }}{% if p.max_uses %}/{{ p.max_uses }}{% endif %}</td>
+            <td>{% if p.is_active %}Yes{% else %}No{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center text-muted py-4">No promos</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

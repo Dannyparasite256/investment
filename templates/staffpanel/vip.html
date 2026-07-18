@@ -1,0 +1,46 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}VIP tiers{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="glass-card p-4">
+      <h6 class="mb-3">Add / update tier</h6>
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-2"><label class="form-label">Name</label><input class="form-control" name="name" value="Bronze" required></div>
+        <div class="mb-2"><label class="form-label">Slug</label><input class="form-control" name="slug" value="bronze" required></div>
+        <div class="mb-2"><label class="form-label">Min total invested</label><input class="form-control" name="min_total_invested" value="0"></div>
+        <div class="mb-2"><label class="form-label">Deposit fee %</label><input class="form-control" name="deposit_fee_percent" value="0"></div>
+        <div class="mb-2"><label class="form-label">Withdrawal fee %</label><input class="form-control" name="withdrawal_fee_percent" value="0"></div>
+        <div class="mb-2"><label class="form-label">Referral boost %</label><input class="form-control" name="referral_bonus_boost" value="0"></div>
+        <div class="mb-3"><label class="form-label">Sort order</label><input class="form-control" name="sort_order" value="0"></div>
+        <button class="btn btn-ci w-100" type="submit">Save tier</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="glass-card p-0 overflow-hidden">
+      <table class="table table-ci mb-0">
+        <thead>
+          <tr><th>Name</th><th>Min invested</th><th>Dep fee</th><th>Wd fee</th><th>Ref boost</th><th>Active</th></tr>
+        </thead>
+        <tbody>
+          {% for t in tiers %}
+          <tr>
+            <td>{{ t.name }} <span class="text-muted small">({{ t.slug }})</span></td>
+            <td class="font-mono">{{ t.min_total_invested }}</td>
+            <td>{{ t.deposit_fee_percent }}%</td>
+            <td>{{ t.withdrawal_fee_percent }}%</td>
+            <td>+{{ t.referral_bonus_boost }}%</td>
+            <td>{% if t.is_active %}Yes{% else %}No{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-4">No tiers yet</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

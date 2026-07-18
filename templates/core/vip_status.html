@@ -1,0 +1,55 @@
+{% extends "base_app.html" %}
+{% block title %}VIP — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}VIP status{% endblock %}
+{% block page_subtitle %}Unlock lower fees and referral boosts{% endblock %}
+
+{% block content %}
+<div class="glass-card p-4 mb-4 balance-hero">
+  <div class="row align-items-center g-3">
+    <div class="col-md-7">
+      <div class="stat-label mb-2">Your tier</div>
+      <div class="display-6 fw-bold" style="color:{% if tier %}{{ tier.badge_color }}{% else %}var(--ci-primary-bright){% endif %}">
+        {% if tier %}{{ tier.name }}{% else %}Starter{% endif %}
+      </div>
+      <p class="text-muted mb-0">Total invested (lifetime): <strong class="font-mono">{{ total_invested }}</strong></p>
+    </div>
+    <div class="col-md-5">
+      {% if next_tier %}
+      <div class="small text-muted mb-1">Progress to {{ next_tier.name }}</div>
+      <div class="progress-ci mb-2" style="height:10px">
+        <div class="bar" style="width:{{ progress_pct }}%"></div>
+      </div>
+      <div class="small">Deposit/invest <strong class="font-mono">{{ remaining }}</strong> more to unlock {{ next_tier.name }}</div>
+      {% else %}
+      <div class="badge badge-featured">Top tier reached</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  {% for t in tiers %}
+  <div class="col-md-6 col-xl-3">
+    <div class="glass-card p-3 h-100 {% if tier and t.pk == tier.pk %}border border-ci{% endif %}" style="border-color:{{ t.badge_color }}55 !important">
+      <div class="d-flex justify-content-between mb-2">
+        <strong style="color:{{ t.badge_color }}">{{ t.name }}</strong>
+        {% if tier and t.pk == tier.pk %}<span class="badge badge-status badge-active">You</span>{% endif %}
+      </div>
+      <div class="small text-muted mb-2">From <span class="font-mono">{{ t.min_total_invested }}</span> invested</div>
+      <ul class="small text-muted mb-0 ps-3">
+        <li>Deposit fee {{ t.deposit_fee_percent }}%</li>
+        <li>Withdraw fee {{ t.withdrawal_fee_percent }}%</li>
+        <li>Referral boost +{{ t.referral_bonus_boost }}%</li>
+      </ul>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="empty-state glass-card">
+      <i class="bi bi-award"></i>
+      <p>VIP tiers not configured yet. Ask admin to add tiers.</p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

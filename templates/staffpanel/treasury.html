@@ -1,0 +1,61 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}Treasury{% endblock %}
+{% block page_subtitle %}Platform balances &amp; liability overview{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="glass-card stat-card">
+      <div class="stat-label">User balances (total)</div>
+      <div class="stat-value font-mono" style="font-size:1.35rem">{{ wallets.bal|floatformat:2|default:"0" }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="glass-card stat-card">
+      <div class="stat-label">Locked</div>
+      <div class="stat-value font-mono" style="font-size:1.35rem">{{ wallets.locked|floatformat:2|default:"0" }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="glass-card stat-card">
+      <div class="stat-label">Est. liability</div>
+      <div class="stat-value font-mono text-warning" style="font-size:1.35rem">{{ liability|floatformat:2 }}</div>
+      <small class="text-muted">balances + pending withdrawals</small>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="glass-card stat-card">
+      <div class="stat-label">Total deposited</div>
+      <div class="stat-value font-mono text-profit" style="font-size:1.25rem">{{ wallets.dep|floatformat:2|default:"0" }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="glass-card stat-card">
+      <div class="stat-label">Total withdrawn</div>
+      <div class="stat-value font-mono" style="font-size:1.25rem">{{ wallets.wd|floatformat:2|default:"0" }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="glass-card stat-card">
+      <div class="stat-label">Net inflow</div>
+      <div class="stat-value font-mono" style="font-size:1.25rem">{{ net_in|floatformat:2 }}</div>
+    </div>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="glass-card p-4">
+      <h6>Pending deposits</h6>
+      <p class="font-mono mb-1">{{ pending_dep.t|default:0 }} <span class="text-muted">({{ pending_dep.c|default:0 }} tx)</span></p>
+      <a href="{% url 'staffpanel:deposits' %}?status=queue" class="btn btn-outline-ci btn-sm">Review</a>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="glass-card p-4">
+      <h6>Pending withdrawals</h6>
+      <p class="font-mono mb-1">{{ pending_wd.t|default:0 }} <span class="text-muted">({{ pending_wd.c|default:0 }} tx)</span></p>
+      <a href="{% url 'staffpanel:sla_queue' %}" class="btn btn-outline-ci btn-sm">SLA queue</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

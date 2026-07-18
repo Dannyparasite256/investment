@@ -1,0 +1,61 @@
+{% extends "base_app.html" %}
+{% block title %}{{ plan.name }} — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}{{ plan.name }}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="glass-card p-4 mb-4">
+      {% if plan.is_featured %}<span class="badge badge-featured mb-2">Featured</span>{% endif %}
+      <h3 class="mb-2">{{ plan.name }}</h3>
+      <p class="text-muted">{{ plan.description }}</p>
+      <div class="row g-3 mt-2">
+        <div class="col-6 col-md-4">
+          <div class="stat-card glass-card h-100">
+            <div class="stat-label">Return range</div>
+            <div class="stat-value" style="font-size:1.25rem">{{ plan.expected_return_display }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4">
+          <div class="stat-card glass-card h-100">
+            <div class="stat-label">Rate / period</div>
+            <div class="stat-value" style="font-size:1.25rem">{{ plan.profit_rate_percent }}%</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4">
+          <div class="stat-card glass-card h-100">
+            <div class="stat-label">Duration</div>
+            <div class="stat-value" style="font-size:1.25rem">{{ plan.duration_days }}d</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="glass-card p-4">
+      <h6 class="mb-3">Plan rules</h6>
+      <table class="table table-ci">
+        <tr><td class="text-muted">Min / Max deposit</td><td class="font-mono text-end">{{ plan.min_deposit }} – {{ plan.max_deposit }}</td></tr>
+        <tr><td class="text-muted">Profit method</td><td class="text-end">{{ plan.get_profit_method_display }}</td></tr>
+        <tr><td class="text-muted">Payout frequency</td><td class="text-end">{{ plan.get_payout_frequency_display }}</td></tr>
+        <tr><td class="text-muted">Risk level</td><td class="text-end risk-{{ plan.risk_level }}">{{ plan.get_risk_level_display }}</td></tr>
+        <tr><td class="text-muted">Return principal</td><td class="text-end">{% if plan.return_principal %}Yes{% else %}No{% endif %}</td></tr>
+        <tr><td class="text-muted">Auto reinvest</td><td class="text-end">{% if plan.allow_auto_reinvest %}Allowed{% else %}No{% endif %}</td></tr>
+        <tr><td class="text-muted">Manual reinvest</td><td class="text-end">{% if plan.allow_manual_reinvest %}Allowed{% else %}No{% endif %}</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="glass-card p-4 sticky-top" style="top:80px">
+      {% if plan.is_available and user.is_authenticated %}
+      <h5 class="mb-3">Start investing</h5>
+      <p class="small text-muted">Available balance: <strong class="font-mono">{{ wallet.available_balance }}</strong></p>
+      <a href="{% url 'investments:invest' plan.slug %}" class="btn btn-ci w-100 mb-2">Invest now</a>
+      {% elif not user.is_authenticated %}
+      <p class="text-muted">Log in to invest in this plan.</p>
+      <a href="{% url 'accounts:login' %}?next={% url 'investments:plan_detail' plan.slug %}" class="btn btn-ci w-100">Log in</a>
+      {% else %}
+      <div class="alert alert-warning mb-0">This plan is not currently accepting investments.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

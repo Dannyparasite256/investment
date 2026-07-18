@@ -1,0 +1,96 @@
+{% extends "base_app.html" %}
+{% block title %}Profile — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Profile{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="glass-card p-4 text-center mb-4">
+      {% if user.profile_picture %}
+      <img src="{{ user.profile_picture.url }}" class="avatar avatar-lg mb-3" alt="">
+      {% else %}
+      <div class="avatar avatar-lg mx-auto mb-3 d-flex align-items-center justify-content-center bg-elevated" style="font-size:2rem">
+        <i class="bi bi-person"></i>
+      </div>
+      {% endif %}
+      <h5 class="mb-1">{{ user.display_name }}</h5>
+      <p class="text-muted small mb-3">{{ user.email }}</p>
+      <div class="d-flex justify-content-center gap-2 flex-wrap">
+        {% if user.email_verified %}<span class="badge badge-status badge-success">Email verified</span>
+        {% else %}<span class="badge badge-status badge-pending">Email pending</span>{% endif %}
+        {% if user.is_kyc_verified %}<span class="badge badge-status badge-success">KYC verified</span>
+        {% else %}<span class="badge badge-status badge-pending">KYC incomplete</span>{% endif %}
+        {% if user.two_factor_enabled %}<span class="badge badge-status badge-info">2FA on</span>{% endif %}
+      </div>
+    </div>
+    <div class="glass-card p-4 mb-4">
+      <h6 class="mb-2">Referral</h6>
+      <p class="small text-muted">Share your code and earn bonuses.</p>
+      <div class="crypto-address mb-2">{{ user.referral_code }}</div>
+      <button type="button" class="btn btn-outline-ci btn-sm w-100 copy-btn" onclick="copyText('{{ referral_link }}', this)">
+        <i class="bi bi-link-45deg"></i> Copy invite link
+      </button>
+      <p class="small text-muted mt-2 mb-0">Earnings: <span class="font-mono text-profit">{{ user.referral_earnings }}</span></p>
+    </div>
+    <div class="d-grid gap-2">
+      <a href="{% url 'accounts:kyc' %}" class="btn btn-outline-ci btn-sm">Complete KYC</a>
+      <a href="{% url 'accounts:setup_2fa' %}" class="btn btn-outline-ci btn-sm">
+        {% if user.two_factor_enabled %}Manage 2FA{% else %}Enable 2FA{% endif %}
+      </a>
+      <a href="{% url 'accounts:change_password' %}" class="btn btn-ghost btn-sm">Change password</a>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="glass-card p-4">
+      <h5 class="mb-4">Edit profile</h5>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">First name</label>
+            {{ form.first_name }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Last name</label>
+            {{ form.last_name }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Phone</label>
+            {{ form.phone }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Country</label>
+            {{ form.country }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Date of birth</label>
+            {{ form.date_of_birth }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Theme preference</label>
+            {{ form.preferred_theme }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Display currency</label>
+            {{ form.preferred_currency }}
+            <div class="form-text text-muted small">
+              Show balances in USD or a crypto you deposited with (converted at admin rates).
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Profile picture</label>
+            {{ form.profile_picture }}
+          </div>
+        </div>
+        <button type="submit" class="btn btn-ci mt-4">Save changes</button>
+      </form>
+    </div>
+    {% if kyc_latest %}
+    <div class="glass-card p-3 mt-3">
+      <span class="small text-muted">Latest KYC:</span>
+      <span class="badge badge-status badge-{{ kyc_latest.status }}">{{ kyc_latest.get_status_display }}</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

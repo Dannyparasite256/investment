@@ -1,0 +1,208 @@
+{% extends "base_app.html" %}
+{% block title %}Invest in {{ plan.name }} — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Invest{% endblock %}
+{% block page_subtitle %}{{ plan.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="glass-card p-4">
+      <div class="d-flex justify-content-between mb-4">
+        <div>
+          <h5 class="mb-1">{{ plan.name }}</h5>
+          <span class="text-muted small">{{ plan.profit_rate_percent }}% per {{ plan.get_payout_frequency_display|lower }} · {{ plan.duration_days }} days</span>
+        </div>
+        <span class="badge badge-status badge-active">{{ plan.get_risk_level_display }}</span>
+      </div>
+      <p class="small mb-3">Available: <strong class="font-mono text-profit">{{ wallet.available_balance }}</strong></p>
+      <form method="post" id="invest-form">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label" for="invest-amount">Amount</label>
+          {{ form.amount }}
+          {% for e in form.amount.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+          <div class="form-text">Min {{ plan.min_deposit }} · Max {{ plan.max_deposit }}</div>
+        </div>
+        {% if plan.duration_flexible %}
+        <div class="mb-3">
+          <label class="form-label">Duration (days)</label>
+          {{ form.duration_days }}
+        </div>
+        {% else %}
+        {{ form.duration_days }}
+        {% endif %}
+        {% if plan.allow_auto_reinvest %}
+        <div class="form-check mb-3">
+          {{ form.auto_reinvest }}
+          <label class="form-check-label" for="id_auto_reinvest">Enable auto reinvest</label>
+        </div>
+        {% endif %}
+        <div class="glass-card p-3 mb-4 bg-elevated">
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-muted">Est. profit / period</span>
+            <span class="font-mono" id="est-profit">0.00</span>
+          </div>
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-muted">Periods</span>
+            <span id="est-periods">{{ plan.periods_count }}</span>
+          </div>
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-muted">You lock</span>
+            <span class="font-mono" id="est-lock">0.00</span>
+          </div>
+          <div class="d-flex justify-content-between small">
+            <span class="text-muted">Est. total profit</span>
+            <span class="font-mono text-profit" id="est-total">0.00</span>
+          </div>
+        </div>
+        <button type="button" class="btn btn-ci w-100" id="invest-open-confirm">Review &amp; confirm</button>
+        <a href="{% url 'investments:plan_detail' plan.slug %}" class="btn btn-ghost w-100 mt-2">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  'use strict';
+
+  var rate = parseFloat('{{ plan.profit_rate_percent }}') || 0;
+  var periods = parseInt('{{ plan.periods_count|default:1 }}', 10) || 1;
+  var amountEl = document.getElementById('invest-amount') || document.querySelector('#invest-form [name="amount"]');
+  var resultEl = document.getElementById('est-profit');
+  var totalEl = document.getElementById('est-total');
+  var lockEl = document.getElementById('est-lock');
+  var form = document.getElementById('invest-form');
+  var openBtn = document.getElementById('invest-open-confirm');
+  var planName = "{{ plan.name|escapejs }}";
+  var durationDays = "{{ plan.duration_days }}";
+  var payoutLabel = "{{ plan.get_payout_frequency_display|escapejs }}";
+  var rateLabel = "{{ plan.profit_rate_percent }}";
+
+  function money(n) {
+    n = Number(n) || 0;
+    if (typeof formatMoney === 'function') return formatMoney(n, 4);
+    return n.toFixed(4);
+  }
+
+  function getAmount() {
+    if (!amountEl) return 0;
+    return parseFloat(String(amountEl.value).replace(/,/g, '')) || 0;
+  }
+
+  function refresh() {
+    var amount = getAmount();
+    var per = amount * (rate / 100);
+    if (resultEl) resultEl.textContent = money(per);
+    if (totalEl) totalEl.textContent = money(per * periods);
+    if (lockEl) lockEl.textContent = money(amount);
+    return { amount: amount, per: per, total: per * periods };
+  }
+
+  function closeConfirm() {
+    var overlay = document.getElementById('invest-confirm-overlay');
+    if (overlay) overlay.remove();
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+  }
+
+  function openConfirm() {
+    var stats = refresh();
+    if (!stats.amount) {
+      if (window.showToast) showToast('Invest', 'Enter an amount first', 'warning');
+      else alert('Enter an amount first');
+      if (amountEl) amountEl.focus();
+      return;
+    }
+
+    closeConfirm();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'invest-confirm-overlay';
+    overlay.className = 'invest-confirm-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.innerHTML =
+      '<div class="invest-confirm-panel">' +
+        '<div class="invest-confirm-header">' +
+          '<h5 class="mb-0">Confirm investment</h5>' +
+          '<button type="button" class="btn btn-ghost btn-sm invest-confirm-x" aria-label="Close">&times;</button>' +
+        '</div>' +
+        '<div class="invest-confirm-body">' +
+          '<p class="mb-3">You are about to lock funds in <strong></strong>.</p>' +
+          '<ul class="small text-muted mb-0 ps-3">' +
+            '<li class="mb-1">Amount locked: <strong class="font-mono text-body" data-cfm="amount"></strong></li>' +
+            '<li class="mb-1">Duration: <strong class="text-body" data-cfm="duration"></strong></li>' +
+            '<li class="mb-1">Rate: <strong class="text-body" data-cfm="rate"></strong></li>' +
+            '<li>Est. total profit: <strong class="font-mono text-profit" data-cfm="profit"></strong></li>' +
+          '</ul>' +
+          '<p class="small text-muted mt-3 mb-0">Past or projected returns are not guaranteed.</p>' +
+        '</div>' +
+        '<div class="invest-confirm-footer">' +
+          '<button type="button" class="btn btn-ghost invest-confirm-back">Back</button>' +
+          '<button type="button" class="btn btn-ci invest-confirm-go">Confirm investment</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+
+    // Safe text assignment (avoids HTML injection / broken quotes)
+    var strongPlan = overlay.querySelector('.invest-confirm-body p strong');
+    if (strongPlan) strongPlan.textContent = planName;
+    var elAmt = overlay.querySelector('[data-cfm="amount"]');
+    var elDur = overlay.querySelector('[data-cfm="duration"]');
+    var elRate = overlay.querySelector('[data-cfm="rate"]');
+    var elProf = overlay.querySelector('[data-cfm="profit"]');
+    if (elAmt) elAmt.textContent = money(stats.amount);
+    if (elDur) elDur.textContent = durationDays + ' days';
+    if (elRate) elRate.textContent = rateLabel + '% / ' + String(payoutLabel).toLowerCase();
+    if (elProf) elProf.textContent = money(stats.total);
+
+    document.body.classList.add('modal-open');
+    document.body.style.overflow = 'hidden';
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeConfirm();
+    });
+    overlay.querySelector('.invest-confirm-x').addEventListener('click', closeConfirm);
+    overlay.querySelector('.invest-confirm-back').addEventListener('click', closeConfirm);
+    overlay.querySelector('.invest-confirm-go').addEventListener('click', function () {
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Submitting…';
+      if (!form) return;
+      // Native submit works with CSRF hidden input
+      HTMLFormElement.prototype.submit.call(form);
+    });
+
+    document.addEventListener('keydown', function onEsc(e) {
+      if (e.key === 'Escape') {
+        closeConfirm();
+        document.removeEventListener('keydown', onEsc);
+      }
+    });
+
+    // Focus primary action for accessibility
+    setTimeout(function () {
+      var go = overlay.querySelector('.invest-confirm-go');
+      if (go) go.focus();
+    }, 50);
+  }
+
+  if (amountEl) {
+    amountEl.addEventListener('input', refresh);
+    amountEl.addEventListener('change', refresh);
+    refresh();
+  }
+  if (openBtn) {
+    openBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      openConfirm();
+    });
+  }
+})();
+</script>
+{% endblock %}

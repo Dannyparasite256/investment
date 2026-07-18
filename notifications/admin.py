@@ -1,0 +1,10 @@
+from django.contrib import admin
+
+from notifications.models import Notification
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('created_at', 'user', 'title', 'level', 'category', 'is_read')
+    list_filter = ('level', 'category', 'is_read')
+    search_fields = ('user__email', 'title', 'message')

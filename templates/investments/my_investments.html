@@ -1,0 +1,67 @@
+{% extends "base_app.html" %}
+{% block title %}My Investments — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}My Portfolio{% endblock %}
+{% block page_subtitle %}Active positions with progress & next payout{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap gap-2 mb-4">
+  <a href="?status=" class="btn btn-sm {% if not status %}btn-ci{% else %}btn-ghost{% endif %}">All</a>
+  <a href="?status=active" class="btn btn-sm {% if status == 'active' %}btn-ci{% else %}btn-ghost{% endif %}">Active</a>
+  <a href="?status=completed" class="btn btn-sm {% if status == 'completed' %}btn-ci{% else %}btn-ghost{% endif %}">Completed</a>
+  <a href="{% url 'core:portfolio' %}" class="btn btn-ghost btn-sm">Performance chart</a>
+  <a href="{% url 'investments:plans' %}" class="btn btn-outline-ci btn-sm ms-auto">New investment</a>
+</div>
+<div class="row g-3">
+  {% for inv in page %}
+  <div class="col-md-6 col-xl-4">
+    <a href="{% url 'investments:detail' inv.pk %}" class="text-decoration-none">
+      <div class="glass-card p-3 h-100 interactive">
+        <div class="d-flex justify-content-between mb-2">
+          <span class="fw-semibold text-body">{{ inv.plan.name }}</span>
+          <span class="badge badge-status badge-{{ inv.status }}">{{ inv.get_status_display }}</span>
+        </div>
+        <div class="d-flex align-items-center gap-3 mb-2">
+          <div class="progress-ring" style="--pct:{{ inv.progress_percent }}">
+            <svg viewBox="0 0 36 36">
+              <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <path class="ring-fg" stroke-dasharray="{{ inv.progress_percent }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+            <span class="ring-label">{{ inv.progress_percent }}%</span>
+          </div>
+          <div class="min-w-0">
+            <div class="font-mono fs-5 text-body">{{ inv.amount|floatformat:2 }}</div>
+            <div class="small text-muted">Earned {{ inv.total_earned|floatformat:2 }}</div>
+          </div>
+        </div>
+        <div class="progress-ci mb-2"><div class="bar" style="width:{{ inv.progress_percent }}%"></div></div>
+        <div class="d-flex justify-content-between small text-muted">
+          <span>{% if inv.next_payout_at %}Next payout {{ inv.next_payout_at|date:"M d" }}{% else %}—{% endif %}</span>
+          <span>Matures {{ inv.matures_at|date:"M d" }}</span>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="empty-state glass-card">
+      <i class="bi bi-briefcase"></i>
+      <p>No investments yet. Start with a plan that matches your risk profile.</p>
+      <div class="d-flex gap-2 justify-content-center flex-wrap">
+        <a href="{% url 'investments:plans' %}" class="btn btn-ci btn-sm">Browse plans</a>
+        <a href="{% url 'core:risk_quiz' %}" class="btn btn-outline-ci btn-sm">Risk quiz</a>
+        <a href="{% url 'transactions:deposit_create' %}" class="btn btn-ghost btn-sm">Deposit first</a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% if page.has_other_pages %}
+<nav class="mt-4">
+  <ul class="pagination justify-content-center">
+    {% if page.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page.previous_page_number }}&status={{ status }}">Prev</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">{{ page.number }} / {{ page.paginator.num_pages }}</span></li>
+    {% if page.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page.next_page_number }}&status={{ status }}">Next</a></li>{% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

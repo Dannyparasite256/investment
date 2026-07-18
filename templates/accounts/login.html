@@ -1,0 +1,50 @@
+{% extends "base_auth.html" %}
+{% block title %}Log in — {{ SITE_NAME }}{% endblock %}
+{% block auth_subtitle %}Welcome back to your portfolio{% endblock %}
+
+{% block content %}
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+  {% endif %}
+  <div class="mb-3">
+    <label class="form-label" for="id_username">Email</label>
+    {{ form.username }}
+    {% for e in form.username.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="id_password">Password</label>
+    <div class="input-with-toggle">
+      {{ form.password }}
+      <button type="button" class="toggle-pass" onclick="togglePassword('#id_password', this)" aria-label="Show password">
+        <i class="bi bi-eye"></i>
+      </button>
+    </div>
+    {% for e in form.password.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+  </div>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="form-check">
+      {{ form.remember_me }}
+      <label class="form-check-label small" for="id_remember_me">Remember me</label>
+    </div>
+    <a href="{% url 'accounts:password_reset' %}" class="small">Forgot password?</a>
+  </div>
+  <button type="submit" class="btn btn-ci w-100 mb-3 pulse-glow">
+    <i class="bi bi-box-arrow-in-right me-1"></i> Log in
+  </button>
+  <div class="d-flex align-items-center gap-2 my-3">
+    <div class="flex-grow-1 border-top border-ci"></div>
+    <span class="small text-muted">or</span>
+    <div class="flex-grow-1 border-top border-ci"></div>
+  </div>
+  <div class="d-grid gap-2 mb-3">
+    <button type="button" class="btn btn-ghost btn-sm" disabled title="Connect OAuth in production">
+      <i class="bi bi-google me-1"></i> Continue with Google
+    </button>
+  </div>
+  <p class="text-center text-muted small mb-0">
+    No account? <a href="{% url 'accounts:register' %}">Create one</a>
+  </p>
+</form>
+{% endblock %}

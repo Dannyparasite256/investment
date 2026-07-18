@@ -1,0 +1,23 @@
+{% extends "base_app.html" %}
+{% block page_title %}{{ ticket.subject }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-lg-8">
+<div class="glass-card p-4">
+  <div class="d-flex justify-content-between mb-3">
+    <h5 class="mb-0">{{ ticket.subject }}</h5>
+    <span class="badge badge-status badge-info">{{ ticket.get_status_display }}</span>
+  </div>
+  {% for m in messages_list %}
+  <div class="p-3 mb-2 rounded {% if m.is_staff_reply %}bg-elevated{% else %}border border-ci{% endif %}">
+    <div class="small text-muted mb-1">{% if m.is_staff_reply %}Support{% else %}You{% endif %} · {{ m.created_at|date:"M d H:i" }}</div>
+    <div>{{ m.body|linebreaksbr }}</div>
+  </div>
+  {% endfor %}
+  {% if ticket.status != 'closed' %}
+  <form method="post" class="mt-3">{% csrf_token %}
+    <textarea class="form-control mb-2" name="body" rows="3" required placeholder="Reply…"></textarea>
+    <button class="btn btn-ci">Send</button>
+  </form>
+  {% endif %}
+</div></div></div>
+{% endblock %}

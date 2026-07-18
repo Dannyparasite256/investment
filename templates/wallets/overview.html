@@ -1,0 +1,120 @@
+{% extends "base_app.html" %}
+{% block title %}Wallet — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Wallet{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3" data-balance-root>
+  <p class="text-muted small mb-0">
+    Balances shown in <strong data-balance="currency">{{ display_currency|default:"USD" }}</strong>
+    (platform value still tracked in USD).
+  </p>
+  <form method="post" action="{% url 'core:set_display_currency' %}" class="d-flex gap-2 align-items-center" data-currency-form>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <select class="form-select form-select-sm" name="currency" data-currency-select style="width:auto;min-width:140px">
+      {% for o in display_options %}
+      <option value="{{ o.code }}" {% if display_currency == o.code %}selected{% endif %}>{{ o.label }}</option>
+      {% empty %}
+      <option value="USD">USD</option>
+      {% endfor %}
+    </select>
+    <span class="small text-muted" data-balance-status aria-live="polite"></span>
+  </form>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="glass-card stat-card">
+      <div class="stat-label">Balance (<span data-balance="balance.symbol">{{ bal_display.symbol|default:"USD" }}</span>)</div>
+      <div class="stat-value"
+           data-balance="balance.formatted"
+           data-count-up
+           data-count-to="{{ bal_display.value|default:wallet.balance }}"
+           data-count-format="{{ bal_display.formatted|default:wallet.balance }}">0</div>
+      <small class="text-muted">≈ <span data-balance="balance.usd_equivalent"
+            data-count-up
+            data-count-to="{{ bal_display.usd_equivalent|default:wallet.balance }}"
+            data-count-decimals="2">0</span> USD</small>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="glass-card stat-card">
+      <div class="stat-label">Available</div>
+      <div class="stat-value text-profit"
+           data-balance="available.formatted"
+           data-count-up
+           data-count-to="{{ available_display.value|default:wallet.available_balance }}"
+           data-count-format="{{ available_display.formatted|default:wallet.available_balance }}">0</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="glass-card stat-card">
+      <div class="stat-label">Locked</div>
+      <div class="stat-value"
+           data-balance="locked.formatted"
+           data-count-up
+           data-count-to="{{ locked_display.value|default:wallet.locked_balance }}"
+           data-count-format="{{ locked_display.formatted|default:wallet.locked_balance }}">0</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="glass-card p-0 overflow-hidden">
+      <div class="p-3 border-bottom border-ci d-flex justify-content-between">
+        <h6 class="mb-0">Ledger</h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-ci">
+          <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr></thead>
+          <tbody>
+            {% for e in ledger %}
+            <tr>
+              <td class="small text-muted">{{ e.created_at|date:"M d, H:i" }}</td>
+              <td>{{ e.get_entry_type_display }}</td>
+              <td class="font-mono">{{ e.amount }}</td>
+              <td class="font-mono text-muted">{{ e.balance_after }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted py-4">No ledger entries</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="glass-card p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="mb-0">Saved addresses</h6>
+        <a href="{% url 'wallets:address_add' %}" class="btn btn-outline-ci btn-sm">Add</a>
+      </div>
+      {% for a in addresses %}
+      <div class="d-flex justify-content-between align-items-start border-bottom border-ci py-2">
+        <div>
+          <span class="badge badge-status badge-info">{{ a.cryptocurrency.symbol }}</span>
+          {% if a.label %}<span class="small ms-1">{{ a.label }}</span>{% endif %}
+          <div class="font-mono small text-muted mt-1">{{ a.address|truncatechars:24 }}</div>
+        </div>
+        <form method="post" action="{% url 'wallets:address_delete' a.pk %}">
+          {% csrf_token %}
+          <button class="btn btn-link btn-sm text-danger p-0" type="submit"><i class="bi bi-trash"></i></button>
+        </form>
+      </div>
+      {% empty %}
+      <p class="text-muted small mb-0">No addresses saved</p>
+      {% endfor %}
+    </div>
+    <div class="glass-card p-3">
+      <h6 class="mb-2">Platform deposit wallets</h6>
+      {% for c in cryptos %}
+      <div class="small mb-2">
+        <strong>{{ c.symbol }}</strong>
+        <span class="text-muted">({{ c.network }})</span>
+        <div class="font-mono text-muted">{{ c.deposit_address|default:"—" }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Maintenance — {{ site_name }}{% endblock %}
+{% block body %}
+<div class="auth-layout">
+  <div class="glass-card auth-card text-center">
+    <i class="bi bi-tools display-4 text-gradient mb-3"></i>
+    <h2>{{ site_name }}</h2>
+    <p class="text-muted">{{ message }}</p>
+    <a href="{% url 'accounts:login' %}" class="btn btn-outline-ci btn-sm">Staff login</a>
+  </div>
+</div>
+{% endblock %}

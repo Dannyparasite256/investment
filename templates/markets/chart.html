@@ -1,0 +1,101 @@
+{% extends "base_app.html" %}
+{% load static %}
+
+{% block title %}{{ pair.name }} chart — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}{{ pair.base }}{{ pair.quote }}{% endblock %}
+{% block page_subtitle %}{{ pair.name }} · full-size live chart{% endblock %}
+
+{% block content %}
+<div class="market-chart-page">
+  {# Compact toolbar so chart gets max space #}
+  <div class="glass-card p-2 p-md-3 mb-2 market-chart-toolbar animate-in">
+    <div class="row g-2 align-items-end">
+      <div class="col-lg-3 col-md-6">
+        <label class="form-label mb-1" for="pair-select">Market pair</label>
+        <select class="form-select form-select-sm" id="pair-select">
+          {% for cat_key, cat in categories.items %}
+          <optgroup label="{{ cat.label }}">
+            {% for p in cat.pairs %}
+            <option value="{{ p.symbol }}" {% if p.symbol == symbol %}selected{% endif %}>
+              {{ p.base }}/{{ p.quote }} — {{ p.name }}
+            </option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-2 col-md-3 col-6">
+        <label class="form-label mb-1" for="style-select">Chart type</label>
+        <select class="form-select form-select-sm" id="style-select">
+          {% for s in chart_styles %}
+          <option value="{{ s.id }}" {% if s.id == style %}selected{% endif %}>{{ s.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-2 col-md-3 col-6">
+        <label class="form-label mb-1" for="interval-select">Timeframe</label>
+        <select class="form-select form-select-sm" id="interval-select">
+          {% for i in intervals %}
+          <option value="{{ i.id }}" {% if i.id == interval %}selected{% endif %}>{{ i.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-3 col-md-6 d-flex gap-2">
+        <button type="button" class="btn btn-ci btn-sm flex-fill" onclick="applyMarketFilters()">
+          <i class="bi bi-arrow-repeat me-1"></i> Apply
+        </button>
+        <a href="{% url 'markets:overview' %}" class="btn btn-ghost btn-sm">Markets</a>
+      </div>
+      <div class="col-lg-2 col-md-6 text-lg-end">
+        <small class="text-muted" id="chart-load-status">Loading…</small>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-1 mt-2">
+      {% for s in chart_styles %}
+      <a href="?symbol={{ symbol }}&style={{ s.id }}&interval={{ interval }}"
+         class="btn btn-sm py-1 px-2 {% if s.id == style %}btn-ci{% else %}btn-ghost{% endif %}" style="font-size:0.75rem">
+        {{ s.label }}
+      </a>
+      {% endfor %}
+      <span class="vr mx-1 d-none d-md-inline" style="opacity:0.2"></span>
+      {% for i in intervals %}
+      <a href="?symbol={{ symbol }}&style={{ style }}&interval={{ i.id }}"
+         class="btn btn-sm py-1 px-2 {% if i.id == interval %}btn-outline-ci{% else %}btn-ghost{% endif %}" style="font-size:0.75rem">
+        {{ i.label }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# Full-height chart panel #}
+  <div class="glass-card p-1 p-md-2 animate-in market-chart-stage overflow-hidden">
+    <div class="d-flex justify-content-between align-items-center px-2 py-1">
+      <div class="small">
+        <strong>{{ pair.name }}</strong>
+        <span class="badge badge-status badge-info ms-1">{{ pair.category_label }}</span>
+      </div>
+      <div class="d-flex gap-1 flex-wrap">
+        {% for p in categories.majors.pairs %}
+        <a class="btn btn-ghost btn-sm py-0 px-2" style="font-size:0.7rem"
+           href="?symbol={{ p.symbol }}&style={{ style }}&interval={{ interval }}">{{ p.base }}/{{ p.quote }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    <div id="tv_chart_container" class="market-tv-wrap market-tv-wrap--xl"></div>
+  </div>
+</div>
+
+<script type="application/json" id="market-chart-config">
+{
+  "symbol": "{{ symbol|escapejs }}",
+  "style": "{{ style|escapejs }}",
+  "interval": "{{ interval|escapejs }}",
+  "theme": "{{ tv_theme|escapejs }}"
+}
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/markets.js' %}"></script>
+{% endblock %}

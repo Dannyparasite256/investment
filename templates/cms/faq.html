@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}FAQ — {{ SITE_NAME }}{% endblock %}
+{% block body %}
+<div class="container py-5" style="max-width:800px">
+  <h1 class="h3 mb-4">Frequently asked questions</h1>
+  {% for cat, items in categories.items %}
+  <h6 class="text-muted text-uppercase mt-4">{{ cat }}</h6>
+  <div class="accordion" id="faq-{{ forloop.counter }}">
+    {% for f in items %}
+    <div class="glass-card mb-2">
+      <button class="btn btn-ghost w-100 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#a{{ f.id|cut:'-' }}">{{ f.question }}</button>
+      <div id="a{{ f.id|cut:'-' }}" class="collapse px-3 pb-3"><div class="small text-soft">{{ f.answer|linebreaksbr }}</div></div>
+    </div>
+    {% endfor %}
+  </div>
+  {% empty %}
+  <div class="glass-card p-4 text-muted">No FAQs published yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

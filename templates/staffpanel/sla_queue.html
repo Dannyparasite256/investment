@@ -1,0 +1,41 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}Withdrawal SLA queue{% endblock %}
+{% block page_subtitle %}Priority &amp; deadline order{% endblock %}
+
+{% block content %}
+<div class="glass-card p-0 overflow-hidden">
+  <table class="table table-ci mb-0">
+    <thead>
+      <tr>
+        <th>Priority</th>
+        <th>User</th>
+        <th>Amount</th>
+        <th>Status</th>
+        <th>SLA deadline</th>
+        <th>Created</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in items %}
+      <tr class="{% if row.overdue %}table-danger{% endif %}">
+        <td>{{ row.w.priority }}</td>
+        <td class="small"><a href="{% url 'staffpanel:user_detail' row.w.user_id %}">{{ row.w.user.email }}</a></td>
+        <td class="font-mono">{{ row.w.amount }} {{ row.w.cryptocurrency.symbol }}</td>
+        <td><span class="badge badge-status badge-{{ row.w.status }}">{{ row.w.get_status_display }}</span></td>
+        <td class="small {% if row.overdue %}text-loss fw-bold{% endif %}">
+          {% if row.w.sla_deadline %}{{ row.w.sla_deadline|date:"M d H:i" }}{% if row.overdue %} · OVERDUE{% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td class="small text-muted">{{ row.w.created_at|date:"M d H:i" }}</td>
+        <td>
+          <a href="{% url 'staffpanel:withdrawals' %}?q={{ row.w.user.email }}" class="btn btn-sm btn-outline-ci">Open</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="text-center text-muted py-4">No open withdrawals</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

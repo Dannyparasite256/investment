@@ -1,0 +1,39 @@
+{% extends "base_app.html" %}
+{% block title %}Statements — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Statements & export{% endblock %}
+{% block page_subtitle %}Download your transaction history{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-4"><div class="glass-card stat-card"><div class="stat-label">Deposits</div><div class="stat-value">{{ deposits }}</div></div></div>
+  <div class="col-4"><div class="glass-card stat-card"><div class="stat-label">Withdrawals</div><div class="stat-value">{{ withdrawals }}</div></div></div>
+  <div class="col-4"><div class="glass-card stat-card"><div class="stat-label">Investments</div><div class="stat-value">{{ investments }}</div></div></div>
+</div>
+<div class="glass-card p-4 mb-4 d-flex flex-wrap gap-2 align-items-center">
+  <div>
+    <h6 class="mb-1">Export CSV</h6>
+    <p class="small text-muted mb-0">Full ledger for tax / bookkeeping (up to 2000 rows).</p>
+  </div>
+  <a class="btn btn-ci ms-auto" href="?format=csv"><i class="bi bi-download me-1"></i> Download CSV</a>
+</div>
+<div class="glass-card p-0 overflow-hidden">
+  <div class="p-3 border-bottom border-ci"><h6 class="mb-0">Recent ledger</h6></div>
+  <div class="table-responsive">
+    <table class="table table-ci mb-0">
+      <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for t in txs %}
+        <tr>
+          <td class="small text-muted">{{ t.created_at|date:"M d, Y H:i" }}</td>
+          <td>{{ t.get_tx_type_display }}</td>
+          <td class="font-mono">{{ t.amount }} {{ t.currency }}</td>
+          <td><span class="badge badge-status badge-{{ t.status }}">{{ t.get_status_display }}</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="empty-state py-4"><i class="bi bi-file-earmark-text"></i><p>No transactions yet.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

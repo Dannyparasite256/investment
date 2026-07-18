@@ -1,0 +1,15 @@
+{% extends "base_auth.html" %}
+{% block title %}Two-factor authentication — {{ SITE_NAME }}{% endblock %}
+{% block auth_subtitle %}Enter the 6-digit code from your authenticator app{% endblock %}
+
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+  <div class="mb-4">
+    <label class="form-label">Authentication code</label>
+    {{ form.token }}
+  </div>
+  <button type="submit" class="btn btn-ci w-100 mb-3">Verify</button>
+  <p class="text-center small"><a href="{% url 'accounts:login' %}">Back to login</a></p>
+</form>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base_app.html" %}
+{% block title %}Deposits — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Deposits{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+  <p class="text-muted small mb-0">Only approved deposits credit your balance.</p>
+  <a href="{% url 'transactions:deposit_create' %}" class="btn btn-ci btn-sm">New deposit</a>
+</div>
+<div class="glass-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-ci table-hover">
+      <thead>
+        <tr><th>Date</th><th>Currency</th><th>Amount</th><th>Tx Hash</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for d in page %}
+        <tr>
+          <td class="small text-muted">{{ d.created_at|date:"M d, H:i" }}</td>
+          <td>{{ d.cryptocurrency.symbol }}</td>
+          <td class="font-mono">{{ d.amount }} <span class="text-muted">{{ d.cryptocurrency.symbol }}</span></td>
+          <td class="font-mono small">{{ d.transaction_hash|truncatechars:16 }}</td>
+          <td><span class="badge badge-status badge-{{ d.status }}">{{ d.get_status_display }}</span></td>
+          <td><a href="{% url 'transactions:deposit_detail' d.pk %}" class="small">View</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-5">No deposits yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

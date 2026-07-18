@@ -1,0 +1,49 @@
+{% extends "base_app.html" %}
+{% block title %}Portfolio — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Portfolio performance{% endblock %}
+{% block page_subtitle %}Equity curve and growth over time{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="glass-card stat-card">
+      <div class="stat-label">Current equity</div>
+      <div class="stat-value font-mono" data-count-up data-count-to="{{ equity_now }}" data-count-decimals="2">0</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="glass-card stat-card">
+      <div class="stat-label">VIP tier</div>
+      <div class="stat-value" style="font-size:1.4rem">{% if vip.tier %}{{ vip.tier.name }}{% else %}—{% endif %}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="glass-card p-3 d-flex flex-wrap gap-2 align-items-center h-100">
+      <span class="small text-muted me-1">Range</span>
+      <a href="?days=7" class="btn btn-sm {% if days == 7 %}btn-ci{% else %}btn-ghost{% endif %}">7d</a>
+      <a href="?days=30" class="btn btn-sm {% if days == 30 %}btn-ci{% else %}btn-ghost{% endif %}">30d</a>
+      <a href="?days=90" class="btn btn-sm {% if days == 90 %}btn-ci{% else %}btn-ghost{% endif %}">90d</a>
+      <a href="{% url 'core:statements' %}" class="btn btn-outline-ci btn-sm ms-auto">Statements</a>
+    </div>
+  </div>
+</div>
+<div class="glass-card p-4 mb-4">
+  <div class="d-flex justify-content-between mb-3">
+    <div>
+      <h5 class="mb-0">Equity curve</h5>
+      <small class="text-muted">Last {{ days }} days</small>
+    </div>
+    <span class="badge badge-featured badge-live">Live</span>
+  </div>
+  <div class="chart-wrap" style="height:320px"><canvas id="equityChart"></canvas></div>
+</div>
+{% if disclaimer %}
+<p class="small text-muted">{{ disclaimer }}</p>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  initEarningsChart('equityChart', {{ chart_labels|safe }}, {{ chart_equity|safe }});
+</script>
+{% endblock %}

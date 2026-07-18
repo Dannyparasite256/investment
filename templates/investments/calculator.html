@@ -1,0 +1,47 @@
+{% extends "base_app.html" %}
+{% block page_title %}Investment calculator{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-lg-6">
+<div class="glass-card p-4">
+  <h5 class="mb-3">Estimate returns</h5>
+  <div class="mb-3">
+    <label class="form-label">Plan</label>
+    <select class="form-select" id="calc-plan">
+      {% for p in plans %}
+      <option value="{{ p.pk }}" data-rate="{{ p.profit_rate_percent }}" data-periods="{{ p.periods_count }}" data-freq="{{ p.get_payout_frequency_display }}">
+        {{ p.name }} — {{ p.profit_rate_percent }}% / {{ p.get_payout_frequency_display }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Amount</label>
+    <input type="number" class="form-control form-control-lg" id="calc-amount" value="1000" min="0" step="any">
+  </div>
+  <div class="glass-card p-3 bg-elevated">
+    <div class="d-flex justify-content-between mb-2"><span class="text-muted">Profit / period</span><strong class="font-mono" id="calc-period">0</strong></div>
+    <div class="d-flex justify-content-between mb-2"><span class="text-muted">Est. total profit</span><strong class="font-mono text-profit" id="calc-total">0</strong></div>
+    <div class="d-flex justify-content-between"><span class="text-muted">Final (if principal returned)</span><strong class="font-mono" id="calc-final">0</strong></div>
+  </div>
+</div>
+</div></div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function recalc(){
+  const sel=document.getElementById('calc-plan');
+  const opt=sel.options[sel.selectedIndex];
+  const rate=parseFloat(opt.dataset.rate||0);
+  const periods=parseInt(opt.dataset.periods||1,10);
+  const amount=parseFloat(document.getElementById('calc-amount').value)||0;
+  const per=amount*(rate/100);
+  const total=per*periods;
+  document.getElementById('calc-period').textContent=formatMoney(per,4);
+  document.getElementById('calc-total').textContent=formatMoney(total,4);
+  document.getElementById('calc-final').textContent=formatMoney(amount+total,4);
+}
+document.getElementById('calc-plan').addEventListener('change',recalc);
+document.getElementById('calc-amount').addEventListener('input',recalc);
+recalc();
+</script>
+{% endblock %}

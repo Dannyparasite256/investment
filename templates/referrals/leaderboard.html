@@ -1,0 +1,17 @@
+{% extends "base_app.html" %}
+{% block page_title %}Referral leaderboard{% endblock %}
+{% block content %}
+<div class="glass-card p-0 overflow-hidden">
+<table class="table table-ci mb-0">
+<thead><tr><th>#</th><th>User</th><th>Referrals</th><th>Earnings</th></tr></thead>
+<tbody>
+{% for u in leaders %}
+<tr>
+  <td>{{ forloop.counter }}</td>
+  <td>{{ u.display_name|truncatechars:24 }}</td>
+  <td>{{ u.ref_count }}</td>
+  <td class="font-mono text-profit">{{ u.referral_earnings }}</td>
+</tr>
+{% empty %}<tr><td colspan="4" class="text-center text-muted py-4">No data</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

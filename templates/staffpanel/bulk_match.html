@@ -1,0 +1,57 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}Bulk deposit match{% endblock %}
+{% block page_subtitle %}Paste transaction hashes to find or approve pending deposits{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="glass-card p-4">
+      <h6 class="mb-3">Paste lines</h6>
+      <p class="small text-muted">
+        One hash per line, or <code>amount hash</code>. Matching is done against pending deposits by transaction hash.
+      </p>
+      <form method="post">
+        {% csrf_token %}
+        <textarea class="form-control font-mono mb-3" name="payload" rows="12"
+                  placeholder="abc123txhash...&#10;0.05 def456txhash..."></textarea>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-ci flex-fill" type="submit" name="action" value="preview">Preview matches</button>
+          <button class="btn btn-ci flex-fill" type="submit" name="action" value="approve"
+                  onclick="return confirm('Approve all matched pending deposits?')">Approve matched</button>
+        </div>
+      </form>
+      <a href="{% url 'staffpanel:deposits' %}" class="btn btn-ghost btn-sm w-100 mt-3">Back to deposits</a>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="glass-card p-0 overflow-hidden">
+      <div class="p-3 border-bottom border-ci"><h6 class="mb-0">Results</h6></div>
+      <div class="table-responsive">
+        <table class="table table-ci mb-0">
+          <thead>
+            <tr><th>Input</th><th>Hash</th><th>User</th><th>Amount</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for r in results %}
+            <tr>
+              <td class="font-mono small">{{ r.line|truncatechars:24 }}</td>
+              <td class="font-mono small">{{ r.hash|truncatechars:16 }}</td>
+              <td class="small">{% if r.deposit %}{{ r.deposit.user.email }}{% else %}—{% endif %}</td>
+              <td class="font-mono small">{% if r.deposit %}{{ r.deposit.amount }} {{ r.deposit.cryptocurrency.symbol }}{% else %}—{% endif %}</td>
+              <td>
+                {% if r.status == 'matched' %}<span class="badge badge-status badge-info">Matched</span>
+                {% elif r.status == 'approved' %}<span class="badge badge-status badge-success">Approved</span>
+                {% elif r.status == 'no_match' %}<span class="badge badge-status badge-pending">No match</span>
+                {% else %}<span class="badge badge-status badge-danger">{{ r.status }}</span>{% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-4">Paste hashes and run preview</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

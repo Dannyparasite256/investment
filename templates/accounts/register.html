@@ -1,0 +1,119 @@
+{% extends "base_auth.html" %}
+{% block title %}Register — {{ SITE_NAME }}{% endblock %}
+{% block auth_subtitle %}Create your investment account{% endblock %}
+
+{% block content %}
+{# Multi-step visual progress #}
+<div class="d-flex justify-content-between mb-4 px-1" id="reg-steps">
+  <div class="text-center flex-fill">
+    <div class="rounded-circle mx-auto mb-1 d-flex align-items-center justify-content-center step-dot active" data-step="1" style="width:28px;height:28px;background:var(--ci-gradient);font-size:0.7rem;font-weight:700">1</div>
+    <span class="small text-muted">Profile</span>
+  </div>
+  <div class="flex-fill align-self-center"><div class="progress-ci"><div class="bar" id="reg-bar" style="width:0%"></div></div></div>
+  <div class="text-center flex-fill">
+    <div class="rounded-circle mx-auto mb-1 d-flex align-items-center justify-content-center step-dot" data-step="2" style="width:28px;height:28px;background:var(--ci-bg-input);border:1px solid var(--ci-border);font-size:0.7rem;font-weight:700">2</div>
+    <span class="small text-muted">Security</span>
+  </div>
+  <div class="flex-fill align-self-center"><div class="progress-ci"><div class="bar" id="reg-bar-2" style="width:0%"></div></div></div>
+  <div class="text-center flex-fill">
+    <div class="rounded-circle mx-auto mb-1 d-flex align-items-center justify-content-center step-dot" data-step="3" style="width:28px;height:28px;background:var(--ci-bg-input);border:1px solid var(--ci-border);font-size:0.7rem;font-weight:700">3</div>
+    <span class="small text-muted">Confirm</span>
+  </div>
+</div>
+
+<form method="post" novalidate id="register-form">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+  <div class="reg-step" data-step-panel="1">
+    <div class="row g-2">
+      <div class="col-6 mb-3">
+        <label class="form-label">First name</label>
+        {{ form.first_name }}
+      </div>
+      <div class="col-6 mb-3">
+        <label class="form-label">Last name</label>
+        {{ form.last_name }}
+      </div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Email</label>
+      {{ form.email }}
+      {% for e in form.email.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+    <button type="button" class="btn btn-ci w-100" onclick="regGo(2)">Continue</button>
+  </div>
+
+  <div class="reg-step d-none" data-step-panel="2">
+    <div class="mb-3">
+      <label class="form-label">Password</label>
+      <div class="input-with-toggle">
+        {{ form.password1 }}
+        <button type="button" class="toggle-pass" onclick="togglePassword('#id_password1', this)"><i class="bi bi-eye"></i></button>
+      </div>
+      {% for e in form.password1.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Confirm password</label>
+      {{ form.password2 }}
+      {% for e in form.password2.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Referral code (optional)</label>
+      {{ form.referral_code }}
+      {% for e in form.referral_code.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-ghost flex-fill" onclick="regGo(1)">Back</button>
+      <button type="button" class="btn btn-ci flex-fill" onclick="regGo(3)">Continue</button>
+    </div>
+  </div>
+
+  <div class="reg-step d-none" data-step-panel="3">
+    <div class="form-check mb-4">
+      {{ form.agree_terms }}
+      <label class="form-check-label small" for="id_agree_terms">
+        I agree to the <a href="{% url 'cms:terms' %}" target="_blank">Terms</a> and <a href="{% url 'cms:privacy' %}" target="_blank">Privacy Policy</a>
+      </label>
+      {% for e in form.agree_terms.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+    <div class="d-flex gap-2 mb-3">
+      <button type="button" class="btn btn-ghost flex-fill" onclick="regGo(2)">Back</button>
+      <button type="submit" class="btn btn-ci flex-fill pulse-glow">Create account</button>
+    </div>
+  </div>
+
+  <p class="text-center text-muted small mb-0 mt-3">
+    Already have an account? <a href="{% url 'accounts:login' %}">Log in</a>
+  </p>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function regGo(step) {
+  document.querySelectorAll('[data-step-panel]').forEach(function (el) {
+    el.classList.toggle('d-none', el.getAttribute('data-step-panel') !== String(step));
+  });
+  document.querySelectorAll('.step-dot').forEach(function (dot) {
+    var s = parseInt(dot.getAttribute('data-step'), 10);
+    if (s <= step) {
+      dot.style.background = 'var(--ci-gradient)';
+      dot.style.border = 'none';
+      dot.style.color = '#fff';
+    } else {
+      dot.style.background = 'var(--ci-bg-input)';
+      dot.style.border = '1px solid var(--ci-border)';
+    }
+  });
+  document.getElementById('reg-bar').style.width = step >= 2 ? '100%' : '0%';
+  document.getElementById('reg-bar-2').style.width = step >= 3 ? '100%' : '0%';
+}
+// If form has errors, show step 1 (or keep all visible via full form — stay on relevant step)
+{% if form.errors %}
+regGo(1);
+document.querySelectorAll('[data-step-panel]').forEach(function(el){ el.classList.remove('d-none'); });
+document.getElementById('reg-steps').classList.add('d-none');
+{% endif %}
+</script>
+{% endblock %}

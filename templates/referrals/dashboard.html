@@ -1,0 +1,91 @@
+{% extends "base_app.html" %}
+{% block page_title %}Affiliate / Referrals{% endblock %}
+{% block page_subtitle %}Share · earn · climb the leaderboard{% endblock %}
+{% block title %}Referrals — {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-label">Referrals</div><div class="stat-value" data-count-up data-count-to="{{ stats.total_referrals }}" data-count-decimals="0">0</div></div></div>
+  <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-label">Total earned</div><div class="stat-value text-profit" style="font-size:1.35rem" data-count-up data-count-to="{{ stats.total_earned }}" data-count-decimals="2">0</div></div></div>
+  <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-label">Commission rate</div><div class="stat-value" style="font-size:1.35rem">{{ stats.rate }}%</div></div></div>
+  <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-label">Paid</div><div class="stat-value" style="font-size:1.35rem" data-count-up data-count-to="{{ stats.paid }}" data-count-decimals="2">0</div></div></div>
+</div>
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="glass-card p-4 mb-3">
+      <h6>Share kit</h6>
+      <div class="crypto-address mb-2" id="ref-link">{{ referral_link }}</div>
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <button class="btn btn-ci btn-sm" type="button" onclick="copyText(document.getElementById('ref-link').textContent, this)"><i class="bi bi-clipboard"></i> Copy link</button>
+        <button class="btn btn-outline-ci btn-sm" type="button" onclick="copyText('{{ user.referral_code }}', this)">Copy code</button>
+      </div>
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <a class="btn btn-ghost btn-sm" target="_blank" rel="noopener"
+           href="https://wa.me/?text={{ referral_link|urlencode }}">
+          <i class="bi bi-whatsapp"></i> WhatsApp
+        </a>
+        <a class="btn btn-ghost btn-sm" target="_blank" rel="noopener"
+           href="https://t.me/share/url?url={{ referral_link|urlencode }}&text=Join%20me%20on%20{{ SITE_NAME|urlencode }}">
+          <i class="bi bi-telegram"></i> Telegram
+        </a>
+        <a class="btn btn-ghost btn-sm" target="_blank" rel="noopener"
+           href="https://twitter.com/intent/tweet?text={{ referral_link|urlencode }}">
+          <i class="bi bi-twitter-x"></i> X
+        </a>
+      </div>
+      <div class="text-center mb-2">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data={{ referral_link|urlencode }}"
+             alt="Referral QR" class="rounded" style="background:#fff;padding:8px;max-width:160px" width="160" height="160"
+             onerror="this.style.display='none'">
+      </div>
+      <p class="small text-muted mb-0">Code: <strong class="font-mono">{{ user.referral_code }}</strong></p>
+      <a href="{% url 'referrals:leaderboard' %}" class="btn btn-ghost btn-sm mt-3">Leaderboard</a>
+      <a href="{% url 'core:affiliate' %}" class="btn btn-ghost btn-sm mt-3">Landing preview</a>
+    </div>
+    <div class="glass-card p-3">
+      <h6 class="small">Commission calculator</h6>
+      <label class="form-label small">Friend invests</label>
+      <input type="number" class="form-control form-control-sm mb-2" id="ref-calc-in" value="1000">
+      <div class="small">You earn ≈ <strong class="font-mono text-profit" id="ref-calc-out">0</strong> (at {{ stats.rate }}%)</div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="glass-card p-0 overflow-hidden">
+      <div class="p-3 border-bottom border-ci"><h6 class="mb-0">Commission history</h6></div>
+      <table class="table table-ci mb-0">
+        <thead><tr><th>Date</th><th>From</th><th>Amount</th><th>Source</th></tr></thead>
+        <tbody>
+        {% for c in page %}
+        <tr>
+          <td class="small text-muted">{{ c.created_at|date:"M d" }}</td>
+          <td class="small">{{ c.referred_user.email|truncatechars:20 }}</td>
+          <td class="font-mono text-profit">{{ c.amount }}</td>
+          <td class="small">{{ c.source }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">
+          <div class="empty-state py-4">
+            <i class="bi bi-people"></i>
+            <p>No commissions yet. Share your link to start earning.</p>
+          </div>
+        </td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var rate = parseFloat('{{ stats.rate }}') || 0;
+  var input = document.getElementById('ref-calc-in');
+  var out = document.getElementById('ref-calc-out');
+  function run() {
+    var v = parseFloat(input.value) || 0;
+    out.textContent = (v * rate / 100).toFixed(2);
+  }
+  if (input) { input.addEventListener('input', run); run(); }
+})();
+</script>
+{% endblock %}

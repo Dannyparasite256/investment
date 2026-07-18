@@ -1,0 +1,85 @@
+{% extends "base_app.html" %}
+{% block title %}KYC — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Identity verification{% endblock %}
+{% block page_subtitle %}Complete KYC to unlock higher limits{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    {# Progress steps #}
+    <div class="kyc-steps glass-card p-3 mb-4">
+      <div class="kyc-step {% if user.is_kyc_verified %}done{% elif pending %}done{% else %}current{% endif %}">
+        <span class="kyc-num">1</span>
+        <span>Details</span>
+      </div>
+      <div class="kyc-line"></div>
+      <div class="kyc-step {% if user.is_kyc_verified %}done{% elif pending %}current{% endif %}">
+        <span class="kyc-num">2</span>
+        <span>Review</span>
+      </div>
+      <div class="kyc-line"></div>
+      <div class="kyc-step {% if user.is_kyc_verified %}done current{% endif %}">
+        <span class="kyc-num">3</span>
+        <span>Verified</span>
+      </div>
+    </div>
+
+    <div class="glass-card p-4">
+      {% if user.is_kyc_verified %}
+      <div class="text-center py-4">
+        <i class="bi bi-shield-check text-profit" style="font-size:2.5rem"></i>
+        <h5 class="mt-3">You’re verified</h5>
+        <p class="text-muted small">Identity checks complete. Higher limits may apply.</p>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-ci">Back to dashboard</a>
+      </div>
+      {% elif pending %}
+      <div class="alert alert-warning">
+        <strong>Under review.</strong> You already have a submission waiting. Typical review: 24–48 hours.
+      </div>
+      <p class="small text-muted mb-0">We’ll notify you when a decision is made. You can still browse plans while waiting.</p>
+      {% else %}
+      <h5 class="mb-1">Upload documents</h5>
+      <p class="text-muted small mb-4">Government-issued ID. Clear photos only — no screenshots of screenshots.</p>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">Document type</label>
+          {{ form.document_type }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Document number</label>
+          {{ form.document_number }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Front image</label>
+          {{ form.front_image }}
+          {% for e in form.front_image.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Back image (optional)</label>
+          {{ form.back_image }}
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Selfie (optional)</label>
+          {{ form.selfie_image }}
+        </div>
+        <button type="submit" class="btn btn-ci">Submit for review</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {% if history %}
+    <div class="glass-card p-3 mt-3">
+      <h6>History</h6>
+      {% for h in history %}
+      <div class="d-flex justify-content-between small py-2 border-bottom border-ci">
+        <span>{{ h.get_document_type_display }} · {{ h.created_at|date:"M d, Y" }}</span>
+        <span class="badge badge-status badge-{{ h.status }}">{{ h.get_status_display }}</span>
+      </div>
+      {% if h.rejection_reason %}<div class="small text-loss mb-2">{{ h.rejection_reason }}</div>{% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}Notification center{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="glass-card p-4">
+      <h6 class="mb-3">Broadcast announcement</h6>
+      <form method="post">{% csrf_token %}
+        <div class="mb-3"><label class="form-label">Title</label><input class="form-control" name="title" required></div>
+        <div class="mb-3"><label class="form-label">Message</label><textarea class="form-control" name="message" rows="4" required></textarea></div>
+        <div class="mb-3"><label class="form-label">Audience</label>
+          <select class="form-select" name="audience">
+            <option value="all">All users</option>
+            <option value="kyc">KYC verified only</option>
+          </select>
+        </div>
+        <div class="mb-3"><label class="form-label">Level</label>
+          <select class="form-select" name="level">
+            <option value="info">Info</option>
+            <option value="success">Success</option>
+            <option value="warning">Warning</option>
+            <option value="danger">Danger</option>
+          </select>
+        </div>
+        <button class="btn btn-ci w-100">Send to users</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="glass-card p-3">
+      <h6>Recent notifications</h6>
+      {% for n in recent %}
+      <div class="small border-bottom border-ci py-2">
+        <strong>{{ n.title }}</strong> → {{ n.user.email|truncatechars:20 }}
+        <div class="text-muted">{{ n.message|truncatechars:80 }}</div>
+      </div>
+      {% empty %}<p class="text-muted small">None</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

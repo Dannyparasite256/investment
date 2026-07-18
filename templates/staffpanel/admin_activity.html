@@ -1,0 +1,19 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}Admin activity logs{% endblock %}
+{% block content %}
+<div class="glass-card p-0 overflow-hidden table-responsive">
+<table class="table table-ci mb-0">
+<thead><tr><th>Time</th><th>Admin</th><th>Action</th><th>Target</th><th>Message</th><th>IP</th></tr></thead>
+<tbody>
+{% for a in page %}
+<tr>
+  <td class="small text-muted">{{ a.created_at|date:"M d H:i" }}</td>
+  <td class="small">{{ a.admin.email|default:"—" }}</td>
+  <td>{{ a.action }}</td>
+  <td class="small">{{ a.target_type }} {{ a.target_id|truncatechars:10 }}</td>
+  <td class="small">{{ a.message|truncatechars:50 }}</td>
+  <td class="font-mono small">{{ a.ip_address|default:"—" }}</td>
+</tr>
+{% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No activity</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

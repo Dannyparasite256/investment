@@ -1,0 +1,67 @@
+{% extends "base_app.html" %}
+{% block title %}Investment — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Investment details{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="glass-card p-4 mb-4">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+          <h4 class="mb-1">{{ inv.plan.name }}</h4>
+          <span class="badge badge-status badge-{{ inv.status }}">{{ inv.get_status_display }}</span>
+          {% if inv.auto_reinvest %}<span class="badge badge-status badge-info">Auto reinvest</span>{% endif %}
+        </div>
+        <div class="text-end">
+          <div class="text-muted small">Principal</div>
+          <div class="font-mono fs-4">{{ inv.amount }}</div>
+        </div>
+      </div>
+      <div class="progress-ci mb-2" style="height:10px"><div class="bar" style="width:{{ inv.progress_percent }}%"></div></div>
+      <div class="d-flex justify-content-between small text-muted mb-4">
+        <span>Started {{ inv.started_at|date:"M d, Y H:i" }}</span>
+        <span>{{ inv.progress_percent }}%</span>
+        <span>Matures {{ inv.matures_at|date:"M d, Y H:i" }}</span>
+      </div>
+      <div class="row g-3">
+        <div class="col-6 col-md-3"><div class="text-muted small">Total earned</div><div class="font-mono text-profit">{{ inv.total_earned }}</div></div>
+        <div class="col-6 col-md-3"><div class="text-muted small">Rate</div><div class="font-mono">{{ inv.profit_rate_percent }}%</div></div>
+        <div class="col-6 col-md-3"><div class="text-muted small">Payouts</div><div>{{ inv.payouts_count }} / {{ inv.expected_payouts }}</div></div>
+        <div class="col-6 col-md-3"><div class="text-muted small">Next payout</div><div class="small">{% if inv.next_payout_at %}{{ inv.next_payout_at|date:"M d, H:i" }}{% else %}—{% endif %}</div></div>
+      </div>
+    </div>
+    <div class="glass-card p-0 overflow-hidden">
+      <div class="p-3 border-bottom border-ci"><h6 class="mb-0">Earnings history</h6></div>
+      <div class="table-responsive">
+        <table class="table table-ci">
+          <thead><tr><th>#</th><th>Amount</th><th>Reinvested</th><th>Date</th></tr></thead>
+          <tbody>
+            {% for e in earnings %}
+            <tr>
+              <td>{{ e.period_number }}</td>
+              <td class="font-mono text-profit">{{ e.amount }}</td>
+              <td>{% if e.is_reinvested %}Yes{% else %}No{% endif %}</td>
+              <td class="text-muted small">{{ e.created_at|date:"M d, Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted py-4">No earnings yet</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="glass-card p-4">
+      <h6 class="mb-3">Actions</h6>
+      {% if inv.status == 'completed' and inv.plan.allow_manual_reinvest %}
+      <form method="post" action="{% url 'investments:reinvest' inv.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-ci w-100 mb-2">Manual reinvest</button>
+      </form>
+      {% endif %}
+      <a href="{% url 'investments:my' %}" class="btn btn-ghost w-100">Back to portfolio</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

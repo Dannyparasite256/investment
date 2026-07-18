@@ -1,0 +1,39 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}Geo rules{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="glass-card p-4">
+      <h6 class="mb-3">Country allow / block</h6>
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">Name</label>
+          <input class="form-control" name="name" value="{{ rule.name|default:'Default geo rules' }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Mode</label>
+          <select class="form-select" name="mode">
+            <option value="block" {% if rule.mode == 'block' or not rule %}selected{% endif %}>Block listed countries</option>
+            <option value="allow" {% if rule.mode == 'allow' %}selected{% endif %}>Allow only listed countries</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Country codes (comma-separated ISO)</label>
+          <input class="form-control" name="country_codes" value="{{ rule.country_codes|default:'' }}" placeholder="KP,IR,SY">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Block message</label>
+          <input class="form-control" name="block_message" value="{{ rule.block_message|default:'Service is not available in your region.' }}">
+        </div>
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" name="is_active" id="ga" {% if rule.is_active or not rule %}checked{% endif %}>
+          <label class="form-check-label" for="ga">Active</label>
+        </div>
+        <button class="btn btn-ci w-100" type="submit">Save</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

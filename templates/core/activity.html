@@ -1,0 +1,30 @@
+{% extends "base_app.html" %}
+{% block title %}Activity — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Activity timeline{% endblock %}
+{% block page_subtitle %}Everything that happened on your account{% endblock %}
+
+{% block content %}
+<div class="glass-card p-4">
+  <div class="timeline">
+    {% for e in events %}
+    <div class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div class="timeline-body">
+        <div class="d-flex justify-content-between gap-2 flex-wrap">
+          <strong>{{ e.title }}</strong>
+          <span class="small text-muted">{{ e.created_at|date:"M d, Y H:i" }}</span>
+        </div>
+        {% if e.description %}<p class="small text-muted mb-0 mt-1">{{ e.description }}</p>{% endif %}
+        {% if e.event_type %}<span class="badge badge-status badge-info mt-2">{{ e.event_type }}</span>{% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+      <i class="bi bi-activity"></i>
+      <p>No activity yet. Deposits, investments, and logins will appear here.</p>
+      <a href="{% url 'transactions:deposit_create' %}" class="btn btn-ci btn-sm">Make a deposit</a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

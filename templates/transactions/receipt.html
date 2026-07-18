@@ -1,0 +1,45 @@
+{% extends "base_app.html" %}
+{% block title %}{{ title }} — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="glass-card p-4 p-md-5 receipt-card" id="receipt-print">
+      <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+          <div class="logo-mark mb-2" style="width:40px;height:40px;font-size:1rem">C</div>
+          <strong>{{ SITE_NAME }}</strong>
+          <div class="small text-muted">Official transaction receipt</div>
+        </div>
+        <span class="badge badge-status badge-{% if kind == 'deposit' %}{{ deposit.status }}{% else %}{{ withdrawal.status }}{% endif %}">
+          {% if kind == 'deposit' %}{{ deposit.get_status_display }}{% else %}{{ withdrawal.get_status_display }}{% endif %}
+        </span>
+      </div>
+      <table class="table table-ci">
+        {% if kind == 'deposit' %}
+        <tr><td class="text-muted">Receipt ID</td><td class="font-mono text-end small">{{ deposit.id }}</td></tr>
+        <tr><td class="text-muted">Type</td><td class="text-end">Crypto deposit</td></tr>
+        <tr><td class="text-muted">Amount</td><td class="font-mono text-end">{{ deposit.amount }} {{ deposit.cryptocurrency.symbol }}</td></tr>
+        <tr><td class="text-muted">Network</td><td class="text-end"><span class="badge badge-status badge-info">{{ deposit.network }}</span></td></tr>
+        <tr><td class="text-muted">Tx hash</td><td class="font-mono small text-end" style="word-break:break-all">{{ deposit.transaction_hash }}</td></tr>
+        <tr><td class="text-muted">Submitted</td><td class="text-end">{{ deposit.created_at }}</td></tr>
+        {% if deposit.credit_amount %}<tr><td class="text-muted">Credited</td><td class="font-mono text-end">{{ deposit.credit_amount }} platform</td></tr>{% endif %}
+        {% else %}
+        <tr><td class="text-muted">Receipt ID</td><td class="font-mono text-end small">{{ withdrawal.id }}</td></tr>
+        <tr><td class="text-muted">Type</td><td class="text-end">Withdrawal</td></tr>
+        <tr><td class="text-muted">Amount</td><td class="font-mono text-end">{{ withdrawal.amount }} {{ withdrawal.cryptocurrency.symbol }}</td></tr>
+        <tr><td class="text-muted">Fee</td><td class="font-mono text-end">{{ withdrawal.fee }}</td></tr>
+        <tr><td class="text-muted">Address</td><td class="font-mono small text-end" style="word-break:break-all">{{ withdrawal.wallet_address }}</td></tr>
+        <tr><td class="text-muted">Submitted</td><td class="text-end">{{ withdrawal.created_at }}</td></tr>
+        {% endif %}
+      </table>
+      <p class="small text-muted mb-0">This receipt is for your records. Contact support with the Receipt ID if you need help.</p>
+    </div>
+    <div class="d-flex gap-2 mt-3">
+      <button class="btn btn-ci flex-fill" type="button" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+      <a class="btn btn-ghost flex-fill" href="{% if kind == 'deposit' %}{% url 'transactions:deposit_detail' deposit.pk %}{% else %}{% url 'transactions:withdraw_list' %}{% endif %}">Back</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

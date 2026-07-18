@@ -1,0 +1,69 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}Crypto deposit wallets{% endblock %}
+{% block page_subtitle %}Set the platform receiving address for each network{% endblock %}
+{% block content %}
+<div class="alert glass-card border-0 mb-4 small">
+  <i class="bi bi-info-circle me-1"></i>
+  Paste your real deposit addresses below. Users see these (with QR) when they select a currency on the deposit page.
+</div>
+<div class="row g-3">
+{% for c in cryptos %}
+<div class="col-md-6">
+  <div class="glass-card p-4">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="pk" value="{{ c.pk }}">
+      <div class="d-flex justify-content-between mb-3">
+        <div>
+          <strong class="fs-5">{{ c.symbol }}</strong>
+          <div class="small text-muted">{{ c.name }} · {{ c.get_network_display }}</div>
+        </div>
+        <span class="badge badge-status {% if c.is_active %}badge-active{% else %}badge-pending{% endif %}">
+          {% if c.is_active %}Active{% else %}Off{% endif %}
+        </span>
+      </div>
+      <label class="form-label">Deposit wallet address</label>
+      <input class="form-control font-mono mb-3" name="deposit_address"
+             value="{{ c.deposit_address }}"
+             placeholder="Paste full wallet address for {{ c.symbol }}">
+      <div class="row g-2 mb-3">
+        <div class="col-4">
+          <label class="form-label small">Min deposit</label>
+          <input class="form-control form-control-sm" name="min_deposit" value="{{ c.min_deposit }}">
+        </div>
+        <div class="col-4">
+          <label class="form-label small">Min withdrawal</label>
+          <input class="form-control form-control-sm" name="min_withdrawal" value="{{ c.min_withdrawal }}">
+        </div>
+        <div class="col-4">
+          <label class="form-label small">Max withdrawal</label>
+          <input class="form-control form-control-sm" name="max_withdrawal" value="{{ c.max_withdrawal }}">
+        </div>
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-4">
+          <label class="form-label small">USD price</label>
+          <input class="form-control form-control-sm" name="usd_price" value="{{ c.usd_price }}" placeholder="e.g. 65000">
+        </div>
+        <div class="col-4">
+          <label class="form-label small">Withdrawal fee</label>
+          <input class="form-control form-control-sm" name="withdrawal_fee" value="{{ c.withdrawal_fee }}">
+        </div>
+        <div class="col-4 d-flex align-items-end">
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="is_active" id="active-{{ c.pk }}" {% if c.is_active %}checked{% endif %}>
+            <label class="form-check-label" for="active-{{ c.pk }}">Active</label>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-ci btn-sm w-100" type="submit">
+        <i class="bi bi-save me-1"></i> Save {{ c.symbol }} wallet
+      </button>
+    </form>
+  </div>
+</div>
+{% empty %}
+<div class="col-12"><div class="empty-state glass-card">No cryptocurrencies. Run <code>python manage.py seed_platform</code>.</div></div>
+{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body %}
+<div class="app-shell">
+  <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo-mark" style="box-shadow:var(--ci-glow-blue)">A</div>
+      <span class="logo-text text-gradient">Staff Panel</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Overview</div>
+      <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'staffpanel:dashboard' %}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+      <a class="nav-link {% if 'report' in request.path %}active{% endif %}" href="{% url 'staffpanel:reports' %}"><i class="bi bi-bar-chart"></i> Reports</a>
+
+      <div class="nav-section-label">Finance</div>
+      <a class="nav-link {% if 'deposits' in request.path and 'bulk' not in request.path %}active{% endif %}" href="{% url 'staffpanel:deposits' %}"><i class="bi bi-download"></i> Deposits</a>
+      <a class="nav-link {% if 'bulk-match' in request.path %}active{% endif %}" href="{% url 'staffpanel:bulk_match' %}"><i class="bi bi-ui-checks"></i> Bulk match</a>
+      <a class="nav-link {% if 'withdrawals' in request.path and 'sla' not in request.path %}active{% endif %}" href="{% url 'staffpanel:withdrawals' %}"><i class="bi bi-upload"></i> Withdrawals</a>
+      <a class="nav-link {% if 'sla' in request.path %}active{% endif %}" href="{% url 'staffpanel:sla_queue' %}"><i class="bi bi-hourglass-split"></i> SLA queue</a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'treasury' %}active{% endif %}" href="{% url 'staffpanel:treasury' %}"><i class="bi bi-safe2"></i> Treasury</a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'transactions' %}active{% endif %}" href="{% url 'staffpanel:transactions' %}"><i class="bi bi-list-columns"></i> Transactions</a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'wallets' %}active{% endif %}" href="{% url 'staffpanel:wallets' %}"><i class="bi bi-wallet2"></i> Wallets</a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'cryptos' %}active{% endif %}" href="{% url 'staffpanel:cryptos' %}"><i class="bi bi-currency-bitcoin"></i> Crypto addresses</a>
+
+      <div class="nav-section-label">Products</div>
+      <a class="nav-link {% if 'plans' in request.path %}active{% endif %}" href="{% url 'staffpanel:plans' %}"><i class="bi bi-graph-up"></i> Investment plans</a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'referrals' %}active{% endif %}" href="{% url 'staffpanel:referrals' %}"><i class="bi bi-people"></i> Referrals</a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'promos' %}active{% endif %}" href="{% url 'staffpanel:promos' %}"><i class="bi bi-ticket-perforated"></i> Promos</a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'vip' %}active{% endif %}" href="{% url 'staffpanel:vip' %}"><i class="bi bi-award"></i> VIP tiers</a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'signals' %}active{% endif %}" href="{% url 'staffpanel:signals' %}"><i class="bi bi-broadcast"></i> Signals</a>
+
+      <div class="nav-section-label">Users</div>
+      <a class="nav-link {% if '/users' in request.path %}active{% endif %}" href="{% url 'staffpanel:users' %}"><i class="bi bi-person-lines-fill"></i> Users</a>
+      <a class="nav-link {% if '/kyc' in request.path %}active{% endif %}" href="{% url 'staffpanel:kyc' %}"><i class="bi bi-shield-check"></i> KYC</a>
+      <a class="nav-link {% if 'tickets' in request.path %}active{% endif %}" href="{% url 'staffpanel:tickets' %}"><i class="bi bi-headset"></i> Support</a>
+
+      <div class="nav-section-label">System</div>
+      <a class="nav-link {% if request.resolver_match.url_name == 'risk' %}active{% endif %}" href="{% url 'staffpanel:risk' %}"><i class="bi bi-shield-exclamation"></i> Risk</a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'notifications' %}active{% endif %}" href="{% url 'staffpanel:notifications' %}"><i class="bi bi-bell"></i> Notifications</a>
+      <a class="nav-link {% if 'audit' in request.path %}active{% endif %}" href="{% url 'staffpanel:audit_logs' %}"><i class="bi bi-journal-text"></i> Audit logs</a>
+      <a class="nav-link {% if 'admin-activity' in request.path %}active{% endif %}" href="{% url 'staffpanel:admin_activity' %}"><i class="bi bi-activity"></i> Admin activity</a>
+      <a class="nav-link {% if 'login-history' in request.path %}active{% endif %}" href="{% url 'staffpanel:login_history' %}"><i class="bi bi-clock-history"></i> Login history</a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'backups' %}active{% endif %}" href="{% url 'staffpanel:backups' %}"><i class="bi bi-device-hdd"></i> Backups</a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'geo' %}active{% endif %}" href="{% url 'staffpanel:geo' %}"><i class="bi bi-globe"></i> Geo rules</a>
+      <a class="nav-link {% if 'cms' in request.path %}active{% endif %}" href="{% url 'staffpanel:cms' %}"><i class="bi bi-file-earmark-text"></i> CMS</a>
+      <a class="nav-link {% if 'settings' in request.path %}active{% endif %}" href="{% url 'staffpanel:settings' %}"><i class="bi bi-gear"></i> Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="{% url 'core:dashboard' %}" class="btn btn-ghost btn-sm w-100 mb-2">User app</a>
+      <a href="/admin/" class="btn btn-outline-ci btn-sm w-100">Django admin</a>
+    </div>
+  </aside>
+  <div class="main-content">
+    <header class="topbar">
+      <div class="d-flex align-items-center gap-2">
+        <button class="sidebar-toggle" type="button" onclick="toggleSidebar()"><i class="bi bi-list fs-5"></i></button>
+        <div>
+          <div class="fw-semibold">{% block page_title %}Staff{% endblock %}</div>
+          <small class="text-muted d-none d-md-inline">{% block page_subtitle %}Administration{% endblock %}</small>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-ghost btn-sm" type="button" onclick="toggleTheme()"><i class="bi bi-moon-stars-fill" data-theme-icon></i></button>
+        <span class="small text-muted d-none d-md-inline">{{ user.email }}</span>
+      </div>
+    </header>
+    <main class="page-content">
+      {% if messages %}
+      {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show glass-card border-0 mb-3" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      {% endfor %}
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}

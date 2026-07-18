@@ -1,0 +1,148 @@
+{% extends "base_app.html" %}
+{% block title %}Withdraw — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Withdraw{% endblock %}
+{% block page_subtitle %}Live fee preview · funds lock until approved{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="glass-card p-4 mb-3">
+      <div class="d-flex justify-content-between">
+        <span class="text-muted">Available balance</span>
+        <span class="font-mono fw-bold text-profit">{{ wallet.available_balance }}</span>
+      </div>
+    </div>
+    <div class="glass-card p-4">
+      <div class="alert alert-warning glass-card border-0 small mb-3">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        Double-check <strong>network</strong> and address. Sending to the wrong chain can permanently lose funds.
+      </div>
+      <form method="post" id="withdraw-form">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label" for="id_cryptocurrency">Currency / network</label>
+          {{ form.cryptocurrency }}
+          {% for e in form.cryptocurrency.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="mb-3" id="saved-addr-wrap" style="display:none">
+          <label class="form-label" for="saved-address-select">Saved wallet address</label>
+          <select class="form-select" id="saved-address-select">
+            <option value="">— Type a new address or pick saved —</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="id_amount">Amount</label>
+          {{ form.amount }}
+          {% for e in form.amount.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="mb-4">
+          <label class="form-label" for="id_wallet_address">Wallet address</label>
+          {{ form.wallet_address }}
+          {% for e in form.wallet_address.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="glass-card p-3 mb-4 bg-elevated" id="fee-preview-box">
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-muted">Network / VIP fee</span>
+            <span class="font-mono" id="fee-amount">—</span>
+          </div>
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-muted">You receive (est.)</span>
+            <span class="font-mono text-profit" id="fee-net">—</span>
+          </div>
+          <div class="small text-muted" id="fee-note">Fees update as you type.</div>
+        </div>
+
+        <button type="submit" class="btn btn-ci w-100" id="withdraw-submit"
+                onclick="return confirm('Confirm withdrawal request? Funds will be locked until approved or rejected.');">
+          Request withdrawal
+        </button>
+        <a href="{% url 'transactions:withdraw_list' %}" class="btn btn-ghost w-100 mt-2">My withdrawals</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var cryptoSelect = document.getElementById('id_cryptocurrency');
+  var savedSelect = document.getElementById('saved-address-select');
+  var wrap = document.getElementById('saved-addr-wrap');
+  var addrInput = document.getElementById('id_wallet_address');
+  var amountEl = document.getElementById('id_amount');
+  var feeAmount = document.getElementById('fee-amount');
+  var feeNet = document.getElementById('fee-net');
+  var feeNote = document.getElementById('fee-note');
+  var t = null;
+
+  function loadSaved() {
+    if (!cryptoSelect || !cryptoSelect.value) {
+      if (wrap) wrap.style.display = 'none';
+      return;
+    }
+    fetch('/transactions/crypto/' + encodeURIComponent(cryptoSelect.value) + '/saved-addresses/', {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' },
+    })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (data) {
+        if (!savedSelect || !wrap) return;
+        savedSelect.innerHTML = '<option value="">— Type a new address or pick saved —</option>';
+        (data.addresses || []).forEach(function (a) {
+          var opt = document.createElement('option');
+          opt.value = a.address;
+          opt.textContent = (a.label ? a.label + ' — ' : '') + a.address.slice(0, 12) + '…' + (a.is_default ? ' (default)' : '');
+          savedSelect.appendChild(opt);
+        });
+        wrap.style.display = (data.addresses && data.addresses.length) ? 'block' : 'none';
+        var def = (data.addresses || []).find(function (a) { return a.is_default; });
+        if (def && addrInput && !addrInput.value) {
+          addrInput.value = def.address;
+          savedSelect.value = def.address;
+        }
+      })
+      .catch(function () {
+        if (wrap) wrap.style.display = 'none';
+      });
+  }
+
+  function refreshFee() {
+    if (!amountEl) return;
+    var amt = amountEl.value || '0';
+    var crypto = cryptoSelect ? cryptoSelect.value : '';
+    clearTimeout(t);
+    t = setTimeout(function () {
+      fetch('/api/fee-preview/?amount=' + encodeURIComponent(amt) + '&crypto=' + encodeURIComponent(crypto), {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin',
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d.ok) return;
+          if (feeAmount) feeAmount.textContent = d.fee + ' (' + d.fee_percent + '% VIP + network)';
+          if (feeNet) feeNet.textContent = d.net + ' ' + (d.symbol || '');
+          if (feeNote) feeNote.textContent = 'Final fee confirmed at processing time.';
+        })
+        .catch(function () {});
+    }, 200);
+  }
+
+  if (savedSelect && addrInput) {
+    savedSelect.addEventListener('change', function () {
+      if (savedSelect.value) addrInput.value = savedSelect.value;
+    });
+  }
+  if (cryptoSelect) {
+    cryptoSelect.addEventListener('change', function () { loadSaved(); refreshFee(); });
+    if (cryptoSelect.options.length && cryptoSelect.options[0].value === '') {
+      cryptoSelect.options[0].text = '— Select currency —';
+    }
+    if (cryptoSelect.value) loadSaved();
+  }
+  if (amountEl) amountEl.addEventListener('input', refreshFee);
+  refreshFee();
+})();
+</script>
+{% endblock %}

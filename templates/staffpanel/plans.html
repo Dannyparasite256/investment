@@ -1,0 +1,22 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}Investment plans & profit rules{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-end mb-3"><a href="{% url 'staffpanel:plan_new' %}" class="btn btn-ci btn-sm">New plan</a></div>
+<div class="glass-card p-0 overflow-hidden">
+  <table class="table table-ci mb-0">
+    <thead><tr><th>Name</th><th>Rate</th><th>Duration</th><th>Payout</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for p in plans %}
+      <tr>
+        <td>{{ p.name }}{% if p.is_featured %} <span class="badge badge-featured">Featured</span>{% endif %}</td>
+        <td class="font-mono">{{ p.profit_rate_percent }}%</td>
+        <td>{{ p.duration_days }}d</td>
+        <td>{{ p.get_payout_frequency_display }}</td>
+        <td><span class="badge badge-status badge-{{ p.status }}">{{ p.status }}</span></td>
+        <td><a href="{% url 'staffpanel:plan_edit' p.pk %}">Edit</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No plans</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

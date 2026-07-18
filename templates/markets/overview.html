@@ -1,0 +1,84 @@
+{% extends "base_app.html" %}
+{% load static %}
+
+{% block title %}Forex markets — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Markets{% endblock %}
+{% block page_subtitle %}Large live charts · candlesticks & more{% endblock %}
+
+{% block content %}
+<div class="glass-card p-3 p-md-4 mb-3 animate-in">
+  <div class="row g-3 align-items-end">
+    <div class="col-md-5">
+      <h5 class="mb-1">Forex market center</h5>
+      <p class="text-muted small mb-0">
+        Open full-screen candlestick charts for any pair. Search below or jump into a large preview.
+      </p>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Search pairs</label>
+      <input type="search" class="form-control" id="market-search" placeholder="EUR, USDJPY, gold…"
+             oninput="filterMarketPairs(this.value)">
+    </div>
+    <div class="col-md-3">
+      <a href="{% url 'markets:chart' %}?symbol={{ default_symbol }}&style=1&interval=60" class="btn btn-ci w-100">
+        <i class="bi bi-arrows-fullscreen me-1"></i> Full EUR/USD chart
+      </a>
+    </div>
+  </div>
+</div>
+
+{# Large previews — 2 per row #}
+<div class="row g-3 mb-4">
+  {% for p in categories.majors.pairs|slice:":4" %}
+  <div class="col-12 col-xl-6 animate-in">
+    <div class="glass-card p-2 p-md-3 overflow-hidden market-ticker-card market-ticker-card--lg">
+      <div class="d-flex justify-content-between align-items-center px-1 mb-2">
+        <strong>{{ p.base }}/{{ p.quote }}</strong>
+        <a class="btn btn-ci btn-sm"
+           href="{% url 'markets:chart' %}?symbol={{ p.symbol }}&style=1&interval=60">
+          Open large chart
+        </a>
+      </div>
+      <div data-tv-ticker="{{ p.symbol }}" data-height="420" class="market-overview-embed"></div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% for cat_key, cat in categories.items %}
+<section class="mb-5">
+  <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2">
+    <div>
+      <h5 class="mb-0">{{ cat.label }}</h5>
+      <small class="text-muted">{{ cat.description }}</small>
+    </div>
+  </div>
+  <div class="row g-3">
+    {% for p in cat.pairs %}
+    <div class="col-6 col-md-4 col-xl-3"
+         data-pair-card
+         data-pair-search="{{ p.symbol }} {{ p.name }} {{ p.base }} {{ p.quote }} {{ cat.label }}">
+      <a href="{% url 'markets:chart' %}?symbol={{ p.symbol }}&style=1&interval=60"
+         class="text-decoration-none">
+        <div class="glass-card p-3 h-100 interactive market-pair-card">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <span class="badge badge-status badge-info">{{ p.base }}/{{ p.quote }}</span>
+            <i class="bi bi-bar-chart-fill text-muted"></i>
+          </div>
+          <div class="fw-semibold" style="color:var(--ci-text)">{{ p.base }}{{ p.quote }}</div>
+          <div class="small text-muted text-truncate">{{ p.name }}</div>
+          <div class="mt-2 small" style="color:var(--ci-primary-bright)">
+            Full candlestick chart →
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/markets.js' %}"></script>
+{% endblock %}

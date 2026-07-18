@@ -1,0 +1,85 @@
+{% extends "base_app.html" %}
+{% block title %}Deposit detail — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Deposit status{% endblock %}
+{% block page_subtitle %}Track your deposit from submit to credit{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="glass-card p-4 mb-4">
+      <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+          <h5 class="mb-1">{{ deposit.amount }} {{ deposit.cryptocurrency.symbol }}</h5>
+          <span class="badge badge-status badge-info network-badge">{{ deposit.network|default:deposit.cryptocurrency.network }}</span>
+        </div>
+        <span class="badge badge-status badge-{{ deposit.status }}">{{ deposit.get_status_display }}</span>
+      </div>
+
+      {# Status timeline #}
+      <div class="status-timeline mb-4">
+        <div class="status-step done">
+          <div class="status-dot"></div>
+          <div class="status-label">Submitted</div>
+          <div class="status-meta">{{ deposit.created_at|date:"M d, H:i" }}</div>
+        </div>
+        <div class="status-step {% if deposit.status == 'waiting_confirmation' or deposit.status == 'approved' or deposit.status == 'rejected' %}done{% elif deposit.status == 'pending' %}current{% endif %}">
+          <div class="status-dot"></div>
+          <div class="status-label">Under review</div>
+          <div class="status-meta">Usually &lt; 2 hours</div>
+        </div>
+        <div class="status-step {% if deposit.status == 'approved' %}done{% elif deposit.status == 'rejected' %}failed{% endif %}">
+          <div class="status-dot"></div>
+          <div class="status-label">{% if deposit.status == 'rejected' %}Rejected{% else %}Approved{% endif %}</div>
+          <div class="status-meta">{% if deposit.reviewed_at %}{{ deposit.reviewed_at|date:"M d, H:i" }}{% else %}—{% endif %}</div>
+        </div>
+        <div class="status-step {% if deposit.status == 'approved' %}done{% endif %}">
+          <div class="status-dot"></div>
+          <div class="status-label">Credited</div>
+          <div class="status-meta">{% if deposit.credit_amount %}{{ deposit.credit_amount }} platform{% else %}After approval{% endif %}</div>
+        </div>
+      </div>
+
+      <table class="table table-ci">
+        <tr><td class="text-muted">Tx hash</td><td class="font-mono small text-end" style="word-break:break-all">{{ deposit.transaction_hash }}</td></tr>
+        <tr><td class="text-muted">Deposit address</td><td class="font-mono small text-end" style="word-break:break-all">{{ deposit.deposit_address|default:"—" }}</td></tr>
+        {% if deposit.rejection_reason %}
+        <tr><td class="text-muted">Reason</td><td class="text-end text-loss">{{ deposit.rejection_reason }}</td></tr>
+        {% endif %}
+        {% if deposit.promo_code %}
+        <tr><td class="text-muted">Promo</td><td class="text-end font-mono">{{ deposit.promo_code }}</td></tr>
+        {% endif %}
+      </table>
+
+      {% if deposit.screenshot %}
+      <div class="mt-2">
+        <div class="small text-muted mb-1">Proof screenshot</div>
+        <a href="{{ deposit.screenshot.url }}" data-lightbox class="d-inline-block">
+          <img src="{{ deposit.screenshot.url }}" class="img-fluid rounded proof-thumb" alt="Screenshot">
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="glass-card p-4 mb-3">
+      <h6 class="mb-3">Actions</h6>
+      <a href="{% url 'core:deposit_receipt' deposit.pk %}" class="btn btn-ci w-100 mb-2"><i class="bi bi-receipt me-1"></i> View receipt</a>
+      <a href="{% url 'transactions:deposit_list' %}" class="btn btn-ghost w-100 mb-2">All deposits</a>
+      <a href="{% url 'support:create' %}" class="btn btn-outline-ci w-100">Contact support</a>
+    </div>
+    <div class="glass-card p-3">
+      <div class="small text-muted mb-1">What happens next?</div>
+      <p class="small mb-0">
+        {% if deposit.status == 'pending' or deposit.status == 'waiting_confirmation' %}
+        Our team is verifying the on-chain transfer. You’ll get a notification when it’s approved.
+        {% elif deposit.status == 'approved' %}
+        Funds are on your wallet. Browse plans and start investing.
+        <a href="{% url 'investments:plans' %}">View plans →</a>
+        {% else %}
+        This deposit was not approved. If you believe this is an error, open a support ticket with the receipt ID.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

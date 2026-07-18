@@ -1,0 +1,235 @@
+{% extends "base_app.html" %}
+{% block title %}Deposit — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Crypto deposit{% endblock %}
+{% block page_subtitle %}Amount is in the crypto you select — not USD{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="glass-card p-4">
+      <div class="alert glass-card border-0 small mb-3" style="border-left:3px solid var(--ci-primary) !important">
+        <i class="bi bi-info-circle me-1"></i>
+        Enter the amount in the <strong>selected cryptocurrency</strong> (e.g. BTC or USDT).
+        After approval, your balance is shown in that same coin.
+      </div>
+      <div class="alert alert-warning glass-card border-0 small mb-3 network-warning" id="network-warning" style="display:none">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        <strong>Network check:</strong> Send only on <span id="network-warning-name">the selected network</span>.
+        Wrong network can mean permanent loss of funds.
+      </div>
+      <form method="post" enctype="multipart/form-data" id="deposit-form">
+        {% csrf_token %}
+        {% if form.errors %}
+        <div class="alert alert-danger">
+          <strong>Could not submit deposit.</strong> Fix the issues below.
+          <ul class="mb-0 small mt-2">
+            {% for field in form %}
+              {% for e in field.errors %}<li>{{ field.label }}: {{ e }}</li>{% endfor %}
+            {% endfor %}
+            {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        <div class="mb-3">
+          <label class="form-label" for="id_cryptocurrency">Cryptocurrency / network</label>
+          {{ form.cryptocurrency }}
+          {% for e in form.cryptocurrency.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+
+        {# Filled by JS when a currency is selected #}
+        <div id="crypto-info" class="mb-3">
+          <p class="text-muted small mb-0">Select a currency to see the deposit wallet address &amp; QR code.</p>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="id_amount">Amount <span id="amount-unit-label" class="text-muted"></span></label>
+          {{ form.amount }}
+          {% for e in form.amount.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+          <div class="form-text text-muted" id="min-dep-hint"></div>
+          <div class="form-text text-muted" id="est-platform-hint"></div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="id_transaction_hash">Transaction hash</label>
+          {{ form.transaction_hash }}
+          {% for e in form.transaction_hash.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="id_promo_code">Promo code (optional)</label>
+          {{ form.promo_code }}
+        </div>
+        <div class="mb-4">
+          <label class="form-label" for="id_screenshot">Screenshot (optional)</label>
+          {{ form.screenshot }}
+        </div>
+        <button type="submit" class="btn btn-ci w-100" data-confetti-on-success>Submit deposit</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="glass-card p-4">
+      <h6 class="mb-3">How deposits work</h6>
+      <ol class="small text-muted mb-0 ps-3">
+        <li class="mb-2">Select a currency — the platform deposit address appears below.</li>
+        <li class="mb-2">Send the exact amount to that address on the correct network.</li>
+        <li class="mb-2">Paste the transaction hash and submit.</li>
+        <li class="mb-2">Status: <strong>Pending → Approved</strong> (admin reviews).</li>
+        <li>Your balance is credited only after approval.</li>
+      </ol>
+      <a href="{% url 'transactions:deposit_list' %}" class="btn btn-ghost btn-sm mt-3">My deposits</a>
+    </div>
+    <div class="glass-card p-3 mt-3">
+      <h6 class="small text-muted mb-2">Supported</h6>
+      <div class="d-flex flex-wrap gap-2">
+        {% for c in cryptos %}
+        <span class="badge badge-status badge-info">{{ c.symbol }}</span>
+        {% empty %}
+        <span class="text-muted small">No cryptocurrencies configured. Ask admin to add deposit wallets.</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Safe JSON payload — no fragile URL replace #}
+{{ cryptos_data|json_script:"cryptos-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var select = document.getElementById('id_cryptocurrency');
+  var info = document.getElementById('crypto-info');
+  var minHint = document.getElementById('min-dep-hint');
+  var dataEl = document.getElementById('cryptos-data');
+  var cryptos = {};
+
+  try {
+    var list = dataEl ? JSON.parse(dataEl.textContent) : [];
+    list.forEach(function (c) { cryptos[String(c.id)] = c; });
+  } catch (e) {
+    console.error('Failed to parse crypto list', e);
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function renderCrypto(c) {
+    if (!c) {
+      info.innerHTML = '<p class="text-muted small mb-0">Select a currency to see the deposit wallet address &amp; QR code.</p>';
+      if (minHint) minHint.textContent = '';
+      return;
+    }
+    var addr = (c.deposit_address || '').trim();
+    var html = '<div class="glass-card p-3 bg-elevated">';
+    html += '<div class="d-flex justify-content-between align-items-start mb-2">';
+    html += '<div><div class="fw-semibold">' + escapeHtml(c.name) + '</div>';
+    html += '<div class="small text-muted">Network: <span class="network-badge badge badge-status badge-info">' + escapeHtml(c.network_label || c.network) + '</span></div></div>';
+    html += '<span class="badge badge-status badge-info">' + escapeHtml(c.symbol) + '</span></div>';
+
+    if (c.qr) {
+      html += '<div class="text-center mb-3 qr-frame"><img src="' + escapeHtml(c.qr) + '" alt="QR" class="img-fluid rounded" style="max-width:180px;background:#fff;padding:10px"></div>';
+    }
+    var nw = document.getElementById('network-warning');
+    var nwName = document.getElementById('network-warning-name');
+    if (nw) { nw.style.display = 'block'; }
+    if (nwName) { nwName.textContent = c.network_label || c.network || c.symbol; }
+
+    html += '<div class="small text-muted mb-1">Deposit address</div>';
+    if (addr) {
+      html += '<div class="crypto-address mb-2" id="dep-addr">' + escapeHtml(addr) + '</div>';
+      html += '<button type="button" class="btn btn-outline-ci btn-sm copy-btn" data-copy="' + escapeHtml(addr) + '">';
+      html += '<i class="bi bi-clipboard"></i> Copy address</button>';
+    } else {
+      html += '<div class="alert alert-warning mb-0 small">Deposit address not configured yet. Please contact support or wait for admin to set a wallet for ' + escapeHtml(c.symbol) + '.</div>';
+    }
+    html += '<div class="small text-muted mt-3">Min deposit: <span class="font-mono">' + escapeHtml(c.min_deposit) + '</span></div>';
+    html += '</div>';
+    info.innerHTML = html;
+
+    var unitLabel = document.getElementById('amount-unit-label');
+    if (unitLabel) unitLabel.textContent = '(' + c.symbol + ')';
+    if (minHint) {
+      minHint.textContent = 'Enter amount in ' + c.symbol + ' · Minimum: ' + c.min_deposit + ' ' + c.symbol;
+    }
+    updateEstHint(c);
+
+    var copyBtn = info.querySelector('[data-copy]');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function () {
+        copyText(copyBtn.getAttribute('data-copy'), copyBtn);
+      });
+    }
+  }
+
+  function updateEstHint(c) {
+    var est = document.getElementById('est-platform-hint');
+    var amountEl = document.getElementById('id_amount');
+    if (!est || !amountEl || !c) return;
+    var amt = parseFloat(amountEl.value);
+    var price = parseFloat(c.usd_price || 1);
+    if (!amt || isNaN(amt) || !price) {
+      est.textContent = 'Your balance will be shown in ' + c.symbol + ' after approval.';
+      return;
+    }
+    var platform = amt * price;
+    est.textContent = amt + ' ' + c.symbol + ' ≈ ' + platform.toLocaleString(undefined, {maximumFractionDigits: 2}) +
+      ' platform value (rate $' + price + ' per ' + c.symbol + '). Display stays in ' + c.symbol + '.';
+  }
+
+  function onChange() {
+    if (!select) return;
+    var id = select.value;
+    if (!id) {
+      renderCrypto(null);
+      return;
+    }
+    var c = cryptos[String(id)];
+    if (c) {
+      renderCrypto(c);
+      return;
+    }
+    // Fallback AJAX if not in embedded map
+    info.innerHTML = '<p class="text-muted small mb-0">Loading…</p>';
+    fetch('/transactions/crypto/' + encodeURIComponent(id) + '/info/?format=json', {
+      headers: { 'Accept': 'application/json' },
+      credentials: 'same-origin',
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        cryptos[String(data.id)] = data;
+        renderCrypto(data);
+      })
+      .catch(function (err) {
+        console.error(err);
+        info.innerHTML = '<div class="alert alert-danger small mb-0">Could not load wallet address. Please refresh and try again.</div>';
+      });
+  }
+
+  var amountEl = document.getElementById('id_amount');
+  if (amountEl) {
+    amountEl.addEventListener('input', function () {
+      if (!select || !select.value) return;
+      var c = cryptos[String(select.value)];
+      if (c) updateEstHint(c);
+    });
+  }
+
+  if (select) {
+    select.addEventListener('change', onChange);
+    if (select.options.length && select.options[0].value === '') {
+      select.options[0].text = '— Select crypto wallet —';
+    }
+    if (select.value) onChange();
+  }
+})();
+</script>
+{% endblock %}

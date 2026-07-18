@@ -1,0 +1,65 @@
+{% extends "base_app.html" %}
+{% block title %}Watchlist — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Watchlist{% endblock %}
+{% block page_subtitle %}Track pairs you care about{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="glass-card p-4">
+      <h6 class="mb-3">Add symbol</h6>
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">Symbol</label>
+          <select class="form-select" name="symbol" required>
+            {% for p in pairs %}
+            <option value="{{ p.symbol }}">{{ p.name|default:p.symbol }}</option>
+            {% empty %}
+            <option value="FX:EURUSD">EUR/USD</option>
+            <option value="BINANCE:BTCUSDT">BTC/USDT</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Label (optional)</label>
+          <input class="form-control" name="label" placeholder="My EUR pair">
+        </div>
+        <button class="btn btn-ci w-100" type="submit">Add to watchlist</button>
+      </form>
+      <a href="{% url 'core:alerts' %}" class="btn btn-ghost btn-sm w-100 mt-2">Manage price alerts</a>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="glass-card p-0 overflow-hidden">
+      <div class="p-3 border-bottom border-ci"><h6 class="mb-0">Your list</h6></div>
+      <div class="table-responsive">
+        <table class="table table-ci mb-0">
+          <thead><tr><th>Symbol</th><th>Label</th><th></th></tr></thead>
+          <tbody>
+            {% for item in items %}
+            <tr>
+              <td class="font-mono">{{ item.symbol }}</td>
+              <td>{{ item.label }}</td>
+              <td class="text-end">
+                <a class="btn btn-ghost btn-sm" href="{% url 'markets:chart' %}?symbol={{ item.symbol|urlencode }}">Chart</a>
+                <form class="d-inline" method="post" action="{% url 'core:watchlist_delete' item.pk %}">{% csrf_token %}
+                  <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+                </form>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3">
+              <div class="empty-state py-5">
+                <i class="bi bi-star"></i>
+                <p>No symbols yet. Add a pair to track markets.</p>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

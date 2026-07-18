@@ -1,0 +1,31 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}Reports & analytics{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a href="?days=7" class="btn btn-sm {% if days == 7 %}btn-ci{% else %}btn-ghost{% endif %}">7d</a>
+  <a href="?days=30" class="btn btn-sm {% if days == 30 %}btn-ci{% else %}btn-ghost{% endif %}">30d</a>
+  <a href="?days=90" class="btn btn-sm {% if days == 90 %}btn-ci{% else %}btn-ghost{% endif %}">90d</a>
+  <div class="ms-auto d-flex gap-2">
+    <a href="?days={{ days }}&export=csv" class="btn btn-outline-ci btn-sm">CSV</a>
+    <a href="?days={{ days }}&export=xlsx" class="btn btn-outline-ci btn-sm">Excel</a>
+    <a href="?days={{ days }}&export=pdf" class="btn btn-outline-ci btn-sm">PDF</a>
+  </div>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="glass-card stat-card"><div class="stat-label">Deposits</div><div class="stat-value" style="font-size:1.3rem">{{ summary.deposits_sum|floatformat:2 }}</div><small class="text-muted">{{ summary.deposits_count }} tx</small></div></div>
+  <div class="col-md-3"><div class="glass-card stat-card"><div class="stat-label">Withdrawals</div><div class="stat-value" style="font-size:1.3rem">{{ summary.withdrawals_sum|floatformat:2 }}</div><small class="text-muted">{{ summary.withdrawals_count }} tx</small></div></div>
+  <div class="col-md-3"><div class="glass-card stat-card"><div class="stat-label">Investments</div><div class="stat-value" style="font-size:1.3rem">{{ summary.investments_sum|floatformat:2 }}</div><small class="text-muted">{{ summary.investments_count }}</small></div></div>
+  <div class="col-md-3"><div class="glass-card stat-card"><div class="stat-label">Registrations</div><div class="stat-value">{{ summary.registrations }}</div></div></div>
+</div>
+<div class="glass-card p-4">
+  <h6 class="mb-3">Daily deposit revenue</h6>
+  <div style="height:300px"><canvas id="reportChart"></canvas></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  initEarningsChart('reportChart', {{ chart_labels|safe }}, {{ chart_values|safe }});
+});
+</script>
+{% endblock %}

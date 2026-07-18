@@ -1,0 +1,30 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}KYC approvals{% endblock %}
+{% block content %}
+<form method="get" class="mb-3">
+  <select class="form-select w-auto d-inline-block" name="status" onchange="this.form.submit()">
+    {% for v,l in statuses %}<option value="{{ v }}" {% if status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    <option value="" {% if status == '' %}selected{% endif %}>All</option>
+  </select>
+</form>
+<div class="row g-3">
+  {% for doc in page %}
+  <div class="col-md-6 col-xl-4">
+    <div class="glass-card p-3">
+      <div class="d-flex justify-content-between mb-2">
+        <strong class="small">{{ doc.user.email }}</strong>
+        <span class="badge badge-status badge-{{ doc.status }}">{{ doc.get_status_display }}</span>
+      </div>
+      <div class="small text-muted mb-2">{{ doc.get_document_type_display }} · {{ doc.created_at|date:"M d, Y" }}</div>
+      {% if doc.front_image %}<img src="{{ doc.front_image.url }}" class="img-fluid rounded mb-2" alt="">{% endif %}
+      {% if doc.status == 'pending' or doc.status == 'under_review' %}
+      <div class="d-flex gap-2">
+        <form method="post" action="{% url 'staffpanel:kyc_approve' doc.pk %}">{% csrf_token %}<button class="btn btn-ci btn-sm">Approve</button></form>
+        <form method="post" action="{% url 'staffpanel:kyc_reject' doc.pk %}">{% csrf_token %}<input type="hidden" name="reason" value="Documents unclear"><button class="btn btn-outline-danger btn-sm">Reject</button></form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}<div class="col-12"><div class="empty-state glass-card">No KYC submissions</div></div>{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base_app.html" %}
+{% block title %}Search — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Search{% endblock %}
+
+{% block content %}
+<form class="glass-card p-3 mb-4 d-flex gap-2" method="get" action="{% url 'core:search' %}">
+  <input class="form-control" name="q" value="{{ q }}" placeholder="Search deposits, plans, tickets…" autofocus>
+  <button class="btn btn-ci" type="submit">Search</button>
+</form>
+<div class="glass-card p-0 overflow-hidden">
+  {% for r in results %}
+  <a href="{{ r.url }}" class="d-flex align-items-center gap-3 p-3 border-bottom border-ci text-decoration-none notif-item">
+    <span class="stat-icon" style="width:40px;height:40px"><i class="bi {{ r.icon }}"></i></span>
+    <span class="min-w-0">
+      <span class="d-block fw-semibold" style="color:var(--ci-text)">{{ r.title }}</span>
+      <span class="small text-muted">{{ r.subtitle }} · {{ r.type }}</span>
+    </span>
+    <i class="bi bi-chevron-right ms-auto text-muted"></i>
+  </a>
+  {% empty %}
+  <div class="empty-state py-5">
+    <i class="bi bi-search"></i>
+    <p>{% if q %}No results for “{{ q }}”.{% else %}Type at least 2 characters to search.{% endif %}</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

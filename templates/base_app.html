@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block body %}
+<div class="app-shell" data-density="{{ request.COOKIES.density|default:'comfortable' }}">
+  <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo-mark">C</div>
+      <span class="logo-text text-gradient">{{ SITE_NAME }}</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'core:dashboard' %}" data-tour="dash">
+        <i class="bi bi-grid-1x2"></i> Dashboard
+      </a>
+      <a class="nav-link {% if 'investments' in request.path and 'calculator' not in request.path and request.resolver_match.url_name != 'my' and request.resolver_match.url_name != 'earnings' %}active{% endif %}" href="{% url 'investments:plans' %}" data-tour="invest">
+        <i class="bi bi-graph-up-arrow"></i> Investments
+      </a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'my' %}active{% endif %}" href="{% url 'investments:my' %}">
+        <i class="bi bi-briefcase"></i> My Portfolio
+      </a>
+      <a class="nav-link {% if request.path == '/portfolio/' %}active{% endif %}" href="{% url 'core:portfolio' %}">
+        <i class="bi bi-pie-chart"></i> Performance
+      </a>
+      <a class="nav-link {% if 'markets' in request.path %}active{% endif %}" href="{% url 'markets:overview' %}">
+        <i class="bi bi-bar-chart-line"></i> Markets
+      </a>
+
+      <div class="nav-section-label">Wallet</div>
+      <a class="nav-link {% if 'wallets' in request.path %}active{% endif %}" href="{% url 'wallets:overview' %}">
+        <i class="bi bi-wallet2"></i> Wallet
+      </a>
+      <a class="nav-link {% if 'deposit' in request.path %}active{% endif %}" href="{% url 'transactions:deposit_create' %}" data-tour="deposit">
+        <i class="bi bi-download"></i> Deposit
+      </a>
+      <a class="nav-link {% if 'withdraw' in request.path %}active{% endif %}" href="{% url 'transactions:withdraw_create' %}">
+        <i class="bi bi-upload"></i> Withdraw
+      </a>
+      <a class="nav-link {% if 'history' in request.path %}active{% endif %}" href="{% url 'transactions:history' %}">
+        <i class="bi bi-clock-history"></i> History
+      </a>
+
+      <div class="nav-section-label">Grow</div>
+      <a class="nav-link {% if 'referrals' in request.path or 'affiliate' in request.path %}active{% endif %}" href="{% url 'referrals:dashboard' %}" data-tour="refer">
+        <i class="bi bi-people"></i> Referrals
+      </a>
+      <a class="nav-link {% if request.path == '/vip/' %}active{% endif %}" href="{% url 'core:vip' %}">
+        <i class="bi bi-award"></i> VIP
+      </a>
+      <a class="nav-link {% if request.path == '/watchlist/' %}active{% endif %}" href="{% url 'core:watchlist' %}">
+        <i class="bi bi-star"></i> Watchlist
+      </a>
+      <a class="nav-link {% if request.path == '/alerts/' %}active{% endif %}" href="{% url 'core:alerts' %}">
+        <i class="bi bi-bell"></i> Alerts
+      </a>
+      <a class="nav-link {% if request.path == '/signals/' %}active{% endif %}" href="{% url 'core:signals' %}">
+        <i class="bi bi-broadcast"></i> Signals
+      </a>
+
+      <div class="nav-section-label">Account</div>
+      <a class="nav-link {% if 'profile' in request.path or 'kyc' in request.path %}active{% endif %}" href="{% url 'accounts:profile' %}">
+        <i class="bi bi-person-circle"></i> Profile
+      </a>
+      <a class="nav-link {% if 'notifications' in request.path %}active{% endif %}" href="{% url 'notifications:list' %}">
+        <i class="bi bi-bell"></i> Notifications
+        {% if unread_count %}<span class="badge rounded-pill ms-auto" style="background:var(--ci-danger);font-size:0.65rem">{{ unread_count }}</span>{% endif %}
+      </a>
+      <a class="nav-link {% if request.path == '/activity/' %}active{% endif %}" href="{% url 'core:activity' %}">
+        <i class="bi bi-activity"></i> Activity
+      </a>
+      <a class="nav-link {% if request.path == '/statements/' %}active{% endif %}" href="{% url 'core:statements' %}">
+        <i class="bi bi-file-earmark-text"></i> Statements
+      </a>
+      <a class="nav-link {% if request.path == '/risk-quiz/' %}active{% endif %}" href="{% url 'core:risk_quiz' %}">
+        <i class="bi bi-clipboard-check"></i> Risk quiz
+      </a>
+      <a class="nav-link {% if 'earnings' in request.path %}active{% endif %}" href="{% url 'investments:earnings' %}">
+        <i class="bi bi-currency-dollar"></i> Earnings
+      </a>
+      <a class="nav-link {% if 'calculator' in request.path %}active{% endif %}" href="{% url 'investments:calculator' %}">
+        <i class="bi bi-calculator"></i> Calculator
+      </a>
+      <a class="nav-link {% if 'support' in request.path %}active{% endif %}" href="{% url 'support:list' %}">
+        <i class="bi bi-headset"></i> Support
+      </a>
+      {% if user.is_staff or user.is_superuser %}
+      <div class="nav-section-label">Admin</div>
+      <a class="nav-link" href="{% url 'staffpanel:dashboard' %}">
+        <i class="bi bi-shield-lock"></i> Staff panel
+      </a>
+      {% endif %}
+    </nav>
+    <div class="sidebar-footer">
+      <form method="post" action="{% url 'accounts:logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-ghost w-100 btn-sm">
+          <i class="bi bi-box-arrow-left me-1"></i> Log out
+        </button>
+      </form>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="d-flex align-items-center gap-2 gap-md-3 flex-grow-1">
+        <button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="Menu">
+          <i class="bi bi-list fs-5"></i>
+        </button>
+        <div class="min-w-0">
+          <div class="page-heading text-truncate">{% block page_title %}Dashboard{% endblock %}</div>
+          <small class="text-muted d-none d-md-block text-truncate">{% block page_subtitle %}{% endblock %}</small>
+        </div>
+        <div class="search-pill ms-md-3 flex-grow-1" style="max-width:280px" data-tour="search">
+          <i class="bi bi-search"></i>
+          <input type="search" id="global-search-input" placeholder="Search… ( / or Ctrl+K )"
+                 aria-label="Search" autocomplete="off">
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2 gap-md-3">
+        {% if user_vip_tier %}
+        <a href="{% url 'core:vip' %}" class="badge badge-featured d-none d-lg-inline-flex text-decoration-none" style="background:{{ user_vip_tier.badge_color }}33;color:{{ user_vip_tier.badge_color }}">
+          {{ user_vip_tier.name }}
+        </a>
+        {% endif %}
+        {% if display_options %}
+        <form method="post" action="{% url 'core:set_display_currency' %}"
+              class="d-none d-md-flex align-items-center gap-1" data-currency-form>
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <label class="small text-muted mb-0 me-1" for="top-display-currency">Show in</label>
+          <select class="form-select form-select-sm" name="currency" id="top-display-currency"
+                  style="width:auto;min-width:110px" data-currency-select>
+            {% for o in display_options %}
+            <option value="{{ o.code }}" {% if display_currency == o.code %}selected{% endif %}>{{ o.code }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        {% endif %}
+        <button class="btn btn-ghost btn-sm d-none d-md-inline-flex" type="button" onclick="toggleDensity()" title="Compact / comfortable">
+          <i class="bi bi-arrows-collapse"></i>
+        </button>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="toggleTheme()" title="Toggle theme">
+          <i data-theme-icon class="bi bi-{% if theme == 'light' %}sun{% else %}moon-stars{% endif %}-fill"></i>
+        </button>
+        <form id="theme-form" action="{% url 'core:set_theme' %}" method="post" class="d-none">
+          {% csrf_token %}
+          <input type="hidden" name="theme" value="{{ theme|default:'dark' }}">
+        </form>
+
+        <div class="dropdown">
+          <button class="btn btn-ghost btn-sm position-relative" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-bell"></i>
+            {% if unread_count %}<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" style="background:var(--ci-danger);font-size:0.55rem">{{ unread_count }}</span>{% endif %}
+          </button>
+          <div class="dropdown-menu dropdown-menu-end" style="width:320px;max-height:380px;overflow:auto">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom border-ci">
+              <strong class="small">Notifications</strong>
+              <form method="post" action="{% url 'notifications:mark_all_read' %}">
+                {% csrf_token %}
+                <button class="btn btn-link btn-sm p-0 text-decoration-none" type="submit">Mark all read</button>
+              </form>
+            </div>
+            {% for n in recent_notifications %}
+            <a href="{% url 'notifications:list' %}" class="notif-item unread d-block text-decoration-none">
+              <div class="fw-semibold small" style="color:var(--ci-text)">{{ n.title }}</div>
+              <div class="text-muted small">{{ n.message|truncatechars:80 }}</div>
+            </a>
+            {% empty %}
+            <div class="p-3 text-muted small text-center">No new notifications</div>
+            {% endfor %}
+            <a class="dropdown-item text-center small" href="{% url 'notifications:list' %}">View all</a>
+          </div>
+        </div>
+
+        <div class="dropdown">
+          <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
+            {% if user.profile_picture %}
+            <img src="{{ user.profile_picture.url }}" class="avatar" alt="">
+            {% else %}
+            <span class="avatar d-inline-flex align-items-center justify-content-center" style="background:var(--ci-gradient-subtle)">
+              <i class="bi bi-person"></i>
+            </span>
+            {% endif %}
+            <span class="d-none d-md-inline small fw-semibold">{{ user.display_name|truncatechars:16 }}</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{% url 'accounts:profile' %}"><i class="bi bi-person me-2"></i>Profile</a></li>
+            <li><a class="dropdown-item" href="{% url 'accounts:kyc' %}"><i class="bi bi-shield-check me-2"></i>KYC</a></li>
+            <li><a class="dropdown-item" href="{% url 'core:vip' %}"><i class="bi bi-award me-2"></i>VIP</a></li>
+            <li><a class="dropdown-item" href="{% url 'core:statements' %}"><i class="bi bi-file-earmark-text me-2"></i>Statements</a></li>
+            <li><a class="dropdown-item" href="{% url 'accounts:setup_2fa' %}"><i class="bi bi-phone me-2"></i>2FA</a></li>
+            <li><hr class="dropdown-divider border-ci"></li>
+            <li>
+              <form method="post" action="{% url 'accounts:logout' %}">
+                {% csrf_token %}
+                <button class="dropdown-item" type="submit"><i class="bi bi-box-arrow-left me-2"></i>Log out</button>
+              </form>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      {% if messages %}
+      <div class="mb-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show glass-card border-0" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if user.is_authenticated and not user.email_verified %}
+      <div class="alert alert-warning glass-card border-0 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-envelope-exclamation me-2"></i>Please verify your email address.</span>
+        <form method="post" action="{% url 'accounts:resend_verification' %}">
+          {% csrf_token %}
+          <button class="btn btn-sm btn-outline-ci" type="submit">Resend link</button>
+        </form>
+      </div>
+      {% endif %}
+
+      {% if risk_disclaimer %}
+      <div class="risk-strip small text-muted mb-3 d-none d-md-block">
+        <i class="bi bi-exclamation-triangle me-1"></i>{{ risk_disclaimer|truncatechars:160 }}
+      </div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+{# Mobile bottom navigation #}
+<nav class="mobile-bottom-nav d-lg-none" aria-label="Primary">
+  <a href="{% url 'core:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+    <i class="bi bi-grid-1x2"></i><span>Home</span>
+  </a>
+  <a href="{% url 'investments:plans' %}" class="{% if 'investments' in request.path and request.resolver_match.url_name != 'my' %}active{% endif %}">
+    <i class="bi bi-graph-up-arrow"></i><span>Invest</span>
+  </a>
+  <a href="{% url 'transactions:deposit_create' %}" class="nav-fab {% if 'deposit' in request.path %}active{% endif %}">
+    <span class="fab-circle"><i class="bi bi-download"></i></span><span>Deposit</span>
+  </a>
+  <a href="{% url 'wallets:overview' %}" class="{% if 'wallets' in request.path %}active{% endif %}">
+    <i class="bi bi-wallet2"></i><span>Wallet</span>
+  </a>
+  <a href="{% url 'accounts:profile' %}" class="{% if 'profile' in request.path or 'kyc' in request.path %}active{% endif %}">
+    <i class="bi bi-person"></i><span>More</span>
+  </a>
+</nav>
+
+{# Global search results popover #}
+<div id="search-popover" class="search-popover d-none" role="listbox"></div>
+
+{# Command palette #}
+<div id="cmdk-overlay" class="cmdk-overlay d-none" aria-hidden="true">
+  <div class="cmdk-panel glass-card">
+    <div class="cmdk-input-wrap">
+      <i class="bi bi-search"></i>
+      <input type="search" id="cmdk-input" placeholder="Jump to… type a page name" autocomplete="off">
+      <kbd class="d-none d-md-inline">Esc</kbd>
+    </div>
+    <div id="cmdk-results" class="cmdk-results"></div>
+  </div>
+</div>
+
+{# Product tour #}
+{% if show_tour %}
+<div id="tour-root" class="tour-root" data-tour-active="1">
+  <div class="tour-backdrop"></div>
+  <div class="tour-card glass-card">
+    <div class="small text-muted mb-1">Quick tour · <span id="tour-step-num">1</span>/4</div>
+    <h6 id="tour-title" class="mb-2">Welcome</h6>
+    <p id="tour-body" class="small text-muted mb-3">Let’s get you set up in under a minute.</p>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-ghost btn-sm" id="tour-skip">Skip</button>
+      <button type="button" class="btn btn-ci btn-sm ms-auto" id="tour-next">Next</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# PWA install banner #}
+<div id="pwa-banner" class="pwa-banner d-none glass-card">
+  <div>
+    <strong class="small">Install {{ SITE_NAME }}</strong>
+    <div class="small text-muted">Add to home screen for faster access</div>
+  </div>
+  <div class="d-flex gap-2">
+    <button type="button" class="btn btn-ghost btn-sm" id="pwa-dismiss">Not now</button>
+    <button type="button" class="btn btn-ci btn-sm" id="pwa-install">Install</button>
+  </div>
+</div>
+
+{# Image lightbox #}
+<div id="lightbox" class="lightbox d-none" role="dialog" aria-modal="true">
+  <button type="button" class="lightbox-close" aria-label="Close">&times;</button>
+  <img src="" alt="Preview" id="lightbox-img">
+</div>
+
+{% if live_chat_embed %}
+<div id="live-chat-slot">{{ live_chat_embed|safe }}</div>
+{% endif %}
+{% endblock %}

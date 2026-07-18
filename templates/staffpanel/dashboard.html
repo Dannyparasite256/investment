@@ -1,0 +1,101 @@
+{% extends "staffpanel/base.html" %}
+{% block title %}Staff Dashboard — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Operations dashboard{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Pending deposits</div><div class="stat-value">{{ stats.deposits_pending }}</div><small class="text-muted font-mono">{{ stats.deposits_pending_sum }}</small></div></div>
+  <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Pending withdrawals</div><div class="stat-value">{{ stats.withdrawals_pending }}</div><small class="text-muted font-mono">{{ stats.withdrawals_pending_sum }}</small></div></div>
+  <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">KYC queue</div><div class="stat-value">{{ stats.kyc_pending }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Open tickets</div><div class="stat-value">{{ stats.open_tickets }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Users</div><div class="stat-value">{{ stats.users_total }}</div><small class="text-muted">+{{ stats.users_today }} today</small></div></div>
+  <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Active investments</div><div class="stat-value">{{ stats.active_investments }}</div><small class="text-muted font-mono">{{ stats.invested_total }}</small></div></div>
+  <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Deposits (30d)</div><div class="stat-value text-profit font-mono" style="font-size:1.35rem">{{ stats.revenue_month|floatformat:2 }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Withdrawals (30d)</div><div class="stat-value font-mono" style="font-size:1.35rem">{{ stats.withdrawals_month|floatformat:2 }}</div></div></div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <div class="glass-card p-4">
+      <h6 class="mb-3">Deposits vs withdrawals (14d)</h6>
+      <div style="height:280px"><canvas id="adminChart"></canvas></div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="glass-card p-3 h-100">
+      <h6 class="mb-3">Quick actions</h6>
+      <div class="d-grid gap-2">
+        <a href="{% url 'staffpanel:deposits' %}?status=queue" class="btn btn-ci btn-sm">Review deposits ({{ stats.deposits_pending }})</a>
+        <a href="{% url 'staffpanel:deposits' %}?status=" class="btn btn-ghost btn-sm">All deposits</a>
+        <a href="{% url 'staffpanel:withdrawals' %}?status=pending" class="btn btn-outline-ci btn-sm">Review withdrawals</a>
+        <a href="{% url 'staffpanel:kyc' %}?status=pending" class="btn btn-ghost btn-sm">KYC approvals</a>
+        <a href="{% url 'staffpanel:reports' %}" class="btn btn-ghost btn-sm">Export reports</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="glass-card p-0 overflow-hidden">
+      <div class="p-3 border-bottom border-ci d-flex justify-content-between"><h6 class="mb-0">Recent deposits</h6><a href="{% url 'staffpanel:deposits' %}" class="small">All</a></div>
+      <div class="table-responsive">
+        <table class="table table-ci mb-0">
+          <thead><tr><th>User</th><th>Amount</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for d in recent_deposits %}
+            <tr>
+              <td class="small">{{ d.user.email|truncatechars:22 }}</td>
+              <td class="font-mono small">{{ d.amount }} {{ d.cryptocurrency.symbol }}</td>
+              <td><span class="badge badge-status badge-{{ d.status }}">{{ d.get_status_display }}</span></td>
+            </tr>
+            {% empty %}<tr><td colspan="3" class="text-muted text-center py-3">None</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="glass-card p-0 overflow-hidden">
+      <div class="p-3 border-bottom border-ci d-flex justify-content-between"><h6 class="mb-0">Recent withdrawals</h6><a href="{% url 'staffpanel:withdrawals' %}" class="small">All</a></div>
+      <div class="table-responsive">
+        <table class="table table-ci mb-0">
+          <thead><tr><th>User</th><th>Amount</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for w in recent_withdrawals %}
+            <tr>
+              <td class="small">{{ w.user.email|truncatechars:22 }}</td>
+              <td class="font-mono small">{{ w.amount }}</td>
+              <td><span class="badge badge-status badge-{{ w.status }}">{{ w.get_status_display }}</span></td>
+            </tr>
+            {% empty %}<tr><td colspan="3" class="text-muted text-center py-3">None</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const labels = {{ chart_labels|safe }};
+  const dep = {{ chart_deposits|safe }};
+  const wit = {{ chart_withdrawals|safe }};
+  const ctx = document.getElementById('adminChart');
+  if (!ctx || !window.Chart) return;
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Deposits', data: dep, backgroundColor: 'rgba(14,203,129,0.7)' },
+        { label: 'Withdrawals', data: wit, backgroundColor: 'rgba(246,70,93,0.7)' },
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+  });
+});
+</script>
+{% endblock %}

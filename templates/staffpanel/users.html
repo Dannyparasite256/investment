@@ -1,0 +1,34 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}Users{% endblock %}
+{% block content %}
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-5"><input class="form-control" name="q" value="{{ q }}" placeholder="Search email or name"></div>
+  <div class="col-md-3">
+    <select class="form-select" name="status">
+      <option value="">All</option>
+      <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+      <option value="suspended" {% if status == 'suspended' %}selected{% endif %}>Suspended</option>
+      <option value="kyc" {% if status == 'kyc' %}selected{% endif %}>KYC verified</option>
+    </select>
+  </div>
+  <div class="col-md-2"><button class="btn btn-ci w-100">Search</button></div>
+</form>
+<div class="glass-card p-0 overflow-hidden">
+  <table class="table table-ci table-hover mb-0">
+    <thead><tr><th>Email</th><th>Joined</th><th>Email</th><th>KYC</th><th>2FA</th><th>Display</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for u in page %}
+      <tr>
+        <td><a href="{% url 'staffpanel:user_detail' u.pk %}">{{ u.email }}</a></td>
+        <td class="small text-muted">{{ u.date_joined|date:"M d, Y" }}</td>
+        <td>{% if u.email_verified %}<span class="badge badge-status badge-success">Verified</span>{% else %}<span class="badge badge-status badge-pending">Pending</span>{% endif %}</td>
+        <td>{% if u.is_kyc_verified %}<span class="badge badge-status badge-success">Yes</span>{% else %}—{% endif %}</td>
+        <td>{% if u.two_factor_enabled %}On{% else %}—{% endif %}</td>
+        <td class="small">{{ u.preferred_currency }}</td>
+        <td>{% if u.is_active %}<span class="badge badge-status badge-active">Active</span>{% else %}<span class="badge badge-status badge-rejected">Suspended</span>{% endif %}</td>
+      </tr>
+      {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No users</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

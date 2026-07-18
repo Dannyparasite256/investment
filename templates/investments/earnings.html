@@ -1,0 +1,37 @@
+{% extends "base_app.html" %}
+{% block title %}Earnings — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Earnings{% endblock %}
+
+{% block content %}
+<div class="glass-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-ci table-hover">
+      <thead>
+        <tr><th>Date</th><th>Plan</th><th>Period</th><th>Amount</th><th>Reinvested</th></tr>
+      </thead>
+      <tbody>
+        {% for e in page %}
+        <tr>
+          <td class="text-muted small">{{ e.created_at|date:"M d, Y H:i" }}</td>
+          <td>{{ e.investment.plan.name }}</td>
+          <td>{{ e.period_number }}</td>
+          <td class="font-mono text-profit">{{ e.amount }}</td>
+          <td>{% if e.is_reinvested %}<span class="badge badge-status badge-info">Yes</span>{% else %}—{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-5">No earnings yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% if page.has_other_pages %}
+<nav class="mt-3">
+  <ul class="pagination justify-content-center">
+    {% if page.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page.previous_page_number }}">Prev</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">{{ page.number }}</span></li>
+    {% if page.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page.next_page_number }}">Next</a></li>{% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

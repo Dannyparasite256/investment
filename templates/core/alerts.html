@@ -1,0 +1,72 @@
+{% extends "base_app.html" %}
+{% block title %}Price alerts — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Price alerts{% endblock %}
+{% block page_subtitle %}Get notified when a market hits your target{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="glass-card p-4">
+      <h6 class="mb-3">New alert</h6>
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">Symbol</label>
+          <select class="form-select" name="symbol">
+            {% for p in pairs %}
+            <option value="{{ p.symbol }}">{{ p.name|default:p.symbol }}</option>
+            {% empty %}
+            <option value="BINANCE:BTCUSDT">BTC/USDT</option>
+            <option value="FX:EURUSD">EUR/USD</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Label</label>
+          <input class="form-control" name="label" placeholder="Optional">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Target price</label>
+          <input class="form-control font-mono" name="target_price" type="number" step="any" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Direction</label>
+          <select class="form-select" name="direction">
+            <option value="above">Price goes above</option>
+            <option value="below">Price goes below</option>
+          </select>
+        </div>
+        <button class="btn btn-ci w-100" type="submit">Create alert</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="glass-card p-0 overflow-hidden">
+      <table class="table table-ci mb-0">
+        <thead><tr><th>Symbol</th><th>Target</th><th>Direction</th><th></th></tr></thead>
+        <tbody>
+          {% for a in alerts %}
+          <tr>
+            <td class="font-mono">{{ a.symbol }}{% if a.label %}<div class="small text-muted">{{ a.label }}</div>{% endif %}</td>
+            <td class="font-mono">{{ a.target_price }}</td>
+            <td class="text-capitalize">{{ a.direction }}</td>
+            <td class="text-end">
+              <form method="post" action="{% url 'core:alert_delete' a.pk %}">{% csrf_token %}
+                <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4">
+            <div class="empty-state py-5">
+              <i class="bi bi-bell"></i>
+              <p>No alerts. Set a target to stay ahead of the market.</p>
+            </div>
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

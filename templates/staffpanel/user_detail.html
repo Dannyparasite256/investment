@@ -1,0 +1,62 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}{{ target.email }}{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="glass-card p-4 mb-3">
+      <h5>{{ target.display_name }}</h5>
+      <p class="text-muted small mb-2">{{ target.email }}</p>
+      <div class="mb-3">
+        {% if target.is_active %}<span class="badge badge-status badge-active">Active</span>{% else %}<span class="badge badge-status badge-rejected">Suspended</span>{% endif %}
+        {% if target.email_verified %}<span class="badge badge-status badge-success">Email OK</span>
+        {% else %}<span class="badge badge-status badge-pending">Email pending</span>{% endif %}
+        {% if target.is_kyc_verified %}<span class="badge badge-status badge-success">KYC</span>{% endif %}
+        <span class="badge badge-status badge-info">{{ target.get_role_display }}</span>
+      </div>
+      <div class="small mb-1">Balance: <strong class="font-mono">{{ wallet.balance }}</strong></div>
+      <div class="small mb-1">Profit: <strong class="font-mono text-profit">{{ wallet.total_profit }}</strong></div>
+      <div class="small mb-1">Display currency: <strong>{{ target.preferred_currency }}</strong></div>
+      <div class="small mb-3">Referral earnings: <strong class="font-mono">{{ target.referral_earnings }}</strong></div>
+
+      <div class="d-grid gap-2 mb-3">
+        {% if not target.email_verified %}
+        <form method="post" action="{% url 'staffpanel:user_verify_email' target.pk %}">{% csrf_token %}
+          <button class="btn btn-ci btn-sm w-100" type="submit">
+            <i class="bi bi-envelope-check me-1"></i> Verify email
+          </button>
+        </form>
+        {% else %}
+        <form method="post" action="{% url 'staffpanel:user_unverify_email' target.pk %}">{% csrf_token %}
+          <button class="btn btn-outline-ci btn-sm w-100" type="submit">Mark email unverified</button>
+        </form>
+        {% endif %}
+      </div>
+
+      {% if target.is_active %}
+      <form method="post" action="{% url 'staffpanel:user_suspend' target.pk %}">{% csrf_token %}
+        <input class="form-control form-control-sm mb-2" name="reason" placeholder="Suspension reason" required>
+        <button class="btn btn-outline-danger btn-sm w-100">Suspend user</button>
+      </form>
+      {% else %}
+      <form method="post" action="{% url 'staffpanel:user_activate' target.pk %}">{% csrf_token %}
+        <button class="btn btn-ci btn-sm w-100">Activate user</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="glass-card p-3 mb-3">
+      <h6>Recent deposits</h6>
+      {% for d in deposits %}<div class="small d-flex justify-content-between border-bottom border-ci py-1"><span>{{ d.amount }} {{ d.cryptocurrency.symbol }}</span><span class="badge badge-status badge-{{ d.status }}">{{ d.status }}</span></div>{% empty %}<p class="text-muted small mb-0">None</p>{% endfor %}
+    </div>
+    <div class="glass-card p-3 mb-3">
+      <h6>Recent withdrawals</h6>
+      {% for w in withdrawals %}<div class="small d-flex justify-content-between border-bottom border-ci py-1"><span>{{ w.amount }}</span><span class="badge badge-status badge-{{ w.status }}">{{ w.status }}</span></div>{% empty %}<p class="text-muted small mb-0">None</p>{% endfor %}
+    </div>
+    <div class="glass-card p-3">
+      <h6>Login history</h6>
+      {% for l in logins %}<div class="small d-flex justify-content-between border-bottom border-ci py-1"><span>{{ l.ip_address }} · {{ l.result }}{% if l.is_suspicious %} ⚠{% endif %}</span><span class="text-muted">{{ l.created_at|date:"M d H:i" }}</span></div>{% empty %}<p class="text-muted small mb-0">None</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

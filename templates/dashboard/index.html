@@ -1,0 +1,321 @@
+{% extends "base_app.html" %}
+{% load humanize %}
+
+{% block title %}Dashboard — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Your portfolio at a glance{% endblock %}
+
+{% block content %}
+{# Hero balance — live-updated via /api/balances/ when currency changes #}
+<div class="glass-card balance-hero p-4 p-md-5 mb-4 animate-in reveal" data-balance-root>
+  <div class="row align-items-center g-4">
+    <div class="col-lg-7">
+      <div class="stat-label mb-2">Available balance
+        <span class="badge badge-status badge-info ms-1" data-balance="symbol">{{ available_display.symbol|default:display_currency|default:"USD" }}</span>
+      </div>
+      {% if available_display %}
+      <div class="display-5 fw-bold font-mono mb-1">
+        <span data-balance="available.formatted"
+              data-count-up
+              data-count-to="{{ available_display.value }}"
+              data-count-format="{{ available_display.formatted }}">0</span>
+        <span class="fs-5 text-muted" data-balance="available.symbol">{{ available_display.symbol }}</span>
+      </div>
+      <p class="text-muted mb-3 mb-lg-0">
+        Wallet <span data-balance="balance.formatted"
+                     data-count-up
+                     data-count-to="{{ bal_display.value }}"
+                     data-count-format="{{ bal_display.formatted }}">0</span>
+        <span data-balance="balance.symbol">{{ bal_display.symbol }}</span>
+        · Profit <span class="text-profit">+<span data-balance="profit.formatted"
+                     data-count-up
+                     data-count-to="{{ profit_display.value }}"
+                     data-count-format="{{ profit_display.formatted }}">0</span>
+        <span data-balance="profit.symbol">{{ profit_display.symbol }}</span></span>
+      </p>
+      <p class="small text-muted mb-2 mb-lg-0 d-none d-md-block">
+        ≈ <span data-balance="available.usd_equivalent"
+                data-count-up
+                data-count-to="{{ available_display.usd_equivalent }}"
+                data-count-decimals="2">0</span> USD platform value
+      </p>
+      {% else %}
+      <div class="display-5 fw-bold font-mono mb-1"
+           data-balance="available.formatted"
+           data-count-up
+           data-count-to="{{ available_balance }}">0</div>
+      {% endif %}
+      <form method="post" action="{% url 'core:set_display_currency' %}" class="d-flex flex-wrap gap-2 align-items-center mt-2" data-currency-form>
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <label class="small text-muted mb-0" for="dash-display-currency">Display currency</label>
+        <select class="form-select form-select-sm" name="currency" id="dash-display-currency"
+                style="width:auto;min-width:140px" data-currency-select>
+          {% for o in display_options %}
+          <option value="{{ o.code }}" {% if display_currency == o.code %}selected{% endif %}>{{ o.label }}</option>
+          {% empty %}
+          <option value="USD">USD</option>
+          {% endfor %}
+        </select>
+        <span class="small text-muted" data-balance-status aria-live="polite"></span>
+      </form>
+    </div>
+    <div class="col-lg-5">
+      <div class="d-flex flex-wrap gap-2 quick-actions justify-content-lg-end">
+        <a href="{% url 'transactions:deposit_create' %}" class="btn btn-ci"><i class="bi bi-download me-1"></i> Deposit</a>
+        <a href="{% url 'transactions:withdraw_create' %}" class="btn btn-outline-ci"><i class="bi bi-upload me-1"></i> Withdraw</a>
+        <a href="{% url 'investments:plans' %}" class="btn btn-ghost"><i class="bi bi-graph-up-arrow me-1"></i> Invest</a>
+        <a href="{% url 'markets:overview' %}" class="btn btn-ghost"><i class="bi bi-bar-chart-line me-1"></i> Markets</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Market pulse + VIP strip #}
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="glass-card p-3 market-pulse d-flex flex-wrap gap-2 align-items-center">
+      <span class="small text-muted me-1"><i class="bi bi-broadcast-pin"></i> Markets</span>
+      <a href="{% url 'markets:overview' %}" class="pulse-chip"><span class="pulse-dot"></span>BTC <strong class="font-mono">$95k</strong></a>
+      <a href="{% url 'markets:overview' %}" class="pulse-chip"><span class="pulse-dot"></span>ETH <strong class="font-mono">$3.5k</strong></a>
+      <a href="{% url 'markets:overview' %}" class="pulse-chip">EUR/USD</a>
+      <a href="{% url 'markets:chart' %}" class="btn btn-ghost btn-sm ms-auto">Open charts</a>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <a href="{% url 'core:vip' %}" class="glass-card p-3 d-block text-decoration-none h-100">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="small text-muted">VIP progress</span>
+        <span class="badge badge-featured">{% if vip_ctx.tier %}{{ vip_ctx.tier.name }}{% else %}Starter{% endif %}</span>
+      </div>
+      <div class="progress-ci mb-1" style="height:8px">
+        <div class="bar" style="width:{{ vip_ctx.vip_progress_pct|default:0 }}%"></div>
+      </div>
+      <div class="small text-muted">
+        {% if vip_ctx.next_tier %}
+        {{ vip_ctx.vip_remaining }} to {{ vip_ctx.next_tier.name }}
+        {% else %}
+        Top tier{% if vip_ctx.tier %} — {{ vip_ctx.tier.name }}{% endif %}
+        {% endif %}
+      </div>
+    </a>
+  </div>
+</div>
+
+{# Stats #}
+<div class="row g-3 mb-4 stagger-children">
+  <div class="col-6 col-xl-3">
+    <div class="glass-card stat-card h-100 interactive">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-label">Active investments</div>
+          <div class="stat-value"
+               data-balance="active_investments.count"
+               data-count-up
+               data-count-to="{{ active_investments_count }}"
+               data-count-decimals="0">0</div>
+          <small class="text-muted font-mono">
+            <span data-balance="active_investments.capital.formatted"
+                  data-count-up
+                  data-count-to="{{ active_investments_value }}"
+                  data-count-decimals="2">0</span>
+            <span data-balance="active_investments.capital.symbol">{{ display_currency|default:"USD" }}</span> capital
+          </small>
+        </div>
+        <div class="stat-icon"><i class="bi bi-graph-up"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="glass-card stat-card h-100 interactive">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-label">Total profit</div>
+          <div class="stat-value text-profit">
+            <span data-balance="profit.formatted"
+                  data-count-up
+                  data-count-to="{{ profit_display.value|default:total_profit }}"
+                  data-count-format="{{ profit_display.formatted|default:total_profit }}">0</span>
+            <span class="fs-6 text-muted" data-balance="profit.symbol">{{ profit_display.symbol|default:display_currency }}</span>
+          </div>
+        </div>
+        <div class="stat-icon"><i class="bi bi-trophy"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="glass-card stat-card h-100 interactive">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-label">Pending deposits</div>
+          <div class="stat-value" style="font-size:1.35rem">
+            <span data-balance="pending_deposits.total.formatted"
+                  data-count-up
+                  data-count-to="{{ pending_deposits_total }}"
+                  data-count-decimals="2">0</span>
+          </div>
+          <small class="text-muted"><span data-balance="pending_deposits.count"
+                data-count-up
+                data-count-to="{{ pending_deposits_count }}"
+                data-count-decimals="0">0</span> requests</small>
+        </div>
+        <div class="stat-icon"><i class="bi bi-download"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="glass-card stat-card h-100 interactive">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-label">Referral earnings</div>
+          <div class="stat-value" style="font-size:1.35rem">
+            <span data-balance="referral.formatted"
+                  data-count-up
+                  data-count-to="{{ referral_display.value|default:referral_earnings }}"
+                  data-count-format="{{ referral_display.formatted|default:referral_earnings }}">0</span>
+            <span class="fs-6 text-muted" data-balance="referral.symbol">{{ referral_display.symbol|default:display_currency }}</span>
+          </div>
+        </div>
+        <div class="stat-icon"><i class="bi bi-people"></i></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Charts #}
+<div class="row g-4 mb-4">
+  <div class="col-lg-8 animate-in animate-delay-1 reveal">
+    <div class="glass-card p-4 h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h5 class="mb-0">Earnings</h5>
+          <small class="text-muted">Recent profit payouts</small>
+        </div>
+        <span class="badge badge-featured badge-live">Live</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="earningsChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4 animate-in animate-delay-2 reveal reveal-scale">
+    <div class="glass-card p-4 h-100">
+      <h5 class="mb-1">Portfolio</h5>
+      <small class="text-muted d-block mb-3">Allocation snapshot</small>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="portfolioChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Tables row #}
+<div class="row g-4">
+  <div class="col-lg-7 animate-in animate-delay-2">
+    <div class="glass-card p-0 overflow-hidden">
+      <div class="d-flex justify-content-between align-items-center p-3 p-md-4 border-bottom border-ci">
+        <h5 class="mb-0">Recent transactions</h5>
+        <a href="{% url 'transactions:history' %}" class="small">View all</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-ci table-hover">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for tx in recent_tx %}
+            <tr>
+              <td class="text-capitalize fw-medium">{{ tx.get_tx_type_display }}</td>
+              <td class="font-mono {% if tx.tx_type == 'profit' or tx.tx_type == 'deposit' %}text-profit{% elif tx.tx_type == 'withdrawal' or tx.tx_type == 'investment' %}text-loss{% endif %}">
+                {{ tx.amount|floatformat:4 }}
+              </td>
+              <td><span class="badge badge-status badge-{{ tx.status }}">{{ tx.get_status_display }}</span></td>
+              <td class="text-muted small">{{ tx.created_at|date:"M d, H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">
+              <div class="empty-state py-4">
+                <i class="bi bi-clock-history"></i>
+                <p class="mb-2">No transactions yet</p>
+                <a href="{% url 'transactions:deposit_create' %}" class="btn btn-ci btn-sm">Make your first deposit</a>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5 animate-in animate-delay-3">
+    <div class="glass-card p-0 overflow-hidden mb-4">
+      <div class="d-flex justify-content-between align-items-center p-3 p-md-4 border-bottom border-ci">
+        <h5 class="mb-0">Active investments</h5>
+        <a href="{% url 'investments:my' %}" class="small">Manage</a>
+      </div>
+      <div class="p-3 p-md-4">
+        {% for inv in active_investments_list %}
+        <a href="{% url 'investments:detail' inv.pk %}" class="d-block mb-3 text-decoration-none">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="fw-semibold" style="color:var(--ci-text)">{{ inv.plan.name }}</span>
+            <span class="font-mono" style="color:var(--ci-text)">{{ inv.amount|floatformat:2 }}</span>
+          </div>
+          <div class="progress-ci mb-1"><div class="bar" style="width:{{ inv.progress_percent }}%"></div></div>
+          <div class="d-flex justify-content-between small text-muted">
+            <span>Earned {{ inv.total_earned|floatformat:2 }}</span>
+            <span>{{ inv.progress_percent }}%</span>
+          </div>
+        </a>
+        {% empty %}
+        <div class="empty-state py-4">
+          <i class="bi bi-briefcase"></i>
+          <p class="mb-2">No active investments</p>
+          <a href="{% url 'investments:plans' %}" class="btn btn-ci btn-sm">Browse plans</a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="glass-card p-4 mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="mb-0">Notifications</h6>
+        <a href="{% url 'notifications:list' %}" class="small">All</a>
+      </div>
+      {% for n in notifications %}
+      <div class="notif-item unread rounded-3 mb-2 px-2">
+        <div class="fw-semibold small">{{ n.title }}</div>
+        <div class="text-muted small">{{ n.message|truncatechars:70 }}</div>
+      </div>
+      {% empty %}
+      <p class="text-muted small mb-0">You're all caught up.</p>
+      {% endfor %}
+    </div>
+
+    <div class="glass-card p-4">
+      <h6 class="mb-3">Wallet addresses</h6>
+      {% for addr in addresses %}
+      <div class="d-flex justify-content-between align-items-center mb-2 small">
+        <span class="badge badge-status badge-info">{{ addr.cryptocurrency.symbol }}</span>
+        <span class="font-mono text-muted">{{ addr.address|truncatechars:18 }}</span>
+      </div>
+      {% empty %}
+      <p class="text-muted small mb-2">No saved addresses</p>
+      <a href="{% url 'wallets:address_add' %}" class="btn btn-outline-ci btn-sm">Add address</a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    initEarningsChart('earningsChart', {{ chart_labels|safe }}, {{ chart_values|safe }});
+    initPortfolioChart('portfolioChart', {{ portfolio_labels|safe }}, {{ portfolio_values|safe }});
+  });
+</script>
+{% endblock %}

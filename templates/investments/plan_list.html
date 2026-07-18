@@ -1,0 +1,136 @@
+{% extends "base_app.html" %}
+{% load humanize %}
+{% block title %}Investment Plans — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Investment Plans{% endblock %}
+{% block page_subtitle %}Compare rates, duration, and risk side by side{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <button type="button" class="btn btn-sm btn-ci" id="view-cards">Cards</button>
+  <button type="button" class="btn btn-sm btn-ghost" id="view-table">Compare table</button>
+  <a href="{% url 'core:risk_quiz' %}" class="btn btn-ghost btn-sm ms-auto">Risk quiz</a>
+  <a href="{% url 'investments:calculator' %}" class="btn btn-outline-ci btn-sm">Calculator</a>
+</div>
+
+<div id="plans-compare" class="glass-card p-0 overflow-hidden mb-4 d-none">
+  <div class="table-responsive">
+    <table class="table table-ci mb-0">
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th>Return</th>
+          <th>Min</th>
+          <th>Duration</th>
+          <th>Payout</th>
+          <th>Risk</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for plan in plans %}
+        <tr>
+          <td class="fw-semibold">{{ plan.name }}{% if plan.is_featured %} <span class="badge badge-featured">Featured</span>{% endif %}</td>
+          <td class="font-mono">{{ plan.expected_return_display }}</td>
+          <td class="font-mono">{{ plan.min_deposit }}</td>
+          <td>{{ plan.duration_days }}d</td>
+          <td class="small">{{ plan.get_payout_frequency_display }}</td>
+          <td><span class="risk-{{ plan.risk_level }}">{{ plan.get_risk_level_display }}</span></td>
+          <td class="text-end">
+            <a href="{% url 'investments:plan_detail' plan.slug %}" class="btn btn-sm btn-ci {% if plan.status != 'active' %}disabled{% endif %}">Invest</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-4">No plans</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="plans-cards">
+{% if featured %}
+<div class="mb-4">
+  <h6 class="text-muted text-uppercase small mb-3">Featured</h6>
+  <div class="row g-4">
+    {% for plan in featured %}
+    <div class="col-md-6 col-xl-4">
+      <div class="glass-card plan-card interactive" style="border-color: {{ plan.color }}33">
+        <span class="badge badge-featured align-self-start mb-2">Featured</span>
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi {{ plan.icon|default:'bi-graph-up-arrow' }} fs-4" style="color:{{ plan.color }}"></i>
+          <h5 class="mb-0">{{ plan.name }}</h5>
+        </div>
+        <p class="text-muted small">{{ plan.short_description|default:plan.description|truncatechars:100 }}</p>
+        <div class="plan-return">{{ plan.expected_return_display }}</div>
+        <div class="text-muted small mb-3">Expected return range</div>
+        <div class="row g-2 small mb-3">
+          <div class="col-6"><span class="text-muted">Min</span><br><strong class="font-mono">{{ plan.min_deposit }}</strong></div>
+          <div class="col-6"><span class="text-muted">Duration</span><br><strong>{{ plan.duration_days }} days</strong></div>
+          <div class="col-6"><span class="text-muted">Payout</span><br><strong>{{ plan.get_payout_frequency_display }}</strong></div>
+          <div class="col-6"><span class="text-muted">Risk</span><br><strong class="risk-{{ plan.risk_level }}">{{ plan.get_risk_level_display }}</strong></div>
+        </div>
+        <a href="{% url 'investments:plan_detail' plan.slug %}" class="btn btn-ci mt-auto">View plan</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-4">
+  {% for plan in plans %}
+  {% if not plan.is_featured or not featured %}
+  <div class="col-md-6 col-xl-4">
+    <div class="glass-card plan-card interactive">
+      {% if plan.status == 'coming_soon' %}<span class="badge badge-status badge-info mb-2">Coming soon</span>{% endif %}
+      <h5>{{ plan.name }}</h5>
+      <p class="text-muted small">{{ plan.short_description|truncatechars:90 }}</p>
+      <div class="plan-return mb-1">{{ plan.expected_return_display }}</div>
+      <div class="text-muted small mb-3">{{ plan.get_payout_frequency_display }} · {{ plan.duration_days }}d</div>
+      <a href="{% url 'investments:plan_detail' plan.slug %}" class="btn btn-outline-ci mt-auto {% if plan.status != 'active' %}disabled{% endif %}">
+        {% if plan.status == 'active' %}Invest{% else %}Details{% endif %}
+      </a>
+    </div>
+  </div>
+  {% endif %}
+  {% empty %}
+  <div class="col-12">
+    <div class="empty-state glass-card">
+      <i class="bi bi-inbox"></i>
+      <p>No investment plans available yet.</p>
+      <a href="{% url 'support:create' %}" class="btn btn-outline-ci btn-sm">Ask support</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var cards = document.getElementById('plans-cards');
+  var table = document.getElementById('plans-compare');
+  var bCards = document.getElementById('view-cards');
+  var bTable = document.getElementById('view-table');
+  function show(mode) {
+    if (mode === 'table') {
+      if (cards) cards.classList.add('d-none');
+      if (table) table.classList.remove('d-none');
+      if (bTable) { bTable.classList.add('btn-ci'); bTable.classList.remove('btn-ghost'); }
+      if (bCards) { bCards.classList.add('btn-ghost'); bCards.classList.remove('btn-ci'); }
+    } else {
+      if (cards) cards.classList.remove('d-none');
+      if (table) table.classList.add('d-none');
+      if (bCards) { bCards.classList.add('btn-ci'); bCards.classList.remove('btn-ghost'); }
+      if (bTable) { bTable.classList.add('btn-ghost'); bTable.classList.remove('btn-ci'); }
+    }
+    try { localStorage.setItem('plansView', mode); } catch (e) {}
+  }
+  if (bCards) bCards.addEventListener('click', function () { show('cards'); });
+  if (bTable) bTable.addEventListener('click', function () { show('table'); });
+  try {
+    if (localStorage.getItem('plansView') === 'table') show('table');
+  } catch (e) {}
+})();
+</script>
+{% endblock %}

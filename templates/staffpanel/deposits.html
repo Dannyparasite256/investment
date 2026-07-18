@@ -1,0 +1,100 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}Deposits{% endblock %}
+{% block page_subtitle %}Review and approve user crypto deposits{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a href="?status=queue" class="btn btn-sm {% if status == 'queue' or status == 'pending' %}btn-ci{% else %}btn-ghost{% endif %}">
+    Needs action <span class="badge bg-danger">{{ counts.queue }}</span>
+  </a>
+  <a href="?status=" class="btn btn-sm {% if status == '' %}btn-ci{% else %}btn-ghost{% endif %}">
+    All <span class="badge bg-secondary">{{ counts.all }}</span>
+  </a>
+  <a href="?status=approved" class="btn btn-sm {% if status == 'approved' %}btn-ci{% else %}btn-ghost{% endif %}">
+    Approved ({{ counts.approved }})
+  </a>
+  <a href="?status=rejected" class="btn btn-sm {% if status == 'rejected' %}btn-ci{% else %}btn-ghost{% endif %}">
+    Rejected ({{ counts.rejected }})
+  </a>
+  <a href="{% url 'staffpanel:bulk_match' %}" class="btn btn-outline-ci btn-sm ms-auto">Bulk match</a>
+</div>
+
+<form class="row g-2 mb-3" method="get">
+  <input type="hidden" name="status" value="{{ status }}">
+  <div class="col-md-6"><input class="form-control" name="q" value="{{ q }}" placeholder="Search email / hash / id"></div>
+  <div class="col-md-2"><button class="btn btn-ci w-100" type="submit">Search</button></div>
+</form>
+
+{% if counts.queue == 0 and status == 'queue' %}
+<div class="alert glass-card border-0 mb-3">
+  <strong>No deposits waiting for approval.</strong>
+  {% if counts.all %}
+  There are {{ counts.all }} deposit(s) total (already processed).
+  <a href="?status=">View all deposits</a>
+  {% else %}
+  No user has submitted a deposit yet. When a user completes <code>/transactions/deposits/new/</code>, it will appear here.
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="glass-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-ci table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>User</th>
+          <th>Crypto</th>
+          <th>Amount</th>
+          <th>Hash</th>
+          <th>Proof</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in page %}
+        <tr>
+          <td class="small text-muted">{{ d.created_at|date:"M d, Y H:i" }}</td>
+          <td class="small"><a href="{% url 'staffpanel:user_detail' d.user_id %}">{{ d.user.email }}</a></td>
+          <td><span class="badge badge-status badge-info">{{ d.cryptocurrency.symbol }}</span></td>
+          <td class="font-mono">{{ d.amount }} <span class="text-muted small">{{ d.cryptocurrency.symbol }}</span></td>
+          <td class="font-mono small" title="{{ d.transaction_hash }}">{{ d.transaction_hash|truncatechars:18 }}</td>
+          <td>
+            {% if d.screenshot %}
+            <a href="{{ d.screenshot.url }}" data-lightbox class="btn btn-ghost btn-sm" title="View proof">
+              <i class="bi bi-image"></i>
+            </a>
+            {% else %}<span class="text-muted small">—</span>{% endif %}
+          </td>
+          <td><span class="badge badge-status badge-{{ d.status }}">{{ d.get_status_display }}</span></td>
+          <td class="text-nowrap">
+            {% if d.status != 'approved' and d.status != 'rejected' %}
+            <form class="d-inline" method="post" action="{% url 'staffpanel:deposit_approve' d.pk %}">{% csrf_token %}
+              <button class="btn btn-sm btn-ci" type="submit" title="A">Approve</button>
+            </form>
+            <form class="d-inline" method="post" action="{% url 'staffpanel:deposit_reject' d.pk %}">{% csrf_token %}
+              <input type="hidden" name="reason" value="Rejected by admin">
+              <button class="btn btn-sm btn-outline-danger" type="submit" title="R">Reject</button>
+            </form>
+            {% else %}
+            <span class="small text-muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-muted py-5">No deposits in this filter</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% if page.has_other_pages %}
+<nav class="mt-3">
+  <ul class="pagination justify-content-center">
+    {% if page.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page.previous_page_number }}&status={{ status }}&q={{ q }}">Prev</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">{{ page.number }}</span></li>
+    {% if page.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page.next_page_number }}&status={{ status }}&q={{ q }}">Next</a></li>{% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

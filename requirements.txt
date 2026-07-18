@@ -1,0 +1,37 @@
+# Django & Core
+Django>=5.0,<7.0
+djangorestframework>=3.15
+django-cors-headers>=4.3
+django-environ>=0.11
+django-filter>=24.0
+drf-spectacular>=0.27
+django-crispy-forms>=2.1
+crispy-bootstrap5>=2024.2
+
+# Database
+psycopg2-binary>=2.9
+
+# Auth & Security
+django-otp>=1.5
+qrcode>=7.4
+django-axes>=6.4
+django-ratelimit>=4.1
+Pillow>=10.0
+
+# Async / Tasks
+celery>=5.3
+redis>=5.0
+django-celery-beat>=2.6
+django-celery-results>=2.5
+channels>=4.0
+channels-redis>=4.2
+
+# Production
+gunicorn>=22.0
+whitenoise>=6.6
+
+# Utilities
+python-dateutil>=2.8
+openpyxl>=3.1
+reportlab>=4.0
+daphne>=4.0

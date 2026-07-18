@@ -1,0 +1,34 @@
+{% extends "base_app.html" %}
+{% block title %}Two-factor authentication — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Two-factor authentication{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="glass-card p-4 text-center">
+      {% if user.two_factor_enabled %}
+      <div class="alert alert-success">2FA is currently enabled on your account.</div>
+      <form method="post" action="{% url 'accounts:disable_2fa' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Disable 2FA?')">Disable 2FA</button>
+      </form>
+      {% else %}
+      <h5 class="mb-3">Enable authenticator app</h5>
+      <p class="text-muted small">Scan this QR code with Google Authenticator, Authy, or similar.</p>
+      {% if qr_b64 %}
+      <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code" class="img-fluid mb-3 rounded" style="max-width:200px;background:#fff;padding:8px">
+      {% endif %}
+      <p class="small text-muted font-mono mb-4" style="word-break:break-all">{{ config_url }}</p>
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3 text-start">
+          <label class="form-label">Enter 6-digit code to confirm</label>
+          {{ form.token }}
+        </div>
+        <button type="submit" class="btn btn-ci w-100">Enable 2FA</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

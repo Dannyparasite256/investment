@@ -1,0 +1,39 @@
+{% extends "base_app.html" %}
+{% block title %}Withdrawals — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Withdrawals{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-end mb-3">
+  <a href="{% url 'transactions:withdraw_create' %}" class="btn btn-ci btn-sm">New withdrawal</a>
+</div>
+<div class="glass-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-ci table-hover">
+      <thead>
+        <tr><th>Date</th><th>Currency</th><th>Amount</th><th>Address</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for w in page %}
+        <tr>
+          <td class="small text-muted">{{ w.created_at|date:"M d, H:i" }}</td>
+          <td>{{ w.cryptocurrency.symbol }}</td>
+          <td class="font-mono">{{ w.amount }}</td>
+          <td class="font-mono small">{{ w.wallet_address|truncatechars:16 }}</td>
+          <td><span class="badge badge-status badge-{{ w.status }}">{{ w.get_status_display }}</span></td>
+          <td>
+            {% if w.status == 'pending' %}
+            <form method="post" action="{% url 'transactions:withdraw_cancel' w.pk %}" class="d-inline">
+              {% csrf_token %}
+              <button class="btn btn-link btn-sm text-danger p-0" type="submit">Cancel</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-5">No withdrawals</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

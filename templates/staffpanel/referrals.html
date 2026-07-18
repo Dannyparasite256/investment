@@ -1,0 +1,46 @@
+{% extends "staffpanel/base.html" %}
+{% block page_title %}Referral management{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="glass-card p-4">
+      <h6 class="mb-3">Program settings</h6>
+      <form method="post">{% csrf_token %}
+        <div class="mb-3"><label class="form-label">Commission %</label>
+          <input class="form-control" name="commission_percent" value="{{ program.commission_percent|default:'5' }}"></div>
+        <div class="mb-3"><label class="form-label">Commission on</label>
+          <select class="form-select" name="commission_on">
+            <option value="deposit" {% if program.commission_on == 'deposit' %}selected{% endif %}>Deposit</option>
+            <option value="investment" {% if program.commission_on == 'investment' %}selected{% endif %}>Investment</option>
+            <option value="profit" {% if program.commission_on == 'profit' %}selected{% endif %}>Profit</option>
+          </select>
+        </div>
+        <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="is_active" {% if program.is_active or not program %}checked{% endif %}><label class="form-check-label">Active</label></div>
+        <button class="btn btn-ci w-100">Save</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="glass-card p-3">
+      <h6>Leaderboard</h6>
+      {% for u in leaders %}
+      <div class="d-flex justify-content-between small py-1 border-bottom border-ci">
+        <span>{{ forloop.counter }}. {{ u.email|truncatechars:20 }}</span>
+        <span class="font-mono text-profit">{{ u.referral_earnings }}</span>
+      </div>
+      {% empty %}<p class="text-muted small">No commissions yet</p>{% endfor %}
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="glass-card p-3">
+      <h6>Recent commissions</h6>
+      {% for c in commissions %}
+      <div class="small py-1 border-bottom border-ci">
+        <div class="font-mono text-profit">+{{ c.amount }}</div>
+        <div class="text-muted">{{ c.referrer.email|truncatechars:16 }} ← {{ c.referred_user.email|truncatechars:16 }}</div>
+      </div>
+      {% empty %}<p class="text-muted small">None</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

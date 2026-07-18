@@ -1,0 +1,15 @@
+{% extends "base_app.html" %}
+{% block title %}Transaction history — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Transaction history{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a href="?" class="btn btn-sm btn-ghost">All</a>
+  {% for value, label in tx_types %}
+  <a href="?type={{ value }}" class="btn btn-sm btn-ghost">{{ label }}</a>
+  {% endfor %}
+</div>
+<div class="glass-card p-0 overflow-hidden" id="history-table">
+  {% include "transactions/partials/history_table.html" %}
+</div>
+{% endblock %}
