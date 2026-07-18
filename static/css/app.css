@@ -1,14 +1,7 @@
-/* ==========================================================================
-   CryptoInvest — Ultra-Premium Fintech UI
-   Inspired by Apple · Stripe · Binance · Revolut · Linear · Vercel
-   Glassmorphism · Gradient mesh · Micro-interactions
-   ========================================================================== */
 
-/* --------------------------------------------------------------------------
-   Design tokens
-   -------------------------------------------------------------------------- */
+
 :root {
-  /* Surfaces — institutional dark (Coinbase / Stripe dashboard) */
+  
   --ci-bg-deep: #070B14;
   --ci-bg: #0B1220;
   --ci-bg-elevated: #111827;
@@ -16,7 +9,7 @@
   --ci-bg-glass: rgba(15, 23, 42, 0.78);
   --ci-bg-input: rgba(255, 255, 255, 0.04);
 
-  /* Accents — refined indigo / violet */
+  
   --ci-primary: #6366F1;
   --ci-primary-bright: #818CF8;
   --ci-primary-soft: rgba(99, 102, 241, 0.16);
@@ -29,14 +22,14 @@
   --ci-danger: #F43F5E;
   --ci-danger-soft: rgba(244, 63, 94, 0.14);
 
-  /* Text */
+  
   --ci-text: #F8FAFC;
   --ci-text-soft: #E2E8F0;
   --ci-text-muted: #94A3B8;
   --ci-text-faint: #64748B;
   --ci-silver: #CBD5E1;
 
-  /* Borders & effects — quieter, more premium */
+  
   --ci-border: rgba(148, 163, 184, 0.14);
   --ci-border-soft: rgba(148, 163, 184, 0.08);
   --ci-border-glow: rgba(99, 102, 241, 0.35);
@@ -45,7 +38,7 @@
   --ci-glow-purple: 0 0 48px rgba(99, 102, 241, 0.18);
   --ci-glow-blue: 0 0 40px rgba(56, 189, 248, 0.12);
 
-  /* Gradients */
+  
   --ci-gradient: linear-gradient(135deg, #4F46E5 0%, #6366F1 40%, #0EA5E9 100%);
   --ci-gradient-btn: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
   --ci-gradient-danger: linear-gradient(135deg, #E11D48 0%, #F43F5E 100%);
@@ -53,7 +46,7 @@
   --ci-gradient-subtle: linear-gradient(145deg, rgba(99, 102, 241, 0.12), rgba(14, 165, 233, 0.06));
   --ci-gradient-text: linear-gradient(135deg, #F8FAFC 0%, #A5B4FC 55%, #7DD3FC 100%);
 
-  /* Geometry — tighter, more product-like */
+  
   --ci-radius: 18px;
   --ci-radius-md: 14px;
   --ci-radius-sm: 10px;
@@ -66,17 +59,17 @@
   --ci-safe-left: env(safe-area-inset-left, 0px);
   --ci-safe-right: env(safe-area-inset-right, 0px);
 
-  /* Motion */
+  
   --ci-ease: cubic-bezier(0.4, 0, 0.2, 1);
   --ci-transition: 300ms cubic-bezier(0.4, 0, 0.2, 1);
   --ci-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* Type — Inter for UI chrome, Jakarta for display */
+  
   --font-sans: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-display: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
 
-  /* Bootstrap bridge */
+  
   --bs-body-bg: var(--ci-bg);
   --bs-body-color: var(--ci-text);
   --bs-border-color: var(--ci-border-soft);
@@ -85,7 +78,6 @@
   --bs-link-hover-color: #C4B5FD;
 }
 
-/* Light theme */
 [data-theme="light"] {
   --ci-bg-deep: #F1F5F9;
   --ci-bg: #F8FAFC;
@@ -107,16 +99,13 @@
   --bs-body-color: var(--ci-text);
 }
 
-/* --------------------------------------------------------------------------
-   Base
-   -------------------------------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; }
 
 html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Prevent horizontal page scroll that hides side buttons */
+  
   overflow-x: clip;
   max-width: 100%;
 }
@@ -142,7 +131,6 @@ body {
   min-width: 0;
 }
 
-/* Subtle ambient background — professional, less neon */
 body::before {
   content: '';
   position: fixed;
@@ -157,7 +145,6 @@ body::before {
   animation: none;
 }
 
-/* Noise overlay */
 body::after {
   content: '';
   position: fixed;
@@ -184,7 +171,6 @@ body::after {
   100% { transform: scale(1.05) translate(-1.5%, 1%); }
 }
 
-/* Floating orbs (auth + landing) */
 .bg-orbs {
   position: fixed;
   inset: 0;
@@ -243,9 +229,6 @@ a {
 
 a:hover { color: #C4B5FD; }
 
-/* --------------------------------------------------------------------------
-   Typography
-   -------------------------------------------------------------------------- */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display, var(--font-sans));
   font-weight: 700;
@@ -278,9 +261,6 @@ h3 { font-size: 1.35rem; }
   letter-spacing: -0.02em;
 }
 
-/* --------------------------------------------------------------------------
-   Glass cards
-   -------------------------------------------------------------------------- */
 .glass-card {
   background: var(--ci-bg-card);
   backdrop-filter: blur(25px) saturate(140%);
@@ -308,7 +288,7 @@ h3 { font-size: 1.35rem; }
 
 .glass-card.p-4,
 .glass-card.p-3 {
-  /* keep padding utilities */
+  
 }
 
 .stat-card {
@@ -368,9 +348,6 @@ h3 { font-size: 1.35rem; }
   box-shadow: var(--ci-glow-purple);
 }
 
-/* --------------------------------------------------------------------------
-   App shell — floating sidebar
-   -------------------------------------------------------------------------- */
 .app-shell {
   display: flex;
   min-height: 100vh;
@@ -510,7 +487,7 @@ h3 { font-size: 1.35rem; }
 
 .main-content {
   flex: 1 1 auto;
-  /* Fixed sidebar uses margin offset — width must NOT stay 100% or content overflows right */
+  
   margin-left: calc(var(--ci-sidebar-w) + 12px);
   width: calc(100% - var(--ci-sidebar-w) - 12px);
   max-width: calc(100% - var(--ci-sidebar-w) - 12px);
@@ -518,11 +495,10 @@ h3 { font-size: 1.35rem; }
   min-height: calc(100dvh - 24px);
   display: flex;
   flex-direction: column;
-  /* Critical: flex children default min-width:auto overflows and clips side controls */
+  
   min-width: 0;
 }
 
-/* Top navigation — glass */
 .topbar {
   min-height: var(--ci-topbar-h);
   display: flex;
@@ -576,7 +552,7 @@ h3 { font-size: 1.35rem; }
 
 .topbar .dropdown-menu {
   max-width: min(320px, calc(100vw - 1.5rem));
-  /* Keep menus on-screen */
+  
   right: 0 !important;
   left: auto !important;
 }
@@ -628,13 +604,10 @@ h3 { font-size: 1.35rem; }
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  /* Keep form submit / action rows clear of fixed chrome */
+  
   padding-bottom: calc(1.75rem + var(--ci-bottom-nav-h) + var(--ci-safe-bottom));
 }
 
-/* --------------------------------------------------------------------------
-   Buttons
-   -------------------------------------------------------------------------- */
 .btn {
   border-radius: var(--ci-radius-pill);
   font-weight: 600;
@@ -729,9 +702,6 @@ h3 { font-size: 1.35rem; }
   font-size: 1.05rem;
 }
 
-/* --------------------------------------------------------------------------
-   Forms
-   -------------------------------------------------------------------------- */
 .form-label {
   font-weight: 600;
   font-size: 0.8rem;
@@ -776,7 +746,6 @@ h3 { font-size: 1.35rem; }
   color: var(--ci-primary-bright);
 }
 
-/* Password toggle */
 .input-with-toggle {
   position: relative;
 }
@@ -800,9 +769,6 @@ h3 { font-size: 1.35rem; }
 
 .input-with-toggle .toggle-pass:hover { color: var(--ci-primary-bright); }
 
-/* --------------------------------------------------------------------------
-   Auth pages
-   -------------------------------------------------------------------------- */
 .auth-layout {
   min-height: 100vh;
   display: flex;
@@ -833,9 +799,6 @@ h3 { font-size: 1.35rem; }
   margin: 0 auto 0.75rem;
 }
 
-/* --------------------------------------------------------------------------
-   Landing / hero
-   -------------------------------------------------------------------------- */
 .hero {
   min-height: 88vh;
   display: flex;
@@ -878,9 +841,6 @@ h3 { font-size: 1.35rem; }
   box-shadow: var(--ci-glow-purple);
 }
 
-/* --------------------------------------------------------------------------
-   Tables
-   -------------------------------------------------------------------------- */
 .table-ci {
   --bs-table-bg: transparent;
   --bs-table-color: var(--ci-text);
@@ -927,9 +887,6 @@ h3 { font-size: 1.35rem; }
   background: rgba(124, 58, 237, 0.07);
 }
 
-/* --------------------------------------------------------------------------
-   Badges
-   -------------------------------------------------------------------------- */
 .badge-status {
   font-weight: 600;
   font-size: 0.68rem;
@@ -965,9 +922,6 @@ h3 { font-size: 1.35rem; }
 .risk-high { color: #FB923C; }
 .risk-very_high { color: var(--ci-danger); }
 
-/* --------------------------------------------------------------------------
-   Progress
-   -------------------------------------------------------------------------- */
 .progress-ci {
   height: 8px;
   background: rgba(255, 255, 255, 0.08);
@@ -983,9 +937,6 @@ h3 { font-size: 1.35rem; }
   box-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
 }
 
-/* --------------------------------------------------------------------------
-   Alerts / dropdowns / modals
-   -------------------------------------------------------------------------- */
 .alert {
   border-radius: var(--ci-radius-md);
   border: 1px solid var(--ci-border);
@@ -1031,9 +982,6 @@ h3 { font-size: 1.35rem; }
 
 .modal-backdrop.show { opacity: 0.65; backdrop-filter: blur(6px); }
 
-/* --------------------------------------------------------------------------
-   Crypto / misc
-   -------------------------------------------------------------------------- */
 .crypto-address {
   font-family: var(--font-mono);
   font-size: 0.85rem;
@@ -1099,9 +1047,6 @@ h3 { font-size: 1.35rem; }
 .bg-elevated { background: var(--ci-bg-elevated) !important; }
 .letter-spacing { letter-spacing: 0.35em; }
 
-/* --------------------------------------------------------------------------
-   Animations
-   -------------------------------------------------------------------------- */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(18px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1164,9 +1109,6 @@ h3 { font-size: 1.35rem; }
   border: 1px solid var(--ci-border) !important;
 }
 
-/* --------------------------------------------------------------------------
-   Mobile
-   -------------------------------------------------------------------------- */
 .sidebar-toggle {
   display: none;
   background: var(--ci-bg-input);
@@ -1195,7 +1137,7 @@ h3 { font-size: 1.35rem; }
 
 @media (max-width: 991.98px) {
   :root {
-    /* FAB raised + labels + home-indicator safe area */
+    
     --ci-bottom-nav-h: 72px;
   }
 
@@ -1235,7 +1177,7 @@ h3 { font-size: 1.35rem; }
   }
   .stat-card .stat-value { font-size: 1.3rem; }
 
-  /* Prevent topbar controls from being pushed off-screen */
+  
   .topbar .page-heading { font-size: 0.95rem; max-width: 42vw; }
   .topbar .search-pill { display: none !important; }
 }
@@ -1248,7 +1190,7 @@ h3 { font-size: 1.35rem; }
     padding-left: 1.1rem;
     padding-right: 1.1rem;
   }
-  /* Full-width primary actions on phones so nothing is half-hidden */
+  
   .quick-actions {
     width: 100%;
   }
@@ -1260,7 +1202,6 @@ h3 { font-size: 1.35rem; }
   }
 }
 
-/* Pagination */
 .page-link {
   background: var(--ci-bg-input) !important;
   border-color: var(--ci-border) !important;
@@ -1278,7 +1219,6 @@ h3 { font-size: 1.35rem; }
   opacity: 0.5;
 }
 
-/* Chart container polish */
 .chart-wrap {
   position: relative;
   height: 280px;
@@ -1287,10 +1227,8 @@ h3 { font-size: 1.35rem; }
 .cms-content h2, .cms-content h3 { margin-top: 1.25rem; }
 .cms-content p { color: var(--ci-text-soft); }
 
-/* Quick action strip */
 .quick-actions .btn { min-height: 44px; }
 
-/* Currency input groups (invest / calc) */
 .input-group .form-control {
   min-width: 0;
 }
@@ -1305,7 +1243,6 @@ h3 { font-size: 1.35rem; }
   z-index: 3;
 }
 
-/* Balance hero card */
 .balance-hero {
   background:
     linear-gradient(135deg, rgba(124, 58, 237, 0.25), rgba(59, 130, 246, 0.12)),
@@ -1325,9 +1262,6 @@ h3 { font-size: 1.35rem; }
   pointer-events: none;
 }
 
-/* --------------------------------------------------------------------------
-   Markets / forex charts — large canvas
-   -------------------------------------------------------------------------- */
 .market-chart-page {
   display: flex;
   flex-direction: column;
@@ -1402,7 +1336,6 @@ h3 { font-size: 1.35rem; }
   }
 }
 
-/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -1411,17 +1344,12 @@ h3 { font-size: 1.35rem; }
   body::before { animation: none; }
 }
 
-/* ==========================================================================
-   Motion 2.0 — modern interactive polish
-   ========================================================================== */
-
 :root {
   --ci-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ci-ease-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
   --ci-ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Soft spotlight that follows the pointer (set by JS) */
 body.pointer-glow {
   --mx: 50%;
   --my: 30%;
@@ -1435,7 +1363,6 @@ body.pointer-glow::before {
     linear-gradient(180deg, var(--ci-bg-deep) 0%, var(--ci-bg) 45%, var(--ci-bg-elevated) 100%);
 }
 
-/* Floating orbs — more lively */
 .bg-orbs span {
   animation-duration: 14s, 18s, 22s;
 }
@@ -1443,7 +1370,6 @@ body.pointer-glow::before {
 .bg-orbs span:nth-child(2) { animation-duration: 21s; animation-delay: -4s; }
 .bg-orbs span:nth-child(3) { animation-duration: 26s; animation-delay: -8s; }
 
-/* ---------- Keyframes ---------- */
 @keyframes slideUpSoft {
   from { opacity: 0; transform: translateY(28px) scale(0.98); filter: blur(4px); }
   to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
@@ -1503,7 +1429,6 @@ body.pointer-glow::before {
   50%      { transform: translateY(-2px); }
 }
 
-/* ---------- Reveal on scroll ---------- */
 .reveal {
   opacity: 0;
   transform: translateY(24px) scale(0.985);
@@ -1546,7 +1471,6 @@ body.pointer-glow::before {
   transform: translateY(0);
 }
 
-/* ---------- Enhanced glass cards ---------- */
 .glass-card {
   position: relative;
   isolation: isolate;
@@ -1591,7 +1515,6 @@ body.pointer-glow::before {
   transition: transform 0.08s linear, box-shadow 0.35s var(--ci-ease);
 }
 
-/* Spotlight inside card (set via CSS vars from JS) */
 .glass-card.has-spotlight {
   --spot-x: 50%;
   --spot-y: 50%;
@@ -1600,7 +1523,6 @@ body.pointer-glow::before {
     var(--ci-bg-card);
 }
 
-/* ---------- Buttons ---------- */
 .btn {
   position: relative;
   overflow: hidden;
@@ -1641,7 +1563,6 @@ body.pointer-glow::before {
 .btn-ci:hover .bi-download { transform: translateY(2px) scale(1.1); }
 .btn-outline-ci:hover .bi-upload { transform: translateY(-2px) scale(1.1); }
 
-/* Ripple span injected by JS */
 .btn .ci-ripple {
   position: absolute;
   border-radius: 50%;
@@ -1656,12 +1577,10 @@ body.pointer-glow::before {
   z-index: 2;
 }
 
-/* Magnetic pressable */
 .btn.is-magnetic {
   will-change: transform;
 }
 
-/* ---------- Sidebar nav ---------- */
 .sidebar .nav-link {
   position: relative;
   overflow: hidden;
@@ -1694,7 +1613,6 @@ body.pointer-glow::before {
   transform: rotate(-8deg) scale(1.08);
 }
 
-/* ---------- Balance hero ---------- */
 .balance-hero {
   animation: borderGlow 5s ease-in-out infinite;
 }
@@ -1731,7 +1649,6 @@ body.pointer-glow::before {
   transform: translateY(-4px) scale(1.03);
 }
 
-/* ---------- Stats ---------- */
 .stat-card {
   transition:
     transform 0.4s var(--ci-ease-out),
@@ -1751,7 +1668,6 @@ body.pointer-glow::before {
   animation: floatY 1.6s ease-in-out infinite;
 }
 
-/* Live badge */
 .badge-featured,
 .badge-status.badge-info {
   position: relative;
@@ -1770,7 +1686,6 @@ body.pointer-glow::before {
   box-shadow: 0 0 8px #22C55E;
 }
 
-/* ---------- Tables ---------- */
 .table-ci tbody tr {
   transition: background 0.25s var(--ci-ease), transform 0.25s var(--ci-ease);
 }
@@ -1793,7 +1708,6 @@ body.pointer-glow::before {
 .table-ci.animate-rows tbody tr:nth-child(7) { animation-delay: 0.21s; }
 .table-ci.animate-rows tbody tr:nth-child(8) { animation-delay: 0.24s; }
 
-/* ---------- Forms ---------- */
 .form-control, .form-select {
   transition:
     border-color 0.25s var(--ci-ease),
@@ -1808,7 +1722,6 @@ body.pointer-glow::before {
     0 8px 24px rgba(124, 58, 237, 0.12) !important;
 }
 
-/* ---------- Topbar ---------- */
 .topbar {
   transition: box-shadow 0.35s var(--ci-ease), background 0.35s var(--ci-ease), backdrop-filter 0.35s;
 }
@@ -1821,7 +1734,6 @@ body.pointer-glow::before {
   background: rgba(255, 255, 255, 0.85);
 }
 
-/* Theme toggle spin */
 [data-theme-icon] {
   display: inline-block;
   transition: transform 0.5s var(--ci-ease-spring);
@@ -1830,13 +1742,11 @@ button:hover [data-theme-icon] {
   transform: rotate(20deg) scale(1.15);
 }
 
-/* ---------- Toasts ---------- */
 .toast.glass-card {
   animation: toastIn 0.45s var(--ci-ease-spring);
   backdrop-filter: blur(20px);
 }
 
-/* ---------- Page enter ---------- */
 .page-transition {
   animation: slideUpSoft 0.55s var(--ci-ease-out);
 }
@@ -1848,7 +1758,6 @@ button:hover [data-theme-icon] {
   animation: slideUpSoft 0.55s var(--ci-ease-out) forwards;
 }
 
-/* ---------- Skeleton / loading ---------- */
 .ci-skeleton {
   position: relative;
   overflow: hidden;
@@ -1863,7 +1772,6 @@ button:hover [data-theme-icon] {
   animation: shimmerSweep 1.4s ease-in-out infinite;
 }
 
-/* Currency select polish */
 [data-currency-select] {
   cursor: pointer;
   transition: border-color 0.25s, box-shadow 0.3s, transform 0.2s !important;
@@ -1876,12 +1784,10 @@ button:hover [data-theme-icon] {
   transition: opacity 0.3s, color 0.3s;
 }
 
-/* Progress / VIP bars */
 .progress, .progress-bar, [role="progressbar"] {
   transition: width 0.9s var(--ci-ease-out) !important;
 }
 
-/* Chart cards */
 .chart-wrap {
   transition: opacity 0.4s var(--ci-ease);
 }
@@ -1889,7 +1795,6 @@ button:hover [data-theme-icon] {
   opacity: 1;
 }
 
-/* Notification items */
 .notif-item {
   transition: background 0.25s var(--ci-ease), transform 0.25s var(--ci-ease);
 }
@@ -1898,23 +1803,19 @@ button:hover [data-theme-icon] {
   transform: translateX(4px);
 }
 
-/* Empty states */
 .empty-state i {
   animation: floatY 3.5s ease-in-out infinite;
 }
 
-/* Auth cards */
 .auth-card {
   animation: popIn 0.55s var(--ci-ease-spring) both;
 }
 
-/* Selection */
 ::selection {
   background: rgba(124, 58, 237, 0.45);
   color: #fff;
 }
 
-/* Scrollbar polish */
 @media (pointer: fine) {
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -1930,14 +1831,12 @@ button:hover [data-theme-icon] {
   }
 }
 
-/* Interactive focus ring for a11y */
 :focus-visible {
   outline: 2px solid rgba(139, 92, 246, 0.7);
   outline-offset: 3px;
   border-radius: 8px;
 }
 
-/* Reduced motion — keep UX usable */
 @media (prefers-reduced-motion: reduce) {
   .reveal, .reveal-stagger > *, .stagger-children > *,
   .animate-in, .page-transition, .glass-card, .btn,
@@ -1952,7 +1851,6 @@ button:hover [data-theme-icon] {
   .glass-card::after { display: none; }
 }
 
-/* Count-up balance animation */
 [data-count-up].is-counting {
   display: inline-block;
   font-variant-numeric: tabular-nums;
@@ -1967,11 +1865,6 @@ button:hover [data-theme-icon] {
   font-variant-numeric: tabular-nums;
 }
 
-/* ==========================================================================
-   UX suite — bottom nav, tour, cmdk, timeline, rings, PWA, lightbox
-   ========================================================================== */
-
-/* Mobile bottom nav */
 .mobile-bottom-nav {
   position: fixed;
   left: 0; right: 0; bottom: 0;
@@ -1988,7 +1881,7 @@ button:hover [data-theme-icon] {
   -webkit-backdrop-filter: blur(18px) saturate(160%);
   border-top: 1px solid var(--ci-border);
   box-shadow: 0 -12px 40px rgba(0,0,0,0.35);
-  /* Keep FAB from being clipped by parent */
+  
   overflow: visible;
 }
 [data-theme="light"] .mobile-bottom-nav {
@@ -2008,7 +1901,7 @@ button:hover [data-theme-icon] {
   color: var(--ci-text-muted);
   text-decoration: none;
   transition: color 0.2s, transform 0.2s;
-  /* Never clip icon/label */
+  
   overflow: visible;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -2042,7 +1935,6 @@ button:hover [data-theme-icon] {
   .mobile-bottom-nav { display: none !important; }
 }
 
-/* Search popover + cmdk */
 .search-popover {
   position: fixed; z-index: 1080;
   width: min(420px, calc(100vw - 24px));
@@ -2082,7 +1974,6 @@ button:hover [data-theme-icon] {
 .cmdk-item:hover, .cmdk-item.active { background: rgba(139,92,246,0.12); }
 .cmdk-item i { opacity: 0.8; }
 
-/* Tour */
 .tour-root { position: fixed; inset: 0; z-index: 1200; pointer-events: none; }
 .tour-backdrop {
   position: absolute; inset: 0;
@@ -2096,7 +1987,6 @@ button:hover [data-theme-icon] {
   z-index: 2; animation: popIn 0.4s var(--ci-ease-spring);
 }
 
-/* Deposit status timeline */
 .status-timeline {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -2124,7 +2014,6 @@ button:hover [data-theme-icon] {
   .status-step:not(:last-child)::after { display: none; }
 }
 
-/* Progress ring */
 .progress-ring {
   position: relative; width: 56px; height: 56px; flex-shrink: 0;
 }
@@ -2136,7 +2025,6 @@ button:hover [data-theme-icon] {
   font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono);
 }
 
-/* Timeline activity */
 .timeline { position: relative; padding-left: 1.25rem; }
 .timeline-item { position: relative; padding: 0 0 1.25rem 0.75rem; border-left: 2px solid var(--ci-border-soft); }
 .timeline-item:last-child { border-left-color: transparent; }
@@ -2147,7 +2035,6 @@ button:hover [data-theme-icon] {
 }
 .timeline-body { padding-left: 0.5rem; }
 
-/* KYC steps */
 .kyc-steps { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .kyc-step { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--ci-text-muted); }
 .kyc-num {
@@ -2161,7 +2048,6 @@ button:hover [data-theme-icon] {
 .kyc-line { flex: 1; height: 2px; background: var(--ci-border-soft); }
 .kyc-step.done + .kyc-line { background: var(--ci-primary-bright); }
 
-/* Market pulse */
 .pulse-chip {
   display: inline-flex; align-items: center; gap: 0.35rem;
   padding: 0.35rem 0.65rem; border-radius: 999px;
@@ -2175,7 +2061,6 @@ button:hover [data-theme-icon] {
   animation: liveDot 1.4s ease-in-out infinite;
 }
 
-/* PWA banner */
 .pwa-banner {
   position: fixed;
   left: 12px; right: 12px;
@@ -2191,7 +2076,6 @@ button:hover [data-theme-icon] {
   .pwa-banner { left: auto; right: 24px; bottom: 24px; max-width: 380px; }
 }
 
-/* Lightbox */
 .lightbox {
   position: fixed; inset: 0; z-index: 1200;
   background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center;
@@ -2203,18 +2087,15 @@ button:hover [data-theme-icon] {
   color: #fff; font-size: 2rem; line-height: 1; cursor: pointer;
 }
 
-/* Density compact */
 [data-density="compact"] .stat-card { padding: 1rem 1.1rem; }
 [data-density="compact"] .page-content { font-size: 0.95rem; }
 [data-density="compact"] .glass-card.p-4 { padding: 1rem !important; }
 
-/* Network badge / QR */
 .network-badge { letter-spacing: 0.04em; }
 .qr-frame { animation: scaleIn 0.4s var(--ci-ease-out); }
 .proof-thumb { max-height: 180px; border: 1px solid var(--ci-border); cursor: zoom-in; transition: transform 0.25s; }
 .proof-thumb:hover { transform: scale(1.02); }
 
-/* Receipt print */
 @media print {
   body * { visibility: hidden; }
   #receipt-print, #receipt-print * { visibility: visible; }
@@ -2222,12 +2103,10 @@ button:hover [data-theme-icon] {
   .bg-orbs, .sidebar, .topbar, .mobile-bottom-nav, .btn { display: none !important; }
 }
 
-/* Confetti canvas */
 #confetti-canvas {
   position: fixed; inset: 0; pointer-events: none; z-index: 1300;
 }
 
-/* Skeleton placeholders */
 .skel {
   background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 75%);
   background-size: 200% 100%;
@@ -2235,7 +2114,6 @@ button:hover [data-theme-icon] {
   border-radius: 10px; min-height: 1rem;
 }
 
-/* Risk strip */
 .risk-strip {
   padding: 0.4rem 0.75rem;
   border-radius: 10px;
@@ -2243,13 +2121,11 @@ button:hover [data-theme-icon] {
   border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
-/* Modal glass */
 .modal-content.glass-card {
   background: var(--ci-bg-elevated) !important;
   color: var(--ci-text);
 }
 
-/* Invest confirm overlay — always above app chrome, clickable */
 .invest-confirm-overlay {
   position: fixed !important;
   inset: 0 !important;
@@ -2314,11 +2190,6 @@ button:hover [data-theme-icon] {
 }
 body.modal-open { overflow: hidden; }
 
-/* ==========================================================================
-   Responsive layout safety — never clip buttons off edges
-   ========================================================================== */
-
-/* Flex/grid children must be allowed to shrink inside cards */
 .glass-card,
 .row,
 .col,
@@ -2326,7 +2197,6 @@ body.modal-open { overflow: hidden; }
   min-width: 0;
 }
 
-/* Page toolbars: title + buttons always wrap instead of overflowing */
 .page-toolbar,
 .page-header-actions,
 .d-flex.justify-content-between {
@@ -2335,7 +2205,6 @@ body.modal-open { overflow: hidden; }
   max-width: 100%;
 }
 
-/* Explicit action rows used across app */
 .action-row,
 .quick-actions,
 .filter-bar,
@@ -2354,7 +2223,6 @@ body.modal-open { overflow: hidden; }
   flex: 0 1 auto;
 }
 
-/* Tables: horizontal scroll inside card, not page-wide overflow */
 .table-responsive,
 .glass-card.overflow-hidden,
 .glass-card.p-0.overflow-hidden {
@@ -2367,7 +2235,6 @@ body.modal-open { overflow: hidden; }
   overflow-y: visible;
 }
 
-/* Keep table action button groups from being cut mid-button */
 .table-ci td .btn,
 .table-ci td .btn-group,
 .table-ci td form {
@@ -2379,7 +2246,6 @@ body.modal-open { overflow: hidden; }
   gap: 0.35rem;
 }
 
-/* Dropdowns open inside viewport on small screens */
 .dropdown-menu {
   max-width: min(100vw - 1rem, 360px);
 }
@@ -2389,7 +2255,7 @@ body.modal-open { overflow: hidden; }
     right: 0 !important;
     left: auto !important;
   }
-  /* Stack card headers that put buttons on the right edge */
+  
   .glass-card > .d-flex.justify-content-between.align-items-start,
   .glass-card > .d-flex.justify-content-between.align-items-center {
     flex-direction: column;
@@ -2402,14 +2268,12 @@ body.modal-open { overflow: hidden; }
   }
 }
 
-/* Form primary buttons always fully visible above bottom nav */
 form .btn.w-100,
 form button[type="submit"].btn,
 .glass-card form .btn-ci {
   max-width: 100%;
 }
 
-/* Market pulse: don't shove "Open charts" off the side */
 .market-pulse {
   flex-wrap: wrap;
   row-gap: 0.5rem;
@@ -2424,7 +2288,6 @@ form button[type="submit"].btn,
   }
 }
 
-/* Landing navbar — keep CTA visible on narrow phones */
 .navbar .container {
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -2442,7 +2305,6 @@ form button[type="submit"].btn,
   }
 }
 
-/* Balance hero numbers don't overflow card */
 .balance-hero .display-5 {
   font-size: clamp(1.55rem, 6vw, 2.75rem);
   word-break: break-word;
@@ -2453,7 +2315,6 @@ form button[type="submit"].btn,
   word-break: break-word;
 }
 
-/* Live chat widgets sit above bottom nav, not over it */
 #live-chat-slot iframe,
 #live-chat-slot > div,
 #live-chat-slot > * {
@@ -2461,7 +2322,7 @@ form button[type="submit"].btn,
 }
 @media (max-width: 991.98px) {
   #live-chat-slot {
-    /* Common chat bubbles use fixed bottom-right — lift above app nav */
+    
     --chat-lift: calc(var(--ci-bottom-nav-h) + 8px + env(safe-area-inset-bottom, 0px));
   }
   #live-chat-slot iframe[style*="bottom"],
@@ -2470,7 +2331,6 @@ form button[type="submit"].btn,
   }
 }
 
-/* Toasts stay inside screen */
 .toast-container {
   max-width: calc(100vw - 1rem);
   padding: 0.75rem !important;
@@ -2482,14 +2342,12 @@ form button[type="submit"].btn,
   max-width: calc(100vw - 2rem);
 }
 
-/* Staff panel: same bottom breathing room on mobile (no bottom nav but long lists) */
 @media (max-width: 991.98px) {
   body:has(.sidebar .logo-text) .page-content {
     padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
-/* Desktop: ensure content never sits under fixed sidebar wrongly */
 @media (min-width: 992px) {
   .main-content {
     max-width: calc(100% - var(--ci-sidebar-w) - 12px);
@@ -2501,7 +2359,6 @@ form button[type="submit"].btn,
   }
 }
 
-/* Form action clusters — stack cleanly; sticky only on mobile */
 .form-sticky-actions {
   display: flex;
   flex-direction: column;
@@ -2527,21 +2384,18 @@ form button[type="submit"].btn,
   }
 }
 
-/* Pagination never overflows */
 .pagination {
   flex-wrap: wrap;
   row-gap: 0.35rem;
   max-width: 100%;
 }
 
-/* Avatar / badges don't force topbar overflow */
 .topbar .avatar {
   width: 32px;
   height: 32px;
   flex-shrink: 0;
 }
 
-/* Modal / overlay safe padding on short viewports */
 .invest-confirm-overlay,
 .lightbox,
 .cmdk-overlay {
@@ -2557,22 +2411,12 @@ form button[type="submit"].btn,
   overflow-y: auto;
 }
 
-/* ==========================================================================
-   PRO UI v2 — Industry-grade fintech polish (Stripe / Coinbase / Linear)
-   Layered overrides — keeps structure, elevates craft
-   ========================================================================== */
-
-/* Quieter noise */
 body::after { opacity: 0.018; }
 [data-theme="light"] body::after { opacity: 0.012; }
 
-/* Orbs: softer, more institutional */
 .bg-orbs span { opacity: 0.22; filter: blur(72px); }
 [data-theme="light"] .bg-orbs span { opacity: 0.14; }
 
-/* --------------------------------------------------------------------------
-   Shell
-   -------------------------------------------------------------------------- */
 .app-shell {
   padding: 10px;
   gap: 10px;
@@ -2688,7 +2532,6 @@ body::after { opacity: 0.018; }
   border-top: 1px solid var(--ci-border-soft);
 }
 
-/* Topbar */
 .topbar {
   min-height: var(--ci-topbar-h);
   padding: 0.55rem 1rem;
@@ -2733,15 +2576,11 @@ body::after { opacity: 0.018; }
   background: #F1F5F9;
 }
 
-/* Page content */
 .page-content {
   padding-top: 0.35rem;
   max-width: 1400px;
 }
 
-/* --------------------------------------------------------------------------
-   Cards — solid product surfaces
-   -------------------------------------------------------------------------- */
 .glass-card {
   background: var(--ci-bg-card);
   border: 1px solid var(--ci-border);
@@ -2757,7 +2596,6 @@ body::after { opacity: 0.018; }
   border-color: rgba(129, 140, 248, 0.28);
 }
 
-/* Stat cards */
 .stat-card {
   padding: 1.2rem 1.25rem;
   border-radius: var(--ci-radius);
@@ -2795,7 +2633,6 @@ body::after { opacity: 0.018; }
   border: 1px solid rgba(129, 140, 248, 0.15);
 }
 
-/* Balance hero — flagship product surface */
 .balance-hero {
   border-radius: 22px;
   padding: 1.75rem !important;
@@ -2848,9 +2685,6 @@ body::after { opacity: 0.018; }
   border-radius: 12px;
 }
 
-/* --------------------------------------------------------------------------
-   Buttons — precise, product-grade
-   -------------------------------------------------------------------------- */
 .btn {
   border-radius: 12px;
   font-weight: 600;
@@ -2906,9 +2740,6 @@ body::after { opacity: 0.018; }
   border-radius: 14px;
 }
 
-/* --------------------------------------------------------------------------
-   Forms
-   -------------------------------------------------------------------------- */
 .form-control,
 .form-select {
   border-radius: 12px !important;
@@ -2944,9 +2775,6 @@ body::after { opacity: 0.018; }
   border-radius: 12px 0 0 12px !important;
 }
 
-/* --------------------------------------------------------------------------
-   Tables
-   -------------------------------------------------------------------------- */
 .table-ci thead th {
   font-size: 0.66rem;
   letter-spacing: 0.1em;
@@ -2969,9 +2797,6 @@ body::after { opacity: 0.018; }
   background: rgba(99, 102, 241, 0.05);
 }
 
-/* --------------------------------------------------------------------------
-   Badges
-   -------------------------------------------------------------------------- */
 .badge-status,
 .badge-featured,
 .badge {
@@ -2988,9 +2813,6 @@ body::after { opacity: 0.018; }
   color: #C7D2FE;
 }
 
-/* --------------------------------------------------------------------------
-   Market pulse / chips
-   -------------------------------------------------------------------------- */
 .market-pulse {
   border-radius: 14px;
   gap: 0.45rem !important;
@@ -3011,9 +2833,6 @@ body::after { opacity: 0.018; }
   transform: none;
 }
 
-/* --------------------------------------------------------------------------
-   Investment plan cards
-   -------------------------------------------------------------------------- */
 .plan-card {
   height: 100%;
   display: flex;
@@ -3033,9 +2852,6 @@ body::after { opacity: 0.018; }
   -webkit-text-fill-color: transparent;
 }
 
-/* --------------------------------------------------------------------------
-   Auth
-   -------------------------------------------------------------------------- */
 .auth-card {
   max-width: 420px;
   padding: 2.25rem 2rem;
@@ -3049,9 +2865,6 @@ body::after { opacity: 0.018; }
   border-radius: 14px;
 }
 
-/* --------------------------------------------------------------------------
-   Mobile bottom nav
-   -------------------------------------------------------------------------- */
 .mobile-bottom-nav {
   background: rgba(7, 11, 20, 0.94);
   border-top: 1px solid var(--ci-border);
@@ -3075,9 +2888,6 @@ body::after { opacity: 0.018; }
   box-shadow: 0 8px 22px rgba(79, 70, 229, 0.4);
 }
 
-/* --------------------------------------------------------------------------
-   Dropdowns / menus
-   -------------------------------------------------------------------------- */
 .dropdown-menu {
   background: var(--ci-bg-elevated) !important;
   border: 1px solid var(--ci-border) !important;
@@ -3100,9 +2910,6 @@ body::after { opacity: 0.018; }
   color: var(--ci-text) !important;
 }
 
-/* --------------------------------------------------------------------------
-   Progress / misc
-   -------------------------------------------------------------------------- */
 .progress-ci {
   height: 6px;
   border-radius: 999px;
@@ -3129,20 +2936,17 @@ body::after { opacity: 0.018; }
   margin-bottom: 0.65rem;
 }
 
-/* Section headers inside cards */
 .glass-card h5,
 .glass-card h6 {
   letter-spacing: -0.025em;
   font-weight: 700;
 }
 
-/* Alert polish */
 .alert.glass-card {
   border-radius: 14px;
   border: 1px solid var(--ci-border) !important;
 }
 
-/* Landing hero */
 .hero-title {
   letter-spacing: -0.045em;
 }
@@ -3151,7 +2955,6 @@ body::after { opacity: 0.018; }
   backdrop-filter: blur(16px);
 }
 
-/* Sticky form actions */
 @media (max-width: 991.98px) {
   .form-sticky-actions {
     background: linear-gradient(180deg, transparent 0%, rgba(7, 11, 20, 0.92) 24%, rgba(7, 11, 20, 0.98) 100%);
@@ -3161,7 +2964,6 @@ body::after { opacity: 0.018; }
   }
 }
 
-/* Desktop content width balance */
 @media (min-width: 992px) {
   .page-content {
     padding-left: 0.5rem;
@@ -3170,28 +2972,21 @@ body::after { opacity: 0.018; }
   }
 }
 
-/* Subtle scrollbars */
 .sidebar-nav,
 .table-responsive {
   scrollbar-width: thin;
   scrollbar-color: rgba(129, 140, 248, 0.25) transparent;
 }
 
-/* Reduce aggressive hover lift on dense tables */
 .glass-card.p-0.overflow-hidden:hover {
   transform: none;
   box-shadow: var(--ci-shadow);
 }
 
-/* Selection color */
 ::selection {
   background: rgba(99, 102, 241, 0.35);
   color: #fff;
 }
-
-/* ==========================================================================
-   VIP animated stickers / tier cards
-   ========================================================================== */
 
 .vip-hero {
   position: relative;
@@ -3253,7 +3048,6 @@ body::after { opacity: 0.018; }
   50% { transform: translateY(-8px) rotate(2deg) scale(1.04); }
 }
 
-/* Sparkles around hero sticker */
 .vip-sticker-spark {
   position: absolute;
   width: 8px;
@@ -3273,7 +3067,6 @@ body::after { opacity: 0.018; }
   70% { opacity: 0.3; transform: scale(0.8); }
 }
 
-/* Tier cards */
 .vip-tier-card {
   position: relative;
   overflow: hidden;
@@ -3426,7 +3219,6 @@ body::after { opacity: 0.018; }
   transition: width 0.8s var(--ci-ease);
 }
 
-/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .vip-sticker-img,
   .vip-sticker-spark,
@@ -3448,10 +3240,6 @@ body::after { opacity: 0.018; }
     height: 88px;
   }
 }
-
-/* ==========================================================================
-   Platform UI stickers (deposit / withdraw / invest / pending / empty …)
-   ========================================================================== */
 
 .ui-sticker-block {
   display: flex;
@@ -3514,7 +3302,6 @@ body::after { opacity: 0.018; }
   line-height: 1.45;
 }
 
-/* Empty states upgraded with stickers */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -3526,7 +3313,6 @@ body::after { opacity: 0.018; }
   padding-bottom: 0.25rem;
 }
 
-/* Inline status row (detail pages) */
 .ui-status-banner {
   display: flex;
   align-items: center;
@@ -3558,7 +3344,6 @@ body::after { opacity: 0.018; }
   height: 56px;
 }
 
-/* Form page hero strip */
 .ui-flow-hero {
   display: flex;
   align-items: center;
