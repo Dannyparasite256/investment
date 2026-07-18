@@ -56,7 +56,7 @@
         <tbody>
         {% for c in page %}
         <tr>
-          <td class="small text-muted">{{ c.created_at|date:"M d" }}</td>
+          <td class="small text-muted">{{ c.created_at|when:"date" }}</td>
           <td class="small">{{ c.referred_user.email|truncatechars:20 }}</td>
           <td class="font-mono text-profit">{{ c.amount|money_trim:8 }}</td>
           <td class="small">{{ c.source }}</td>

@@ -19,15 +19,15 @@
       </div>
       <div class="progress-ci mb-2" style="height:10px"><div class="bar" style="width:{{ inv.progress_percent }}%"></div></div>
       <div class="d-flex justify-content-between small text-muted mb-4">
-        <span>Started {{ inv.started_at|date:"M d, Y H:i" }}</span>
+        <span>Started {{ inv.started_at|when:"full" }}</span>
         <span>{{ inv.progress_percent }}%</span>
-        <span>Matures {{ inv.matures_at|date:"M d, Y H:i" }}</span>
+        <span>Matures {{ inv.matures_at|when:"full" }}</span>
       </div>
       <div class="row g-3">
         <div class="col-6 col-md-3"><div class="text-muted small">Total earned</div><div class="font-mono text-profit">{{ inv.total_earned|money:2 }}</div></div>
         <div class="col-6 col-md-3"><div class="text-muted small">Rate</div><div class="font-mono">{{ inv.profit_rate_percent }}%</div></div>
         <div class="col-6 col-md-3"><div class="text-muted small">Payouts</div><div>{{ inv.payouts_count }} / {{ inv.expected_payouts }}</div></div>
-        <div class="col-6 col-md-3"><div class="text-muted small">Next payout</div><div class="small">{% if inv.next_payout_at %}{{ inv.next_payout_at|date:"M d, H:i" }}{% else %}—{% endif %}</div></div>
+        <div class="col-6 col-md-3"><div class="text-muted small">Next payout</div><div class="small">{% if inv.next_payout_at %}{{ inv.next_payout_at|when }}{% else %}—{% endif %}</div></div>
       </div>
     </div>
     <div class="glass-card p-0 overflow-hidden">
@@ -41,7 +41,7 @@
               <td>{{ e.period_number }}</td>
               <td class="font-mono text-profit">{{ e.amount|money_trim:8 }}</td>
               <td>{% if e.is_reinvested %}Yes{% else %}No{% endif %}</td>
-              <td class="text-muted small">{{ e.created_at|date:"M d, Y H:i" }}</td>
+              <td class="text-muted small">{{ e.created_at|when:"full" }}</td>
             </tr>
             {% empty %}
             <tr><td colspan="4" class="text-center text-muted py-4">No earnings yet</td></tr>

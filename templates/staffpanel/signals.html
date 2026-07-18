@@ -40,7 +40,7 @@
             <td class="font-mono small">{{ s.symbol }}</td>
             <td>{{ s.get_side_display }}</td>
             <td>{% if s.is_published %}Yes{% else %}No{% endif %}</td>
-            <td class="small text-muted">{{ s.created_at|date:"M d H:i" }}</td>
+            <td class="small text-muted">{{ s.created_at|when }}</td>
           </tr>
           {% empty %}
           <tr><td colspan="5" class="text-center text-muted py-4">No signals</td></tr>

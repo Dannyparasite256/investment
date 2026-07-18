@@ -93,6 +93,7 @@ MIDDLEWARE = [
     'core.middleware.MaintenanceModeMiddleware',
     'core.middleware.SessionTimeoutMiddleware',
     'core.middleware.LanguageMiddleware',
+    'core.middleware.TimezoneMiddleware',
     'core.middleware.GeoBlockMiddleware',
 ]
 

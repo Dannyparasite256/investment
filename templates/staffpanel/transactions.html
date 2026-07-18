@@ -14,7 +14,7 @@
   {% for t in page %}
   <tr>
     <td class="font-mono small">{{ t.id|truncatechars:10 }}</td>
-    <td class="small text-muted">{{ t.created_at|date:"M d H:i" }}</td>
+    <td class="small text-muted">{{ t.created_at|when }}</td>
     <td class="small">{{ t.user.email|truncatechars:18 }}</td>
     <td>{{ t.get_tx_type_display }}</td>
     <td class="font-mono">{{ t.amount|money_trim:8 }}</td>

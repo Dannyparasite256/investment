@@ -8,7 +8,7 @@
       <p class="text-muted small">{{ ticket.user.email }} · {{ ticket.get_status_display }}</p>
       {% for m in messages_list %}
       <div class="p-3 mb-2 rounded {% if m.is_staff_reply %}bg-elevated{% else %}border border-ci{% endif %}">
-        <div class="small text-muted mb-1">{{ m.sender.email }} · {{ m.created_at|date:"M d H:i" }}{% if m.is_staff_reply %} · staff{% endif %}</div>
+        <div class="small text-muted mb-1">{{ m.sender.email }} · {{ m.created_at|when }}{% if m.is_staff_reply %} · staff{% endif %}</div>
         <div>{{ m.body|linebreaksbr }}</div>
       </div>
       {% endfor %}

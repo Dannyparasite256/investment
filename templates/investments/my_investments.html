@@ -35,8 +35,8 @@
         </div>
         <div class="progress-ci mb-2"><div class="bar" style="width:{{ inv.progress_percent }}%"></div></div>
         <div class="d-flex justify-content-between small text-muted">
-          <span>{% if inv.next_payout_at %}Next payout {{ inv.next_payout_at|date:"M d" }}{% else %}—{% endif %}</span>
-          <span>Matures {{ inv.matures_at|date:"M d" }}</span>
+          <span>{% if inv.next_payout_at %}Next payout {{ inv.next_payout_at|when:"date" }}{% else %}—{% endif %}</span>
+          <span>Matures {{ inv.matures_at|when:"date" }}</span>
         </div>
       </div>
     </a>

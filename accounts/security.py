@@ -9,6 +9,14 @@ def record_login(request, user=None, email='', result=LoginHistory.Result.SUCCES
     is_suspicious = False
     reason = ''
 
+    # Geo + timezone for accurate access location
+    geo = {'country': '', 'city': '', 'region': '', 'timezone': '', 'isp': ''}
+    try:
+        from core.geoip import lookup_ip
+        geo = lookup_ip(ip)
+    except Exception:
+        pass
+
     if user and result == LoginHistory.Result.SUCCESS:
         # New IP vs last successful logins
         known_ips = set(
@@ -19,8 +27,33 @@ def record_login(request, user=None, email='', result=LoginHistory.Result.SUCCES
         if known_ips and ip and ip not in known_ips:
             is_suspicious = True
             reason = 'Login from new IP address'
+        # New country
+        if geo.get('country') and geo['country'] not in ('Local', ''):
+            known_countries = set(
+                LoginHistory.objects.filter(
+                    user=user, result=LoginHistory.Result.SUCCESS,
+                ).exclude(country='').values_list('country', flat=True)[:30]
+            )
+            if known_countries and geo['country'] not in known_countries:
+                is_suspicious = True
+                reason = (reason + '; ' if reason else '') + f"New country: {geo['country']}"
+
+        update_fields = ['last_login_ip']
         user.last_login_ip = ip
-        user.save(update_fields=['last_login_ip'])
+        # Prefer browser tz cookie; else geo timezone
+        browser_tz = (request.COOKIES.get('user_tz') or '').strip()
+        tz_name = browser_tz or (geo.get('timezone') or '')
+        if tz_name and not (user.preferred_timezone or '').strip():
+            user.preferred_timezone = tz_name[:64]
+            update_fields.append('preferred_timezone')
+        elif tz_name and browser_tz:
+            user.preferred_timezone = browser_tz[:64]
+            if 'preferred_timezone' not in update_fields:
+                update_fields.append('preferred_timezone')
+        if geo.get('country') and geo['country'] not in ('Local', '') and not user.country:
+            user.country = geo['country'][:100]
+            update_fields.append('country')
+        user.save(update_fields=update_fields)
 
     # Burst failures from same IP
     if result == LoginHistory.Result.FAILED and ip:
@@ -41,6 +74,11 @@ def record_login(request, user=None, email='', result=LoginHistory.Result.SUCCES
         email_attempted=email or (user.email if user else ''),
         ip_address=ip,
         user_agent=ua,
+        country=geo.get('country', '') or '',
+        city=geo.get('city', '') or '',
+        region=geo.get('region', '') or '',
+        timezone_name=geo.get('timezone', '') or '',
+        isp=geo.get('isp', '') or '',
         result=result,
         is_suspicious=is_suspicious,
         suspicion_reason=reason,
@@ -49,10 +87,11 @@ def record_login(request, user=None, email='', result=LoginHistory.Result.SUCCES
 
     if is_suspicious and user:
         from notifications.models import Notification, notify
+        loc = entry.location_display
         notify(
             user,
             'Suspicious login detected',
-            f'A login from {ip} was flagged: {reason}',
+            f'A login from {ip} ({loc}) was flagged: {reason}',
             level=Notification.Level.WARNING,
             category=Notification.Category.SECURITY,
         )

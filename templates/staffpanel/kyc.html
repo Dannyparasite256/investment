@@ -15,7 +15,7 @@
         <strong class="small">{{ doc.user.email }}</strong>
         <span class="badge badge-status badge-{{ doc.status }}">{{ doc.get_status_display }}</span>
       </div>
-      <div class="small text-muted mb-2">{{ doc.get_document_type_display }} · {{ doc.created_at|date:"M d, Y" }}</div>
+      <div class="small text-muted mb-2">{{ doc.get_document_type_display }} · {{ doc.created_at|when:"date" }}</div>
       {% if doc.front_image %}<img src="{{ doc.front_image.url }}" class="img-fluid rounded mb-2" alt="">{% endif %}
       {% if doc.status == 'pending' or doc.status == 'under_review' %}
       <div class="d-flex gap-2">

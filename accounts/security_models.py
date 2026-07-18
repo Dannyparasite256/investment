@@ -24,6 +24,9 @@ class LoginHistory(UUIDModel, TimeStampedModel):
     user_agent = models.TextField(blank=True)
     country = models.CharField(max_length=100, blank=True)
     city = models.CharField(max_length=100, blank=True)
+    region = models.CharField(max_length=100, blank=True)
+    timezone_name = models.CharField(max_length=64, blank=True, help_text='IANA timezone at access location')
+    isp = models.CharField(max_length=120, blank=True)
     result = models.CharField(max_length=20, choices=Result.choices, default=Result.SUCCESS)
     is_suspicious = models.BooleanField(default=False)
     suspicion_reason = models.CharField(max_length=255, blank=True)
@@ -41,6 +44,15 @@ class LoginHistory(UUIDModel, TimeStampedModel):
     def __str__(self):
         who = self.user.email if self.user else self.email_attempted
         return f'{who} @ {self.ip_address} — {self.result}'
+
+    @property
+    def location_display(self) -> str:
+        parts = [p for p in (self.city, self.region, self.country) if p]
+        cleaned = []
+        for p in parts:
+            if not cleaned or cleaned[-1].lower() != p.lower():
+                cleaned.append(p)
+        return ', '.join(cleaned) or (self.ip_address or 'Unknown')
 
 
 class AdminActivityLog(UUIDModel, TimeStampedModel):

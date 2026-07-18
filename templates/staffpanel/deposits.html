@@ -54,7 +54,7 @@
       <tbody>
         {% for d in page %}
         <tr>
-          <td class="small text-muted">{{ d.created_at|date:"M d, Y H:i" }}</td>
+          <td class="small text-muted">{{ d.created_at|when:"full" }}</td>
           <td class="small"><a href="{% url 'staffpanel:user_detail' d.user_id %}">{{ d.user.email }}</a></td>
           <td><span class="badge badge-status badge-info">{{ d.cryptocurrency.symbol }}</span></td>
           <td class="font-mono">{{ d.amount|money_trim:8 }} <span class="text-muted small">{{ d.cryptocurrency.symbol }}</span></td>

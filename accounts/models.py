@@ -67,6 +67,12 @@ class User(AbstractUser):
         max_length=10, choices=[('dark', 'Dark'), ('light', 'Light')], default='dark',
     )
     preferred_language = models.CharField(max_length=10, default='en')
+    preferred_timezone = models.CharField(
+        max_length=64,
+        blank=True,
+        default='',
+        help_text='IANA timezone e.g. Africa/Kampala, detected from browser or login location',
+    )
     preferred_currency = models.CharField(
         max_length=20,
         default='',

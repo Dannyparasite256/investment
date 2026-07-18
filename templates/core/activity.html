@@ -12,7 +12,7 @@
       <div class="timeline-body">
         <div class="d-flex justify-content-between gap-2 flex-wrap">
           <strong>{{ e.title }}</strong>
-          <span class="small text-muted">{{ e.created_at|date:"M d, Y H:i" }}</span>
+          <span class="small text-muted">{{ e.created_at|when:"full" }}</span>
         </div>
         {% if e.description %}<p class="small text-muted mb-0 mt-1">{{ e.description }}</p>{% endif %}
         {% if e.event_type %}<span class="badge badge-status badge-info mt-2">{{ e.event_type }}</span>{% endif %}

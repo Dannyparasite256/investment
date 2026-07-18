@@ -30,6 +30,21 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="{% static 'js/app.js' %}?v=moneycommas1"></script>
   <script src="{% static 'js/ux.js' %}?v=moneycommas1"></script>
+  <script>
+    // Persist browser timezone for accurate local timestamps server-side
+    (function () {
+      try {
+        var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        if (!tz) return;
+        var existing = document.cookie.split(';').map(function (c) { return c.trim(); })
+          .find(function (c) { return c.startsWith('user_tz='); });
+        var cur = existing ? decodeURIComponent(existing.split('=').slice(1).join('=')) : '';
+        if (cur !== tz) {
+          document.cookie = 'user_tz=' + encodeURIComponent(tz) + ';path=/;max-age=31536000;samesite=lax';
+        }
+      } catch (e) {}
+    })();
+  </script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

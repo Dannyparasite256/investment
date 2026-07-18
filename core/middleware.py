@@ -84,6 +84,37 @@ class LanguageMiddleware(MiddlewareMixin):
         return None
 
 
+class TimezoneMiddleware(MiddlewareMixin):
+    """
+    Activate the user's real timezone so dates/times render accurately.
+    Priority: cookie user_tz (browser) → user.preferred_timezone → settings.TIME_ZONE
+    """
+
+    def process_request(self, request):
+        from django.utils import timezone as dj_tz
+        from core.datetime_display import resolve_tz
+
+        tz_name = (request.COOKIES.get('user_tz') or '').strip()
+        user = getattr(request, 'user', None)
+        if not tz_name and user is not None and getattr(user, 'is_authenticated', False):
+            tz_name = (getattr(user, 'preferred_timezone', None) or '').strip()
+        if not tz_name:
+            from django.conf import settings
+            tz_name = getattr(settings, 'TIME_ZONE', 'UTC') or 'UTC'
+
+        request.user_timezone = tz_name
+        try:
+            dj_tz.activate(resolve_tz(tz_name))
+        except Exception:
+            dj_tz.deactivate()
+        return None
+
+    def process_response(self, request, response):
+        from django.utils import timezone as dj_tz
+        dj_tz.deactivate()
+        return response
+
+
 class GeoBlockMiddleware(MiddlewareMixin):
     """Optional geo allow/block on register and deposit paths."""
 

@@ -245,7 +245,7 @@
                 {{ tx.amount|money:4 }}
               </td>
               <td><span class="badge badge-status badge-{{ tx.status }}">{{ tx.get_status_display }}</span></td>
-              <td class="text-muted small">{{ tx.created_at|date:"M d, H:i" }}</td>
+              <td class="text-muted small">{{ tx.created_at|when }}</td>
             </tr>
             {% empty %}
             <tr><td colspan="4">

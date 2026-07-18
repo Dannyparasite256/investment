@@ -20,7 +20,7 @@
         <div class="status-step done">
           <div class="status-dot"></div>
           <div class="status-label">Submitted</div>
-          <div class="status-meta">{{ deposit.created_at|date:"M d, H:i" }}</div>
+          <div class="status-meta">{{ deposit.created_at|when }}</div>
         </div>
         <div class="status-step {% if deposit.status == 'waiting_confirmation' or deposit.status == 'approved' or deposit.status == 'rejected' %}done{% elif deposit.status == 'pending' %}current{% endif %}">
           <div class="status-dot"></div>
@@ -30,7 +30,7 @@
         <div class="status-step {% if deposit.status == 'approved' %}done{% elif deposit.status == 'rejected' %}failed{% endif %}">
           <div class="status-dot"></div>
           <div class="status-label">{% if deposit.status == 'rejected' %}Rejected{% else %}Approved{% endif %}</div>
-          <div class="status-meta">{% if deposit.reviewed_at %}{{ deposit.reviewed_at|date:"M d, H:i" }}{% else %}—{% endif %}</div>
+          <div class="status-meta">{% if deposit.reviewed_at %}{{ deposit.reviewed_at|when }}{% else %}—{% endif %}</div>
         </div>
         <div class="status-step {% if deposit.status == 'approved' %}done{% endif %}">
           <div class="status-dot"></div>

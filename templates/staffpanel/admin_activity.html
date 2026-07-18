@@ -7,7 +7,7 @@
 <tbody>
 {% for a in page %}
 <tr>
-  <td class="small text-muted">{{ a.created_at|date:"M d H:i" }}</td>
+  <td class="small text-muted">{{ a.created_at|when }}</td>
   <td class="small">{{ a.admin.email|default:"—" }}</td>
   <td>{{ a.action }}</td>
   <td class="small">{{ a.target_type }} {{ a.target_id|truncatechars:10 }}</td>

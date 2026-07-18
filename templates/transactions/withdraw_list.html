@@ -15,7 +15,7 @@
       <tbody>
         {% for w in page %}
         <tr>
-          <td class="small text-muted">{{ w.created_at|date:"M d, H:i" }}</td>
+          <td class="small text-muted">{{ w.created_at|when }}</td>
           <td>{{ w.cryptocurrency.symbol }}</td>
           <td class="font-mono">{{ w.amount|money_trim:8 }}</td>
           <td class="font-mono small">{{ w.wallet_address|truncatechars:16 }}</td>

@@ -24,7 +24,7 @@
       <tbody>
         {% for t in txs %}
         <tr>
-          <td class="small text-muted">{{ t.created_at|date:"M d, Y H:i" }}</td>
+          <td class="small text-muted">{{ t.created_at|when:"full" }}</td>
           <td>{{ t.get_tx_type_display }}</td>
           <td class="font-mono">{{ t.amount|money_trim:8 }} {{ t.currency }}</td>
           <td><span class="badge badge-status badge-{{ t.status }}">{{ t.get_status_display }}</span></td>

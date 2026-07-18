@@ -9,7 +9,7 @@
   </div>
   {% for m in messages_list %}
   <div class="p-3 mb-2 rounded {% if m.is_staff_reply %}bg-elevated{% else %}border border-ci{% endif %}">
-    <div class="small text-muted mb-1">{% if m.is_staff_reply %}Support{% else %}You{% endif %} · {{ m.created_at|date:"M d H:i" }}</div>
+    <div class="small text-muted mb-1">{% if m.is_staff_reply %}Support{% else %}You{% endif %} · {{ m.created_at|when }}</div>
     <div>{{ m.body|linebreaksbr }}</div>
   </div>
   {% endfor %}

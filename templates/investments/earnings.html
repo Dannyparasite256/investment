@@ -12,7 +12,7 @@
       <tbody>
         {% for e in page %}
         <tr>
-          <td class="text-muted small">{{ e.created_at|date:"M d, Y H:i" }}</td>
+          <td class="text-muted small">{{ e.created_at|when:"full" }}</td>
           <td>{{ e.investment.plan.name }}</td>
           <td>{{ e.period_number }}</td>
           <td class="font-mono text-profit">{{ e.amount|money_trim:8 }}</td>

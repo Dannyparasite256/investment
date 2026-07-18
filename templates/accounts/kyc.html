@@ -73,7 +73,7 @@
       <h6>History</h6>
       {% for h in history %}
       <div class="d-flex justify-content-between small py-2 border-bottom border-ci">
-        <span>{{ h.get_document_type_display }} · {{ h.created_at|date:"M d, Y" }}</span>
+        <span>{{ h.get_document_type_display }} · {{ h.created_at|when:"date" }}</span>
         <span class="badge badge-status badge-{{ h.status }}">{{ h.get_status_display }}</span>
       </div>
       {% if h.rejection_reason %}<div class="small text-loss mb-2">{{ h.rejection_reason }}</div>{% endif %}

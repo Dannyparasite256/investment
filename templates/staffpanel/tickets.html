@@ -17,7 +17,7 @@
   <td class="small">{{ t.user.email }}</td>
   <td>{{ t.priority }}</td>
   <td><span class="badge badge-status badge-info">{{ t.get_status_display }}</span></td>
-  <td class="small text-muted">{{ t.updated_at|date:"M d H:i" }}</td>
+  <td class="small text-muted">{{ t.updated_at|when }}</td>
 </tr>
 {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No tickets</td></tr>{% endfor %}
 </tbody></table></div>

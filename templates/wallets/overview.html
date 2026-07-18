@@ -70,7 +70,7 @@
           <tbody>
             {% for e in ledger %}
             <tr>
-              <td class="small text-muted">{{ e.created_at|date:"M d, H:i" }}</td>
+              <td class="small text-muted">{{ e.created_at|when }}</td>
               <td>{{ e.get_entry_type_display }}</td>
               <td class="font-mono">{{ e.amount|money_trim:8 }}</td>
               <td class="font-mono text-muted">{{ e.balance_after|money:2 }}</td>

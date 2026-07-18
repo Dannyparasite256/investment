@@ -627,7 +627,15 @@ def login_history(request):
     q = request.GET.get('q', '').strip()
     qs = LoginHistory.objects.select_related('user')
     if q:
-        qs = qs.filter(Q(user__email__icontains=q) | Q(email_attempted__icontains=q) | Q(ip_address__icontains=q))
+        qs = qs.filter(
+            Q(user__email__icontains=q)
+            | Q(email_attempted__icontains=q)
+            | Q(ip_address__icontains=q)
+            | Q(city__icontains=q)
+            | Q(country__icontains=q)
+            | Q(region__icontains=q)
+            | Q(timezone_name__icontains=q)
+        )
     if request.GET.get('suspicious') == '1':
         qs = qs.filter(is_suspicious=True)
     page = Paginator(qs, 40).get_page(request.GET.get('page'))

@@ -16,7 +16,9 @@
       <div class="small mb-1">Balance: <strong class="font-mono">{{ wallet.balance|money:2 }}</strong></div>
       <div class="small mb-1">Profit: <strong class="font-mono text-profit">{{ wallet.total_profit }}</strong></div>
       <div class="small mb-1">Display currency: <strong>{{ target.preferred_currency }}</strong></div>
-      <div class="small mb-3">Referral earnings: <strong class="font-mono">{{ target.referral_earnings }}</strong></div>
+      <div class="small mb-1">Timezone: <strong class="font-mono">{{ target.preferred_timezone|default:"—" }}</strong></div>
+      <div class="small mb-1">Last IP: <strong class="font-mono">{{ target.last_login_ip|default:"—" }}</strong></div>
+      <div class="small mb-3">Referral earnings: <strong class="font-mono">{{ target.referral_earnings|money:2 }}</strong></div>
 
       <div class="d-grid gap-2 mb-3">
         {% if not target.email_verified %}
@@ -55,7 +57,15 @@
     </div>
     <div class="glass-card p-3">
       <h6>Login history</h6>
-      {% for l in logins %}<div class="small d-flex justify-content-between border-bottom border-ci py-1"><span>{{ l.ip_address }} · {{ l.result }}{% if l.is_suspicious %} ⚠{% endif %}</span><span class="text-muted">{{ l.created_at|date:"M d H:i" }}</span></div>{% empty %}<p class="text-muted small mb-0">None</p>{% endfor %}
+      {% for l in logins %}
+      <div class="small border-bottom border-ci py-2">
+        <div class="d-flex justify-content-between gap-2">
+          <span class="font-mono">{{ l.ip_address }}</span>
+          <span class="text-muted">{{ l.created_at|when:"full" }}</span>
+        </div>
+        <div class="text-muted">{{ l.location_display }}{% if l.timezone_name %} · {{ l.timezone_name }}{% endif %} · {{ l.result }}{% if l.is_suspicious %} ⚠ {{ l.suspicion_reason }}{% endif %}</div>
+      </div>
+      {% empty %}<p class="text-muted small mb-0">None</p>{% endfor %}
     </div>
   </div>
 </div>

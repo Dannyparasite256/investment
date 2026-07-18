@@ -19,7 +19,7 @@
     <div>
       <div class="fw-semibold">{{ n.title }}</div>
       <div class="small text-muted">{{ n.message }}</div>
-      <div class="small text-muted mt-1">{{ n.created_at|date:"M d, Y H:i" }}</div>
+      <div class="small text-muted mt-1">{{ n.created_at|when:"full" }}</div>
     </div>
     {% if not n.is_read %}
     <form method="post" action="{% url 'notifications:mark_read' n.pk %}">

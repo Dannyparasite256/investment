@@ -110,7 +110,10 @@
         </button>
         <div class="min-w-0">
           <div class="page-heading text-truncate">{% block page_title %}Dashboard{% endblock %}</div>
-          <small class="text-muted d-none d-md-block text-truncate">{% block page_subtitle %}{% endblock %}</small>
+          <small class="text-muted d-none d-md-block text-truncate">
+            {% block page_subtitle %}{% endblock %}
+            {% if now_display %}<span class="ms-1 opacity-75">· {{ now_display }}</span>{% endif %}
+          </small>
         </div>
         <div class="search-pill ms-md-3 flex-grow-1" style="max-width:280px" data-tour="search">
           <i class="bi bi-search"></i>

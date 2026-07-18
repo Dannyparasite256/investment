@@ -3,6 +3,9 @@ from django.conf import settings
 
 
 def site_settings(request):
+    from django.utils import timezone as dj_tz
+    from core.datetime_display import format_datetime
+
     ctx = {
         'SITE_NAME': getattr(settings, 'SITE_NAME', 'CryptoInvest'),
         'SITE_URL': getattr(settings, 'SITE_URL', ''),
@@ -10,6 +13,8 @@ def site_settings(request):
         'DEFAULT_CURRENCY': getattr(settings, 'DEFAULT_CURRENCY', 'USD'),
         'LANGUAGES': getattr(settings, 'LANGUAGES', [('en', 'English')]),
         'user_language': getattr(request, 'user_language', 'en'),
+        'user_timezone': getattr(request, 'user_timezone', getattr(settings, 'TIME_ZONE', 'UTC')),
+        'now_display': format_datetime(dj_tz.now(), with_seconds=False, with_tz=True, with_weekday=True),
         'live_chat_embed': '',
         'risk_disclaimer': '',
         'show_tour': False,

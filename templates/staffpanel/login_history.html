@@ -1,23 +1,41 @@
 {% extends "staffpanel/base.html" %}
 {% block page_title %}Login history{% endblock %}
+{% block page_subtitle %}Access time, location, and IP accuracy{% endblock %}
 {% block content %}
 <form class="row g-2 mb-3" method="get">
-  <div class="col-md-5"><input class="form-control" name="q" value="{{ q }}" placeholder="Email / IP"></div>
+  <div class="col-md-5"><input class="form-control" name="q" value="{{ q }}" placeholder="Email / IP / city / country"></div>
   <div class="col-md-3"><div class="form-check mt-2"><input class="form-check-input" type="checkbox" name="suspicious" value="1" {% if request.GET.suspicious %}checked{% endif %}><label class="form-check-label">Suspicious only</label></div></div>
   <div class="col-md-2"><button class="btn btn-ci w-100">Filter</button></div>
 </form>
 <div class="glass-card p-0 overflow-hidden table-responsive">
 <table class="table table-ci mb-0">
-<thead><tr><th>Time</th><th>User</th><th>IP</th><th>Result</th><th>Suspicious</th></tr></thead>
+<thead>
+  <tr>
+    <th>Date &amp; time</th>
+    <th>User</th>
+    <th>IP</th>
+    <th>Location</th>
+    <th>Timezone</th>
+    <th>Result</th>
+    <th>Flags</th>
+  </tr>
+</thead>
 <tbody>
 {% for l in page %}
 <tr class="{% if l.is_suspicious %}table-warning{% endif %}">
-  <td class="small text-muted">{{ l.created_at|date:"M d H:i" }}</td>
+  <td class="small">
+    <div class="fw-medium">{{ l.created_at|when:"full" }}</div>
+  </td>
   <td class="small">{{ l.user.email|default:l.email_attempted }}</td>
-  <td class="font-mono small">{{ l.ip_address }}</td>
-  <td>{{ l.result }}</td>
-  <td>{% if l.is_suspicious %}<span class="text-loss">{{ l.suspicion_reason }}</span>{% else %}—{% endif %}</td>
+  <td class="font-mono small">{{ l.ip_address|default:"—" }}</td>
+  <td class="small">
+    {{ l.location_display }}
+    {% if l.isp %}<div class="text-muted" style="font-size:0.7rem">{{ l.isp }}</div>{% endif %}
+  </td>
+  <td class="small font-mono">{{ l.timezone_name|default:"—" }}</td>
+  <td><span class="badge badge-status badge-{% if l.result == 'success' %}active{% elif l.result == 'failed' %}rejected{% else %}pending{% endif %}">{{ l.result }}</span></td>
+  <td class="small">{% if l.is_suspicious %}<span class="text-loss">{{ l.suspicion_reason }}</span>{% else %}—{% endif %}</td>
 </tr>
-{% empty %}<tr><td colspan="5" class="text-center text-muted py-4">None</td></tr>{% endfor %}
+{% empty %}<tr><td colspan="7" class="text-center text-muted py-4">None</td></tr>{% endfor %}
 </tbody></table></div>
 {% endblock %}

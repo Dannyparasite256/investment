@@ -24,7 +24,7 @@
             <td class="font-mono small">{{ b.filename }}</td>
             <td class="small">{{ b.size_bytes }} B</td>
             <td class="small">{{ b.created_by.email|default:"—" }}</td>
-            <td class="small text-muted">{{ b.created_at|date:"M d, Y H:i" }}</td>
+            <td class="small text-muted">{{ b.created_at|when:"full" }}</td>
             <td class="small">{{ b.notes }}</td>
           </tr>
           {% empty %}

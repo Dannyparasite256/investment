@@ -20,7 +20,7 @@
       {% for u in page %}
       <tr>
         <td><a href="{% url 'staffpanel:user_detail' u.pk %}">{{ u.email }}</a></td>
-        <td class="small text-muted">{{ u.date_joined|date:"M d, Y" }}</td>
+        <td class="small text-muted">{{ u.date_joined|when:"date" }}</td>
         <td>{% if u.email_verified %}<span class="badge badge-status badge-success">Verified</span>{% else %}<span class="badge badge-status badge-pending">Pending</span>{% endif %}</td>
         <td>{% if u.is_kyc_verified %}<span class="badge badge-status badge-success">Yes</span>{% else %}—{% endif %}</td>
         <td>{% if u.two_factor_enabled %}On{% else %}—{% endif %}</td>
