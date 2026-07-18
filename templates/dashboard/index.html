@@ -127,9 +127,10 @@
           <small class="text-muted font-mono">
             <span data-balance="active_investments.capital.formatted"
                   data-count-up
-                  data-count-to="{{ active_investments_value }}"
-                  data-count-decimals="2">0</span>
-            <span data-balance="active_investments.capital.symbol">{{ display_currency|default:"USD" }}</span> capital
+                  data-count-to="{{ active_capital_display.value|default:active_investments_value }}"
+                  data-count-format="{{ active_capital_display.formatted|default:active_investments_value }}"
+                  data-count-decimals="{{ currency_decimals|default:2 }}">0</span>
+            <span data-balance="active_investments.capital.symbol">{{ active_capital_display.symbol|default:currency_symbol|default:display_currency|default:"USD" }}</span> capital
           </small>
         </div>
         <div class="stat-icon"><i class="bi bi-graph-up"></i></div>
@@ -161,8 +162,10 @@
           <div class="stat-value" style="font-size:1.35rem">
             <span data-balance="pending_deposits.total.formatted"
                   data-count-up
-                  data-count-to="{{ pending_deposits_total }}"
-                  data-count-decimals="2">0</span>
+                  data-count-to="{{ pending_deposits_display.value|default:pending_deposits_total }}"
+                  data-count-format="{{ pending_deposits_display.formatted|default:pending_deposits_total }}"
+                  data-count-decimals="{{ currency_decimals|default:2 }}">0</span>
+            <span class="fs-6 text-muted" data-balance="pending_deposits.total.symbol">{{ pending_deposits_display.symbol|default:currency_symbol|default:display_currency }}</span>
           </div>
           <small class="text-muted"><span data-balance="pending_deposits.count"
                 data-count-up
@@ -242,7 +245,7 @@
             <tr>
               <td class="text-capitalize fw-medium">{{ tx.get_tx_type_display }}</td>
               <td class="font-mono {% if tx.tx_type == 'profit' or tx.tx_type == 'deposit' %}text-profit{% elif tx.tx_type == 'withdrawal' or tx.tx_type == 'investment' %}text-loss{% endif %}">
-                {{ tx.amount|money:4 }}
+                {% if tx.amount_display %}{{ tx.amount_display.label }}{% else %}{{ tx.amount|money:4 }}{% endif %}
               </td>
               <td><span class="badge badge-status badge-{{ tx.status }}">{{ tx.get_status_display }}</span></td>
               <td class="text-muted small">{{ tx.created_at|when }}</td>
@@ -270,13 +273,15 @@
       <div class="p-3 p-md-4">
         {% for inv in active_investments_list %}
         <a href="{% url 'investments:detail' inv.pk %}" class="d-block mb-3 text-decoration-none">
-          <div class="d-flex justify-content-between mb-1">
+          <div class="d-flex justify-content-between mb-1 gap-2">
             <span class="fw-semibold" style="color:var(--ci-text)">{{ inv.plan.name }}</span>
-            <span class="font-mono" style="color:var(--ci-text)">{{ inv.amount|money }}</span>
+            <span class="font-mono text-end" style="color:var(--ci-text)">
+              {% if inv.amount_display %}{{ inv.amount_display.label }}{% else %}{{ inv.amount|money }}{% endif %}
+            </span>
           </div>
           <div class="progress-ci mb-1"><div class="bar" style="width:{{ inv.progress_percent }}%"></div></div>
           <div class="d-flex justify-content-between small text-muted">
-            <span>Earned {{ inv.total_earned|money }}</span>
+            <span>Earned {% if inv.earned_display %}{{ inv.earned_display.label }}{% else %}{{ inv.total_earned|money }}{% endif %}</span>
             <span>{{ inv.progress_percent }}%</span>
           </div>
         </a>

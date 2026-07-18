@@ -24,6 +24,14 @@ def home(request):
 @login_required
 def dashboard(request):
     user = request.user
+    from wallets.display import (
+        convert_from_usd,
+        format_amount_for_code,
+        get_currency_meta,
+        get_default_display_code,
+        user_display_context,
+    )
+
     # Soft-refresh live prices (free APIs, cached ~2 min)
     try:
         from core.price_feed import ensure_fresh_prices, get_ticker_snapshot
@@ -33,52 +41,93 @@ def dashboard(request):
         market_ticker = {}
     wallet, _ = Wallet.objects.get_or_create(user=user)
 
+    # Permanent display currency for this user (DB / session / cookie)
+    display_code = get_default_display_code(user, request=request)
+    currency_meta = get_currency_meta(display_code)
+
     active_investments = Investment.objects.filter(user=user, status=Investment.Status.ACTIVE)
     active_count = active_investments.count()
-    active_value = active_investments.aggregate(total=Sum('amount'))['total'] or Decimal('0')
+    # Platform USD-equivalent capital (source of truth)
+    active_value_usd = active_investments.aggregate(total=Sum('amount'))['total'] or Decimal('0')
+    active_capital_display = format_amount_for_code(active_value_usd, display_code)
 
-    pending_deposits = Deposit.objects.filter(
+    pending_qs = Deposit.objects.filter(
         user=user,
         status__in=[Deposit.Status.PENDING, Deposit.Status.WAITING_CONFIRMATION],
-    ).aggregate(total=Sum('amount'), count=Count('id'))
+    ).select_related('cryptocurrency')
+    pending_deposits_count = pending_qs.count()
+    # Convert pending deposits to platform USD, then to display currency
+    pending_usd = Decimal('0')
+    for dep in pending_qs:
+        if getattr(dep, 'credit_amount', None) is not None:
+            pending_usd += Decimal(str(dep.credit_amount))
+            continue
+        amt = Decimal(str(dep.amount or 0))
+        price = getattr(getattr(dep, 'cryptocurrency', None), 'usd_price', None) or Decimal('0')
+        pending_usd += (amt * Decimal(str(price))) if price and price > 0 else amt
+    pending_deposits_display = format_amount_for_code(pending_usd, display_code)
 
     pending_withdrawals = Withdrawal.objects.filter(
         user=user,
         status__in=[Withdrawal.Status.PENDING, Withdrawal.Status.PROCESSING],
     ).aggregate(total=Sum('amount'), count=Count('id'))
+    pending_wd_usd = pending_withdrawals['total'] or Decimal('0')
+    pending_withdrawals_display = format_amount_for_code(pending_wd_usd, display_code)
 
     recent_tx = Transaction.objects.filter(user=user)[:10]
+    # Attach display amounts for list rows (platform USD → selected currency)
+    for tx in recent_tx:
+        # Deposit rows may store crypto units; investment/profit/withdrawal are platform USD
+        if tx.tx_type == Transaction.TxType.DEPOSIT and tx.currency and tx.currency.upper() not in ('USD', ''):
+            # Prefer metadata platform credit when present
+            meta = tx.metadata or {}
+            if meta.get('platform_credit') is not None:
+                tx.amount_display = format_amount_for_code(meta.get('platform_credit'), display_code)
+            else:
+                tx.amount_display = format_amount_for_code(tx.amount, display_code)
+        else:
+            tx.amount_display = format_amount_for_code(tx.amount, display_code)
+
     recent_earnings = Earning.objects.filter(user=user).select_related('investment__plan')[:8]
     notifications = Notification.objects.filter(user=user, is_read=False)[:5]
     plans = InvestmentPlan.objects.filter(status=InvestmentPlan.Status.ACTIVE, is_featured=True)[:3]
     addresses = user.wallet_addresses.select_related('cryptocurrency')[:5]
 
-    # Chart data: last 14 earnings
+    # Chart data in display currency so it matches the rest of the UI
     chart_earnings = list(
         Earning.objects.filter(user=user)
         .order_by('created_at')
         .values_list('created_at', 'amount')[:30]
     )
     chart_labels = [e[0].strftime('%b %d') for e in chart_earnings]
-    chart_values = [float(e[1]) for e in chart_earnings]
+    chart_values = [float(convert_from_usd(e[1], display_code)) for e in chart_earnings]
 
-    # Portfolio composition for pie chart
+    # Portfolio composition (relative shares — use USD for proportions)
     portfolio_labels = ['Available', 'Active Investments', 'Locked']
     portfolio_values = [
         float(wallet.available_balance),
-        float(active_value),
+        float(active_value_usd),
         float(wallet.locked_balance),
     ]
 
+    active_list = list(active_investments.select_related('plan')[:5])
+    for inv in active_list:
+        inv.amount_display = format_amount_for_code(inv.amount, display_code)
+        inv.earned_display = format_amount_for_code(inv.total_earned, display_code)
+
     context = {
         'wallet': wallet,
-        'total_portfolio': wallet.balance + active_value,  # balance already reduced by invest; show capital overview
+        'total_portfolio': wallet.balance + active_value_usd,
         'available_balance': wallet.available_balance,
         'active_investments_count': active_count,
-        'active_investments_value': active_value,
-        'pending_deposits_total': pending_deposits['total'] or 0,
-        'pending_deposits_count': pending_deposits['count'] or 0,
-        'pending_withdrawals_total': pending_withdrawals['total'] or 0,
+        # Raw platform total kept for debugging/API parity; UI must use *_display
+        'active_investments_value': active_value_usd,
+        'active_capital_display': active_capital_display,
+        'pending_deposits_total': pending_usd,
+        'pending_deposits_display': pending_deposits_display,
+        'pending_deposits_count': pending_deposits_count,
+        'pending_withdrawals_total': pending_wd_usd,
+        'pending_withdrawals_display': pending_withdrawals_display,
         'pending_withdrawals_count': pending_withdrawals['count'] or 0,
         'total_profit': wallet.total_profit,
         'referral_earnings': user.referral_earnings,
@@ -91,8 +140,11 @@ def dashboard(request):
         'chart_values': json.dumps(chart_values),
         'portfolio_labels': json.dumps(portfolio_labels),
         'portfolio_values': json.dumps(portfolio_values),
-        'active_investments_list': active_investments.select_related('plan')[:5],
+        'active_investments_list': active_list,
         'market_ticker': market_ticker,
+        'display_currency': display_code,
+        'currency_symbol': currency_meta['symbol'],
+        'currency_decimals': currency_meta['decimals'],
     }
     # Portfolio equity curve + VIP
     try:
@@ -100,21 +152,22 @@ def dashboard(request):
         from core.vip import refresh_user_vip_context
         record_snapshot(user)
         elabels, eequity, eprofit = chart_series(user, days=30)
+        # Convert equity series to display currency for the chart
+        eequity_disp = [float(convert_from_usd(v, display_code)) for v in eequity]
         context['equity_labels'] = json.dumps(elabels)
-        context['equity_values'] = json.dumps(eequity)
+        context['equity_values'] = json.dumps(eequity_disp)
         context['vip_ctx'] = refresh_user_vip_context(user)
     except Exception:
         context['equity_labels'] = '[]'
         context['equity_values'] = '[]'
         context['vip_ctx'] = {}
     # Pending deposit proof of status
-    context['pending_deposit_list'] = Deposit.objects.filter(
-        user=user,
-        status__in=[Deposit.Status.PENDING, Deposit.Status.WAITING_CONFIRMATION],
-    ).select_related('cryptocurrency')[:5]
+    context['pending_deposit_list'] = pending_qs[:5]
     try:
-        from wallets.display import user_display_context
         context.update(user_display_context(user, request=request))
+        # Keep explicit display code from permanent preference (context already matches)
+        context['display_currency'] = display_code
+        context['currency_symbol'] = currency_meta['symbol']
     except Exception:
         pass
     return render(request, 'dashboard/index.html', context)
