@@ -131,7 +131,8 @@
           <input type="hidden" name="next" value="{{ request.get_full_path }}">
           <label class="small text-muted mb-0 me-1" for="top-display-currency">Show in</label>
           <select class="form-select form-select-sm" name="currency" id="top-display-currency"
-                  style="width:auto;min-width:110px" data-currency-select>
+                  style="width:auto;min-width:110px" data-currency-select
+                  onchange="if(!window.setDisplayCurrency){this.form.submit()}">
             {% for o in display_options %}
             <option value="{{ o.code }}" {% if display_currency == o.code %}selected{% endif %}>{{ o.code }}</option>
             {% endfor %}

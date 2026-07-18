@@ -509,20 +509,23 @@
     var body = new URLSearchParams();
     body.set('currency', currency);
     body.set('format', 'json');
+    var token = csrfToken();
     var res = await fetch('/display-currency/', {
       method: 'POST',
       headers: {
         Accept: 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRFToken': csrfToken(),
+        'X-CSRFToken': token,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       credentials: 'same-origin',
       body: body.toString(),
     });
-    var data = await res.json();
-    if (!res.ok || !data.ok) {
-      throw new Error((data && data.error) || 'Could not update currency');
+    var data = null;
+    try { data = await res.json(); } catch (e) { data = null; }
+    if (!res.ok || !data || !data.ok) {
+      var msg = (data && data.error) || ('Could not update currency (' + res.status + ')');
+      throw new Error(msg);
     }
     applyBalancePayload(data);
     if (data.message && window.showToast) {
@@ -531,17 +534,29 @@
     return data;
   };
 
+  function fallbackCurrencyFormSubmit(sel) {
+    // Full page POST — works even if fetch/API fails (e.g. CSRF, static issues)
+    var form = sel && sel.closest('form');
+    if (!form) {
+      form = document.querySelector('form[data-currency-form]');
+    }
+    if (!form) {
+      window.location.href = '/dashboard/?currency=' + encodeURIComponent(sel.value);
+      return;
+    }
+    // Allow native submit (do not preventDefault)
+    if (sel && form.querySelector('[name=currency]') && form.querySelector('[name=currency]') !== sel) {
+      form.querySelector('[name=currency]').value = sel.value;
+    }
+    HTMLFormElement.prototype.submit.call(form);
+  }
+
   (function bindCurrencySelects() {
     document.querySelectorAll('[data-currency-select]').forEach(function (sel) {
       if (sel.dataset.boundCurrency === '1') return;
       sel.dataset.boundCurrency = '1';
       sel.addEventListener('change', function () {
         var currency = sel.value;
-        var form = sel.closest('form');
-        // Prevent full-page form submit — we update live via API
-        if (form) {
-          form.addEventListener('submit', function (e) { e.preventDefault(); }, { once: true });
-        }
         setBalanceStatus('Updating…');
         sel.disabled = true;
         window.setDisplayCurrency(currency)
@@ -550,8 +565,9 @@
             setTimeout(function () { setBalanceStatus(''); }, 1600);
           })
           .catch(function (err) {
-            setBalanceStatus(err.message || 'Failed', true);
-            if (window.showToast) showToast('Currency', err.message || 'Update failed', 'danger');
+            console.warn('Live currency update failed, falling back to page reload', err);
+            setBalanceStatus('Reloading…');
+            fallbackCurrencyFormSubmit(sel);
           })
           .finally(function () {
             sel.disabled = false;
@@ -559,22 +575,23 @@
       });
     });
 
-    // Prevent native form posts for currency forms (fallback if no change event path)
+    // Prefer live update; fall back to full submit on error
     document.querySelectorAll('form[data-currency-form]').forEach(function (form) {
       form.addEventListener('submit', function (e) {
-        e.preventDefault();
         var sel = form.querySelector('[data-currency-select], [name=currency]');
-        if (sel && sel.value) {
-          setBalanceStatus('Updating…');
-          window.setDisplayCurrency(sel.value)
-            .then(function () {
-              setBalanceStatus('Updated');
-              setTimeout(function () { setBalanceStatus(''); }, 1600);
-            })
-            .catch(function (err) {
-              setBalanceStatus(err.message || 'Failed', true);
-            });
-        }
+        if (!sel || !sel.value) return;
+        // If JS live API exists, use it; otherwise allow normal POST
+        if (typeof window.setDisplayCurrency !== 'function') return;
+        e.preventDefault();
+        setBalanceStatus('Updating…');
+        window.setDisplayCurrency(sel.value)
+          .then(function () {
+            setBalanceStatus('Updated');
+            setTimeout(function () { setBalanceStatus(''); }, 1600);
+          })
+          .catch(function () {
+            fallbackCurrencyFormSubmit(sel);
+          });
       });
     });
   })();

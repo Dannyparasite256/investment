@@ -50,7 +50,8 @@
         <input type="hidden" name="next" value="{{ request.get_full_path }}">
         <label class="small text-muted mb-0" for="dash-display-currency">Display currency</label>
         <select class="form-select form-select-sm" name="currency" id="dash-display-currency"
-                style="width:auto;min-width:140px" data-currency-select>
+                style="width:auto;min-width:140px" data-currency-select
+                onchange="if(!window.setDisplayCurrency){this.form.submit()}">
           {% for o in display_options %}
           <option value="{{ o.code }}" {% if display_currency == o.code %}selected{% endif %}>{{ o.label }}</option>
           {% empty %}
