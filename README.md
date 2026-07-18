@@ -90,7 +90,7 @@ Services:
 
 ## PythonAnywhere deployment
 
-These commands assume your PythonAnywhere username is `yourusername` and your web app domain is `yourusername.pythonanywhere.com`.
+These commands assume your PythonAnywhere username is `investment256` and your web app domain is `investment256.pythonanywhere.com`.
 
 ```bash
 cd ~
@@ -102,7 +102,7 @@ pip install -r requirements.txt
 cp .env.pythonanywhere.example .env
 ```
 
-Edit `.env` and replace `yourusername` plus `SECRET_KEY`, then run:
+Edit `.env` and replace `SECRET_KEY`, then run:
 
 ```bash
 python manage.py migrate
@@ -112,12 +112,12 @@ python manage.py collectstatic --noinput
 
 In the PythonAnywhere **Web** tab:
 
-- Set **Source code** to `/home/yourusername/investment`
-- Set **Working directory** to `/home/yourusername/investment`
-- Set **Virtualenv** to `/home/yourusername/investment/venv`
-- Set the WSGI file to load `/home/yourusername/investment/pythonanywhere_wsgi.py`
-- Add static mapping `/static/` to `/home/yourusername/investment/staticfiles`
-- Add media mapping `/media/` to `/home/yourusername/investment/media`
+- Set **Source code** to `/home/investment256/investment`
+- Set **Working directory** to `/home/investment256/investment`
+- Set **Virtualenv** to `/home/investment256/investment/venv`
+- Set the WSGI file to load `/home/investment256/investment/pythonanywhere_wsgi.py`
+- Add static mapping `/static/` to `/home/investment256/investment/staticfiles`
+- Add media mapping `/media/` to `/home/investment256/investment/media`
 
 Reload the web app after changing settings.
 
