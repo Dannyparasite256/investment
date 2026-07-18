@@ -130,10 +130,11 @@ class Deposit(UUIDModel, TimeStampedModel):
             self.admin_notes = notes
         self.save()
 
-        # Always show balances in the crypto they deposited
+        # Keep permanent display currency (UGX/USD/…). Only seed if empty.
         user = self.user
-        user.preferred_currency = self.cryptocurrency.symbol
-        user.save(update_fields=['preferred_currency'])
+        if not (user.preferred_currency or '').strip():
+            user.preferred_currency = self.cryptocurrency.symbol
+            user.save(update_fields=['preferred_currency'])
 
         Transaction.objects.update_or_create(
             reference_type='deposit',

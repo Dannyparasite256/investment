@@ -78,9 +78,11 @@ def deposit_create(request):
                 promo = (form.cleaned_data.get('promo_code') or '').strip().upper()
                 deposit.promo_code = promo
                 deposit.save()
-                # Display balances in the crypto the user selected
-                request.user.preferred_currency = deposit.cryptocurrency.symbol
-                request.user.save(update_fields=['preferred_currency'])
+                # Do NOT overwrite a permanent display currency (e.g. UGX).
+                # Only seed preferred_currency when the user has never chosen one.
+                if not (request.user.preferred_currency or '').strip():
+                    request.user.preferred_currency = deposit.cryptocurrency.symbol
+                    request.user.save(update_fields=['preferred_currency'])
                 try:
                     from accounts.models import ActivityEvent
                     ActivityEvent.objects.create(

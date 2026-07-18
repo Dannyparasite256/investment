@@ -37,7 +37,7 @@ def site_settings(request):
             pass
         try:
             from wallets.display import user_display_context
-            ctx.update(user_display_context(user))
+            ctx.update(user_display_context(user, request=request))
         except Exception:
             ctx['display_currency'] = getattr(user, 'preferred_currency', 'USD') or 'USD'
             ctx['display_options'] = [{'code': 'USD', 'label': 'USD'}]

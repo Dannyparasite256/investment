@@ -114,7 +114,7 @@ def dashboard(request):
     ).select_related('cryptocurrency')[:5]
     try:
         from wallets.display import user_display_context
-        context.update(user_display_context(user))
+        context.update(user_display_context(user, request=request))
     except Exception:
         pass
     return render(request, 'dashboard/index.html', context)
@@ -152,12 +152,16 @@ def _wants_json(request) -> bool:
 @require_POST
 def set_display_currency(request):
     """
-    Switch balance display currency.
+    Permanently switch display currency (DB + session + cookie).
     HTML form → redirect. AJAX/fetch (JSON Accept) → live balance payload.
     """
     from django.contrib import messages as dj_messages
     from django.urls import reverse
-    from wallets.display import build_balance_api_payload, resolve_currency_code
+    from wallets.display import (
+        build_balance_api_payload,
+        persist_display_currency,
+        resolve_currency_code,
+    )
 
     wants_json = _wants_json(request)
     code = (request.POST.get('currency') or '').strip()[:20]
@@ -167,32 +171,44 @@ def set_display_currency(request):
         dj_messages.error(request, 'Please choose a display currency.')
         return redirect(request.META.get('HTTP_REFERER') or reverse('core:dashboard'))
 
-    resolved = resolve_currency_code(request.user, code)
+    resolved = resolve_currency_code(request.user, code, request=request)
     if resolved is None:
         if wants_json:
             return JsonResponse({'ok': False, 'error': 'Invalid display currency.'}, status=400)
         dj_messages.error(request, 'Invalid display currency.')
         return redirect(request.META.get('HTTP_REFERER') or reverse('core:dashboard'))
-    code = resolved
-
-    user = request.user
-    user.preferred_currency = code
-    user.save(update_fields=['preferred_currency'])
 
     if wants_json:
-        payload = build_balance_api_payload(user, code)
-        payload['message'] = f'Balances now shown in {code}.'
-        payload['saved'] = True
-        return JsonResponse(payload)
+        try:
+            persist_display_currency(request.user, resolved, request=request, response=None)
+            payload = build_balance_api_payload(request.user, resolved)
+            payload['currency'] = resolved
+            payload['message'] = f'Display currency saved as {resolved}. This stays after refresh.'
+            payload['saved'] = True
+            payload['permanent'] = True
+            response = JsonResponse(payload)
+            # Cookie must be set on the HTTP response the browser receives
+            persist_display_currency(request.user, resolved, request=request, response=response)
+            return response
+        except ValueError as exc:
+            return JsonResponse({'ok': False, 'error': str(exc)}, status=400)
 
-    dj_messages.success(request, f'Balances now shown in {code}.')
+    try:
+        persist_display_currency(request.user, resolved, request=request, response=None)
+    except ValueError:
+        dj_messages.error(request, 'Invalid display currency.')
+        return redirect(request.META.get('HTTP_REFERER') or reverse('core:dashboard'))
+
+    dj_messages.success(request, f'Display currency saved as {resolved}. It will stay after you refresh.')
     from django.utils.http import url_has_allowed_host_and_scheme
     next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or reverse('core:dashboard')
     if not url_has_allowed_host_and_scheme(
         next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
     ):
         next_url = reverse('core:dashboard')
-    return redirect(next_url)
+    response = redirect(next_url)
+    persist_display_currency(request.user, resolved, request=request, response=response)
+    return response
 
 
 @login_required

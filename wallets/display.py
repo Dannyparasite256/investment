@@ -67,34 +67,71 @@ def is_fiat_code(code: str) -> bool:
         return False
 
 
-def get_default_display_code(user) -> str:
+def _normalize_display_code(code: str) -> str | None:
     """
-    Resolve which currency to show balances in.
-
-    Order:
-    1. Explicit user preference (crypto or fiat, including USD/UGX) when valid
-    2. Last approved deposit crypto
-    3. First active crypto
-    4. USD as last resort
+    Return a canonical display currency code if recognized, else None.
+    Never invent a different currency — callers decide fallbacks.
     """
-    code = (getattr(user, 'preferred_currency', None) or '').strip()
-    if code:
-        upper = code.upper()
-        if is_fiat_code(upper):
-            # Normalize known fiat to canonical upper case
-            if _fiat_rate(upper):
-                try:
-                    from core.models import CurrencyRate
-                    row = CurrencyRate.objects.filter(code__iexact=upper, is_active=True).first()
-                    if row:
-                        return row.code
-                except Exception:
-                    pass
-                return upper
-        crypto = Cryptocurrency.objects.filter(symbol__iexact=code, is_active=True).first()
-        if crypto:
-            return crypto.symbol
+    code = (code or '').strip()
+    if not code:
+        return None
+    upper = code.upper()
+    if upper == 'USD':
+        return 'USD'
+    if is_fiat_code(upper):
+        if _fiat_rate(upper):
+            try:
+                from core.models import CurrencyRate
+                row = CurrencyRate.objects.filter(code__iexact=upper, is_active=True).first()
+                if row:
+                    return row.code
+            except Exception:
+                pass
+            return upper
+    crypto = Cryptocurrency.objects.filter(symbol__iexact=code, is_active=True).first()
+    if crypto:
+        return crypto.symbol
+    # Inactive crypto still stored as preference — keep symbol so it stays permanent
+    crypto_any = Cryptocurrency.objects.filter(symbol__iexact=code).first()
+    if crypto_any:
+        return crypto_any.symbol
+    return None
 
+
+def get_default_display_code(user, request=None) -> str:
+    """
+    Resolve which currency to show balances / investment limits in.
+
+    Permanent order (never silently discard an explicit choice):
+    1. User.preferred_currency (DB — primary permanent store)
+    2. Session `display_currency` (same browser session)
+    3. Cookie `display_currency` (survives browser restarts)
+    4. Last approved deposit crypto (only if user never chose)
+    5. First active crypto / USD
+    """
+    candidates = []
+
+    pref = (getattr(user, 'preferred_currency', None) or '').strip()
+    if pref:
+        candidates.append(pref)
+
+    if request is not None:
+        try:
+            sess = (request.session.get('display_currency') or '').strip()
+            if sess:
+                candidates.append(sess)
+        except Exception:
+            pass
+        cookie = (request.COOKIES.get('display_currency') or '').strip()
+        if cookie:
+            candidates.append(cookie)
+
+    for raw in candidates:
+        resolved = _normalize_display_code(raw)
+        if resolved:
+            return resolved
+
+    # No permanent preference — derive a sensible default (do not treat as user choice yet)
     last = (
         Deposit.objects.filter(user=user, status=Deposit.Status.APPROVED)
         .select_related('cryptocurrency')
@@ -107,6 +144,40 @@ def get_default_display_code(user) -> str:
     if first:
         return first.symbol
     return 'USD'
+
+
+def persist_display_currency(user, code: str, request=None, response=None) -> str:
+    """
+    Permanently save display currency on the user, session, and cookie.
+    Returns the normalized code actually stored.
+    """
+    from django.contrib.auth import get_user_model
+
+    resolved = _normalize_display_code(code) or resolve_currency_code(user, code)
+    if not resolved:
+        raise ValueError('Invalid display currency')
+
+    User = get_user_model()
+    User.objects.filter(pk=user.pk).update(preferred_currency=resolved)
+    user.preferred_currency = resolved
+
+    if request is not None:
+        try:
+            request.session['display_currency'] = resolved
+            request.session.modified = True
+        except Exception:
+            pass
+
+    if response is not None:
+        response.set_cookie(
+            'display_currency',
+            resolved,
+            max_age=60 * 60 * 24 * 400,  # ~13 months
+            samesite='Lax',
+            httponly=False,
+            path='/',
+        )
+    return resolved
 
 
 def get_display_currencies_for_user(user):
@@ -281,9 +352,9 @@ def _format_amount(amount_usd, code: str) -> dict:
     }
 
 
-def format_display(amount_usd, user) -> dict:
-    """Return display payload for templates — uses user's preferred currency."""
-    return _format_amount(amount_usd, get_default_display_code(user))
+def format_display(amount_usd, user, request=None) -> dict:
+    """Return display payload for templates — uses user's permanent preferred currency."""
+    return _format_amount(amount_usd, get_default_display_code(user, request=request))
 
 
 def format_amount_for_code(amount_usd, currency_code: str) -> dict:
@@ -334,30 +405,15 @@ def get_currency_meta(currency_code: str) -> dict:
     }
 
 
-def resolve_currency_code(user, currency: str | None = None) -> str | None:
+def resolve_currency_code(user, currency: str | None = None, request=None) -> str | None:
     """
     Validate an optional currency override.
     Returns normalized code, or None if invalid.
-    Empty/None → user's current default.
+    Empty/None → user's permanent default (DB / session / cookie).
     """
     if currency is None or str(currency).strip() == '':
-        return get_default_display_code(user)
-    code = str(currency).strip()[:20]
-    upper = code.upper()
-    if is_fiat_code(upper):
-        # Prefer DB casing if present
-        try:
-            from core.models import CurrencyRate
-            row = CurrencyRate.objects.filter(code__iexact=upper, is_active=True).first()
-            if row:
-                return row.code
-        except Exception:
-            pass
-        return upper if upper in FIAT_DEFAULTS or _fiat_rate(upper) else None
-    crypto = Cryptocurrency.objects.filter(symbol__iexact=code, is_active=True).first()
-    if not crypto:
-        return None
-    return crypto.symbol
+        return get_default_display_code(user, request=request)
+    return _normalize_display_code(str(currency).strip()[:20])
 
 
 def build_balance_api_payload(user, currency: str | None = None) -> dict:
@@ -449,7 +505,7 @@ def build_balance_api_payload(user, currency: str | None = None) -> dict:
     }
 
 
-def user_display_context(user):
+def user_display_context(user, request=None):
     wallet, _ = Wallet.objects.get_or_create(user=user)
     try:
         from django.contrib.auth import get_user_model
@@ -460,13 +516,26 @@ def user_display_context(user):
     except Exception:
         pass
 
-    code = get_default_display_code(user)
+    code = get_default_display_code(user, request=request)
 
-    if not (user.preferred_currency or '').strip() and code:
+    # If user has an explicit preference, never auto-overwrite it with deposit crypto.
+    # Only seed preferred_currency when it is still empty (first visit).
+    has_pref = bool((user.preferred_currency or '').strip())
+    if not has_pref and code:
         try:
             from django.contrib.auth import get_user_model
             get_user_model().objects.filter(pk=user.pk).update(preferred_currency=code)
             user.preferred_currency = code
+            has_pref = True
+        except Exception:
+            pass
+
+    # Keep session in sync with permanent preference so refresh always hits the same code
+    if request is not None and code:
+        try:
+            if request.session.get('display_currency') != code:
+                request.session['display_currency'] = code
+                request.session.modified = True
         except Exception:
             pass
 
@@ -493,12 +562,22 @@ def user_display_context(user):
                     'usd_price': _rate,
                     'kind': 'fiat',
                 })
+            else:
+                options.insert(0, {
+                    'code': code,
+                    'label': code,
+                    'symbol': code,
+                    'usd_price': Decimal('1'),
+                    'kind': 'other',
+                })
     return {
         'display_currency': code,
         'display_options': options,
-        'bal_display': format_display(wallet.balance, user),
-        'available_display': format_display(wallet.available_balance, user),
-        'profit_display': format_display(wallet.total_profit, user),
-        'locked_display': format_display(wallet.locked_balance, user),
-        'referral_display': format_display(user.referral_earnings, user),
+        'bal_display': format_amount_for_code(wallet.balance, code),
+        'available_display': format_amount_for_code(wallet.available_balance, code),
+        'profit_display': format_amount_for_code(wallet.total_profit, code),
+        'locked_display': format_amount_for_code(wallet.locked_balance, code),
+        'referral_display': format_amount_for_code(
+            getattr(user, 'referral_earnings', 0) or 0, code
+        ),
     }

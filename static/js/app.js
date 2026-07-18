@@ -529,10 +529,23 @@
       var msg = (data && data.error) || ('Could not update currency (' + res.status + ')');
       throw new Error(msg);
     }
+    var saved = data.currency || currency;
+    // Permanent client backup (survives refresh; server also stores on user + cookie)
+    try { localStorage.setItem('display_currency', saved); } catch (e) {}
+    try {
+      document.cookie = 'display_currency=' + encodeURIComponent(saved)
+        + ';path=/;max-age=34560000;samesite=lax';
+    } catch (e) {}
+
     applyBalancePayload(data);
     if (data.message && window.showToast) {
       showToast('Currency', data.message, 'success');
     }
+
+    // Full reload so investments min/max and every server-rendered amount use the saved currency
+    setTimeout(function () {
+      window.location.reload();
+    }, 350);
     return data;
   };
 

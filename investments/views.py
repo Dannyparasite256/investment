@@ -15,15 +15,19 @@ from wallets.display import (
 from wallets.models import Wallet
 
 
-def _user_currency(user) -> str:
+def _user_currency(user, request=None) -> str:
     if user is not None and getattr(user, 'is_authenticated', False):
-        return get_default_display_code(user)
+        return get_default_display_code(user, request=request)
+    if request is not None:
+        cookie = (request.COOKIES.get('display_currency') or '').strip()
+        if cookie:
+            return cookie.upper() if len(cookie) <= 12 else cookie
     return 'USD'
 
 
-def _invest_display_context(user, plan=None, wallet=None):
-    """Amounts formatted in the user's selected display currency."""
-    code = _user_currency(user)
+def _invest_display_context(user, plan=None, wallet=None, request=None):
+    """Amounts formatted in the user's permanent display currency."""
+    code = _user_currency(user, request=request)
     meta = get_currency_meta(code)
     ctx = {
         'display_currency': code,
@@ -51,7 +55,7 @@ def plan_list(request):
     plans = list(InvestmentPlan.objects.filter(
         status__in=[InvestmentPlan.Status.ACTIVE, InvestmentPlan.Status.COMING_SOON]
     ))
-    code = _user_currency(request.user)
+    code = _user_currency(request.user, request=request)
     _attach_plan_display(plans, code)
     featured = [p for p in plans if p.is_featured]
     return render(request, 'investments/plan_list.html', {
@@ -64,7 +68,7 @@ def plan_list(request):
 
 def plan_detail(request, slug):
     plan = get_object_or_404(InvestmentPlan, slug=slug)
-    code = _user_currency(request.user)
+    code = _user_currency(request.user, request=request)
     form = InvestForm(plan=plan, currency_code=code) if request.user.is_authenticated else None
     wallet = None
     if request.user.is_authenticated:
@@ -74,7 +78,7 @@ def plan_detail(request, slug):
         'form': form,
         'wallet': wallet,
     }
-    ctx.update(_invest_display_context(request.user, plan=plan, wallet=wallet))
+    ctx.update(_invest_display_context(request.user, plan=plan, wallet=wallet, request=request))
     return render(request, 'investments/plan_detail.html', ctx)
 
 
@@ -82,7 +86,7 @@ def plan_detail(request, slug):
 @require_http_methods(['GET', 'POST'])
 def invest(request, slug):
     plan = get_object_or_404(InvestmentPlan, slug=slug, status=InvestmentPlan.Status.ACTIVE)
-    code = _user_currency(request.user)
+    code = _user_currency(request.user, request=request)
     form = InvestForm(plan=plan, currency_code=code, data=request.POST or None)
     wallet, _ = Wallet.objects.get_or_create(user=request.user)
     if request.method == 'POST' and form.is_valid():
@@ -104,7 +108,7 @@ def invest(request, slug):
         'form': form,
         'wallet': wallet,
     }
-    ctx.update(_invest_display_context(request.user, plan=plan, wallet=wallet))
+    ctx.update(_invest_display_context(request.user, plan=plan, wallet=wallet, request=request))
     return render(request, 'investments/invest.html', ctx)
 
 
@@ -115,7 +119,7 @@ def my_investments(request):
     if status:
         qs = qs.filter(status=status)
     page = Paginator(qs, 12).get_page(request.GET.get('page'))
-    code = _user_currency(request.user)
+    code = _user_currency(request.user, request=request)
     # Attach display payloads for template (avoid heavy logic in HTML)
     for inv in page:
         inv.amount_display = format_amount_for_code(inv.amount, code)
@@ -132,7 +136,7 @@ def my_investments(request):
 def investment_detail(request, pk):
     inv = get_object_or_404(Investment, pk=pk, user=request.user)
     earnings = inv.earnings.all()[:50]
-    code = _user_currency(request.user)
+    code = _user_currency(request.user, request=request)
     for e in earnings:
         e.amount_display = format_amount_for_code(e.amount, code)
     return render(request, 'investments/detail.html', {
@@ -162,7 +166,7 @@ def reinvest_view(request, pk):
 def earnings_history(request):
     qs = Earning.objects.filter(user=request.user).select_related('investment', 'investment__plan')
     page = Paginator(qs, 20).get_page(request.GET.get('page'))
-    code = _user_currency(request.user)
+    code = _user_currency(request.user, request=request)
     for e in page:
         e.amount_display = format_amount_for_code(e.amount, code)
     return render(request, 'investments/earnings.html', {
@@ -174,7 +178,7 @@ def earnings_history(request):
 
 def calculator(request):
     plans = InvestmentPlan.objects.filter(status=InvestmentPlan.Status.ACTIVE)
-    code = _user_currency(request.user)
+    code = _user_currency(request.user, request=request)
     meta = get_currency_meta(code)
     plans_js = []
     for p in plans:

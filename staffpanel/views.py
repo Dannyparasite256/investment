@@ -211,10 +211,11 @@ def deposit_approve(request, pk):
             )
         except Exception:
             pass
-        # Display currency always follows the crypto they deposited
+        # Do not wipe permanent display currency (e.g. UGX) on approve
         try:
-            dep.user.preferred_currency = dep.cryptocurrency.symbol
-            dep.user.save(update_fields=['preferred_currency'])
+            if not (dep.user.preferred_currency or '').strip():
+                dep.user.preferred_currency = dep.cryptocurrency.symbol
+                dep.user.save(update_fields=['preferred_currency'])
         except Exception:
             pass
         create_audit_log(
