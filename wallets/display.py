@@ -286,6 +286,54 @@ def format_display(amount_usd, user) -> dict:
     return _format_amount(amount_usd, get_default_display_code(user))
 
 
+def format_amount_for_code(amount_usd, currency_code: str) -> dict:
+    """Format a platform USD-equivalent amount in an explicit currency code."""
+    code = (currency_code or 'USD').strip() or 'USD'
+    return _format_amount(amount_usd, code)
+
+
+def get_currency_meta(currency_code: str) -> dict:
+    """
+    Metadata for a display currency: code, symbol, decimal places, unit rate to USD.
+    """
+    code = (currency_code or 'USD').strip() or 'USD'
+    upper = code.upper()
+    if upper == 'USD':
+        return {
+            'code': 'USD',
+            'symbol': 'USD',
+            'decimals': 2,
+            'rate_to_usd': Decimal('1'),
+            'kind': 'fiat',
+        }
+    fiat = _fiat_rate(code)
+    if fiat:
+        rate, meta = fiat
+        return {
+            'code': upper,
+            'symbol': meta.get('symbol') or upper,
+            'decimals': int(meta.get('decimals', 2)),
+            'rate_to_usd': rate,
+            'kind': 'fiat',
+        }
+    crypto = resolve_display_crypto(code)
+    if crypto:
+        return {
+            'code': crypto.symbol,
+            'symbol': crypto.symbol,
+            'decimals': min(8, crypto.decimals or 8),
+            'rate_to_usd': Decimal(str(crypto.usd_price or 1)),
+            'kind': 'crypto',
+        }
+    return {
+        'code': 'USD',
+        'symbol': 'USD',
+        'decimals': 2,
+        'rate_to_usd': Decimal('1'),
+        'kind': 'fiat',
+    }
+
+
 def resolve_currency_code(user, currency: str | None = None) -> str | None:
     """
     Validate an optional currency override.

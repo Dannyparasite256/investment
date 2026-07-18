@@ -1286,6 +1286,21 @@ h3 { font-size: 1.35rem; }
 /* Quick action strip */
 .quick-actions .btn { min-height: 44px; }
 
+/* Currency input groups (invest / calc) */
+.input-group .form-control {
+  min-width: 0;
+}
+.input-group-text {
+  background: var(--ci-bg-input);
+  border: 1px solid var(--ci-border);
+  color: var(--ci-text-muted);
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.input-group .form-control:focus {
+  z-index: 3;
+}
+
 /* Balance hero card */
 .balance-hero {
   background:

@@ -2,7 +2,7 @@
 {% load humanize %}
 {% block title %}Investment Plans — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}Investment Plans{% endblock %}
-{% block page_subtitle %}Compare rates, duration, and risk side by side{% endblock %}
+{% block page_subtitle %}Compare rates, duration, and risk · limits in {{ currency_symbol|default:display_currency|default:"USD" }}{% endblock %}
 
 {% block content %}
 <div class="filter-bar mb-3">
@@ -10,6 +10,9 @@
   <button type="button" class="btn btn-sm btn-ghost" id="view-table">Compare table</button>
   <a href="{% url 'core:risk_quiz' %}" class="btn btn-ghost btn-sm">Risk quiz</a>
   <a href="{% url 'investments:calculator' %}" class="btn btn-outline-ci btn-sm">Calculator</a>
+  {% if currency_symbol %}
+  <span class="badge badge-status badge-info align-self-center">Showing {{ currency_symbol }}</span>
+  {% endif %}
 </div>
 
 <div id="plans-compare" class="glass-card p-0 overflow-hidden mb-4 d-none">
@@ -19,7 +22,8 @@
         <tr>
           <th>Plan</th>
           <th>Return</th>
-          <th>Min</th>
+          <th>Min ({{ currency_symbol|default:"USD" }})</th>
+          <th>Max ({{ currency_symbol|default:"USD" }})</th>
           <th>Duration</th>
           <th>Payout</th>
           <th>Risk</th>
@@ -31,7 +35,8 @@
         <tr>
           <td class="fw-semibold">{{ plan.name }}{% if plan.is_featured %} <span class="badge badge-featured">Featured</span>{% endif %}</td>
           <td class="font-mono">{{ plan.expected_return_display }}</td>
-          <td class="font-mono">{{ plan.min_deposit|money:2 }}</td>
+          <td class="font-mono">{{ plan.min_display.label }}</td>
+          <td class="font-mono">{{ plan.max_display.label }}</td>
           <td>{{ plan.duration_days }}d</td>
           <td class="small">{{ plan.get_payout_frequency_display }}</td>
           <td><span class="risk-{{ plan.risk_level }}">{{ plan.get_risk_level_display }}</span></td>
@@ -40,7 +45,7 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7" class="text-center text-muted py-4">No plans</td></tr>
+        <tr><td colspan="8" class="text-center text-muted py-4">No plans</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -64,9 +69,15 @@
         <div class="plan-return">{{ plan.expected_return_display }}</div>
         <div class="text-muted small mb-3">Expected return range</div>
         <div class="row g-2 small mb-3">
-          <div class="col-6"><span class="text-muted">Min</span><br><strong class="font-mono">{{ plan.min_deposit|money:2 }}</strong></div>
+          <div class="col-6">
+            <span class="text-muted">Min</span><br>
+            <strong class="font-mono">{{ plan.min_display.label }}</strong>
+          </div>
+          <div class="col-6">
+            <span class="text-muted">Max</span><br>
+            <strong class="font-mono">{{ plan.max_display.label }}</strong>
+          </div>
           <div class="col-6"><span class="text-muted">Duration</span><br><strong>{{ plan.duration_days }} days</strong></div>
-          <div class="col-6"><span class="text-muted">Payout</span><br><strong>{{ plan.get_payout_frequency_display }}</strong></div>
           <div class="col-6"><span class="text-muted">Risk</span><br><strong class="risk-{{ plan.risk_level }}">{{ plan.get_risk_level_display }}</strong></div>
         </div>
         <a href="{% url 'investments:plan_detail' plan.slug %}" class="btn btn-ci mt-auto">View plan</a>
@@ -86,7 +97,14 @@
       <h5>{{ plan.name }}</h5>
       <p class="text-muted small">{{ plan.short_description|truncatechars:90 }}</p>
       <div class="plan-return mb-1">{{ plan.expected_return_display }}</div>
-      <div class="text-muted small mb-3">{{ plan.get_payout_frequency_display }} · {{ plan.duration_days }}d</div>
+      <div class="text-muted small mb-2">{{ plan.get_payout_frequency_display }} · {{ plan.duration_days }}d</div>
+      <div class="small mb-3">
+        <span class="text-muted">Min</span>
+        <strong class="font-mono">{{ plan.min_display.label }}</strong>
+        <span class="text-muted mx-1">·</span>
+        <span class="text-muted">Max</span>
+        <strong class="font-mono">{{ plan.max_display.label }}</strong>
+      </div>
       <a href="{% url 'investments:plan_detail' plan.slug %}" class="btn btn-outline-ci mt-auto {% if plan.status != 'active' %}disabled{% endif %}">
         {% if plan.status == 'active' %}Invest{% else %}Details{% endif %}
       </a>

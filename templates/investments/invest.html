@@ -1,27 +1,48 @@
 {% extends "base_app.html" %}
 {% block title %}Invest in {{ plan.name }} — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}Invest{% endblock %}
-{% block page_subtitle %}{{ plan.name }}{% endblock %}
+{% block page_subtitle %}{{ plan.name }} · amounts in {{ currency_symbol|default:display_currency|default:"USD" }}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-lg-6">
     <div class="glass-card p-4">
-      <div class="d-flex justify-content-between mb-4">
+      <div class="d-flex justify-content-between mb-4 flex-wrap gap-2">
         <div>
           <h5 class="mb-1">{{ plan.name }}</h5>
           <span class="text-muted small">{{ plan.profit_rate_percent }}% per {{ plan.get_payout_frequency_display|lower }} · {{ plan.duration_days }} days</span>
         </div>
         <span class="badge badge-status badge-active">{{ plan.get_risk_level_display }}</span>
       </div>
-      <p class="small mb-3">Available: <strong class="font-mono text-profit">{{ wallet.available_balance|money:2 }}</strong></p>
+
+      <div class="alert glass-card border-0 small mb-3" style="border-left:3px solid var(--ci-primary) !important">
+        <i class="bi bi-currency-exchange me-1"></i>
+        Enter the amount in <strong>{{ currency_symbol|default:display_currency }}</strong>
+        (your selected display currency). Min / max below use the same unit.
+      </div>
+
+      <p class="small mb-3">
+        Available:
+        <strong class="font-mono text-profit">
+          {% if available_display %}{{ available_display.label }}{% else %}{{ wallet.available_balance|money:2 }}{% endif %}
+        </strong>
+      </p>
       <form method="post" id="invest-form">
         {% csrf_token %}
         <div class="mb-3">
-          <label class="form-label" for="invest-amount">Amount</label>
-          {{ form.amount }}
+          <label class="form-label" for="invest-amount">
+            Amount
+            <span class="badge badge-status badge-info ms-1">{{ currency_symbol|default:display_currency }}</span>
+          </label>
+          <div class="input-group">
+            {{ form.amount }}
+            <span class="input-group-text">{{ currency_symbol|default:display_currency }}</span>
+          </div>
           {% for e in form.amount.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
-          <div class="form-text">Min {{ plan.min_deposit|money:2 }} · Max {{ plan.max_deposit|money:2 }}</div>
+          <div class="form-text">
+            Min <strong class="font-mono">{% if min_display %}{{ min_display.label }}{% else %}{{ plan.min_deposit|money:2 }}{% endif %}</strong>
+            · Max <strong class="font-mono">{% if max_display %}{{ max_display.label }}{% else %}{{ plan.max_deposit|money:2 }}{% endif %}</strong>
+          </div>
         </div>
         {% if plan.duration_flexible %}
         <div class="mb-3">
@@ -40,7 +61,7 @@
         <div class="glass-card p-3 mb-4 bg-elevated">
           <div class="d-flex justify-content-between small mb-1">
             <span class="text-muted">Est. profit / period</span>
-            <span class="font-mono" id="est-profit">0.00</span>
+            <span class="font-mono" id="est-profit">0 {{ currency_symbol }}</span>
           </div>
           <div class="d-flex justify-content-between small mb-1">
             <span class="text-muted">Periods</span>
@@ -48,11 +69,11 @@
           </div>
           <div class="d-flex justify-content-between small mb-1">
             <span class="text-muted">You lock</span>
-            <span class="font-mono" id="est-lock">0.00</span>
+            <span class="font-mono" id="est-lock">0 {{ currency_symbol }}</span>
           </div>
           <div class="d-flex justify-content-between small">
             <span class="text-muted">Est. total profit</span>
-            <span class="font-mono text-profit" id="est-total">0.00</span>
+            <span class="font-mono text-profit" id="est-total">0 {{ currency_symbol }}</span>
           </div>
         </div>
         <div class="form-sticky-actions">
@@ -82,11 +103,16 @@
   var durationDays = "{{ plan.duration_days }}";
   var payoutLabel = "{{ plan.get_payout_frequency_display|escapejs }}";
   var rateLabel = "{{ plan.profit_rate_percent }}";
+  var currencySymbol = "{{ currency_symbol|default:display_currency|default:'USD'|escapejs }}";
+  var currencyDecimals = parseInt('{{ currency_decimals|default:2 }}', 10);
+  if (isNaN(currencyDecimals)) currencyDecimals = 2;
 
   function money(n) {
     n = Number(n) || 0;
-    if (typeof formatMoney === 'function') return formatMoney(n, 4);
-    return n.toFixed(4);
+    var formatted;
+    if (typeof formatMoney === 'function') formatted = formatMoney(n, currencyDecimals);
+    else formatted = n.toFixed(Math.min(currencyDecimals, 8));
+    return formatted + ' ' + currencySymbol;
   }
 
   function getAmount() {
@@ -150,7 +176,6 @@
 
     document.body.appendChild(overlay);
 
-    // Safe text assignment (avoids HTML injection / broken quotes)
     var strongPlan = overlay.querySelector('.invest-confirm-body p strong');
     if (strongPlan) strongPlan.textContent = planName;
     var elAmt = overlay.querySelector('[data-cfm="amount"]');
@@ -175,7 +200,6 @@
       btn.disabled = true;
       btn.textContent = 'Submitting…';
       if (!form) return;
-      // Native submit works with CSRF hidden input
       HTMLFormElement.prototype.submit.call(form);
     });
 
@@ -186,7 +210,6 @@
       }
     });
 
-    // Focus primary action for accessibility
     setTimeout(function () {
       var go = overlay.querySelector('.invest-confirm-go');
       if (go) go.focus();

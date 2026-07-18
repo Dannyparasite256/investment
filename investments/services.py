@@ -40,9 +40,15 @@ def create_investment(user, plan: InvestmentPlan, amount, auto_reinvest=False, d
 
     amount = quantize_amount(amount)
     if amount < plan.min_deposit:
-        raise ValueError(f'Minimum deposit is {plan.min_deposit}')
+        raise ValueError(
+            f'Minimum investment for this plan is {plan.min_deposit} (platform units). '
+            f'Increase the amount in your selected display currency.'
+        )
     if amount > plan.max_deposit:
-        raise ValueError(f'Maximum deposit is {plan.max_deposit}')
+        raise ValueError(
+            f'Maximum investment for this plan is {plan.max_deposit} (platform units). '
+            f'Lower the amount in your selected display currency.'
+        )
 
     if plan.max_investments_per_user:
         active_count = Investment.objects.filter(

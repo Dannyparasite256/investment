@@ -1,6 +1,7 @@
 {% extends "base_app.html" %}
 {% block title %}{{ plan.name }} — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}{{ plan.name }}{% endblock %}
+{% block page_subtitle %}Limits in {{ currency_symbol|default:display_currency|default:"USD" }}{% endblock %}
 
 {% block content %}
 <div class="row g-4">
@@ -33,7 +34,18 @@
     <div class="glass-card p-4">
       <h6 class="mb-3">Plan rules</h6>
       <table class="table table-ci">
-        <tr><td class="text-muted">Min / Max deposit</td><td class="font-mono text-end">{{ plan.min_deposit|money:2 }} – {{ plan.max_deposit|money:2 }}</td></tr>
+        <tr>
+          <td class="text-muted">Min / Max invest
+            <span class="badge badge-status badge-info ms-1">{{ currency_symbol|default:display_currency|default:"USD" }}</span>
+          </td>
+          <td class="font-mono text-end">
+            {% if min_display and max_display %}
+              {{ min_display.formatted }} – {{ max_display.formatted }} {{ currency_symbol|default:display_currency }}
+            {% else %}
+              {{ plan.min_deposit|money:2 }} – {{ plan.max_deposit|money:2 }}
+            {% endif %}
+          </td>
+        </tr>
         <tr><td class="text-muted">Profit method</td><td class="text-end">{{ plan.get_profit_method_display }}</td></tr>
         <tr><td class="text-muted">Payout frequency</td><td class="text-end">{{ plan.get_payout_frequency_display }}</td></tr>
         <tr><td class="text-muted">Risk level</td><td class="text-end risk-{{ plan.risk_level }}">{{ plan.get_risk_level_display }}</td></tr>
@@ -47,7 +59,16 @@
     <div class="glass-card p-4 sticky-top" style="top:80px">
       {% if plan.is_available and user.is_authenticated %}
       <h5 class="mb-3">Start investing</h5>
-      <p class="small text-muted">Available balance: <strong class="font-mono">{{ wallet.available_balance|money:2 }}</strong></p>
+      <p class="small text-muted mb-1">Available balance</p>
+      <p class="font-mono fw-semibold mb-3">
+        {% if available_display %}{{ available_display.label }}{% else %}{{ wallet.available_balance|money:2 }}{% endif %}
+      </p>
+      <p class="small text-muted mb-3">
+        Invest between
+        <strong class="font-mono">{% if min_display %}{{ min_display.label }}{% endif %}</strong>
+        and
+        <strong class="font-mono">{% if max_display %}{{ max_display.label }}{% endif %}</strong>
+      </p>
       <a href="{% url 'investments:invest' plan.slug %}" class="btn btn-ci w-100 mb-2">Invest now</a>
       {% elif not user.is_authenticated %}
       <p class="text-muted">Log in to invest in this plan.</p>
