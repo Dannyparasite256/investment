@@ -88,6 +88,41 @@ Services:
 
 ---
 
+## PythonAnywhere deployment
+
+These commands assume your PythonAnywhere username is `yourusername` and your web app domain is `yourusername.pythonanywhere.com`.
+
+```bash
+cd ~
+git clone https://github.com/Dannyparasite256/investment.git
+cd investment
+python3.12 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.pythonanywhere.example .env
+```
+
+Edit `.env` and replace `yourusername` plus `SECRET_KEY`, then run:
+
+```bash
+python manage.py migrate
+python manage.py seed_platform
+python manage.py collectstatic --noinput
+```
+
+In the PythonAnywhere **Web** tab:
+
+- Set **Source code** to `/home/yourusername/investment`
+- Set **Working directory** to `/home/yourusername/investment`
+- Set **Virtualenv** to `/home/yourusername/investment/venv`
+- Set the WSGI file to load `/home/yourusername/investment/pythonanywhere_wsgi.py`
+- Add static mapping `/static/` to `/home/yourusername/investment/staticfiles`
+- Add media mapping `/media/` to `/home/yourusername/investment/media`
+
+Reload the web app after changing settings.
+
+---
+
 ## Environment variables
 
 See `.env.example`. Important keys:
