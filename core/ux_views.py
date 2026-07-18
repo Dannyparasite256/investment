@@ -285,6 +285,23 @@ def fee_preview_api(request):
     })
 
 
+@require_GET
+def live_prices_api(request):
+    """
+    Public-ish JSON ticker for the UI (login not required for market chips,
+    but rate-limited by cache). Refreshes from free APIs when stale.
+    """
+    from core.price_feed import get_ticker_snapshot, refresh_all_prices
+
+    if request.GET.get('refresh') == '1':
+        try:
+            refresh_all_prices(force=True)
+        except Exception:
+            pass
+    tick = get_ticker_snapshot()
+    return JsonResponse({'ok': True, **tick})
+
+
 @login_required
 @require_GET
 def command_palette_data(request):

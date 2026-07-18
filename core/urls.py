@@ -29,6 +29,7 @@ urlpatterns = [
     path('statements/', ux_views.statement_export, name='statements'),
     path('risk-quiz/', ux_views.risk_questionnaire, name='risk_quiz'),
     path('api/fee-preview/', ux_views.fee_preview_api, name='fee_preview'),
+    path('api/prices/', ux_views.live_prices_api, name='live_prices'),
     path('api/command-palette/', ux_views.command_palette_data, name='command_palette'),
     path('receipts/deposit/<uuid:pk>/', ux_views.deposit_receipt, name='deposit_receipt'),
     path('receipts/withdrawal/<uuid:pk>/', ux_views.withdraw_receipt, name='withdraw_receipt'),

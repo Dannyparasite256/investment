@@ -17,6 +17,15 @@ def daily_portfolio_snapshots():
 
 
 @shared_task
+def update_market_prices():
+    """Refresh crypto + fiat prices from free public APIs."""
+    from core.price_feed import refresh_all_prices
+    result = refresh_all_prices(force=True)
+    logger.info('Price feed: %s', result)
+    return result
+
+
+@shared_task
 def daily_admin_digest():
     from django.contrib.auth import get_user_model
     from transactions.models import Deposit, Withdrawal

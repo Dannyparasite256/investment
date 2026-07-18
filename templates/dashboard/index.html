@@ -72,14 +72,23 @@
   </div>
 </div>
 
-{# Market pulse + VIP strip #}
+{# Market pulse + VIP strip — live free API prices #}
 <div class="row g-3 mb-3">
   <div class="col-lg-8">
-    <div class="glass-card p-3 market-pulse d-flex flex-wrap gap-2 align-items-center">
-      <span class="small text-muted me-1"><i class="bi bi-broadcast-pin"></i> Markets</span>
-      <a href="{% url 'markets:overview' %}" class="pulse-chip"><span class="pulse-dot"></span>BTC <strong class="font-mono">$95k</strong></a>
-      <a href="{% url 'markets:overview' %}" class="pulse-chip"><span class="pulse-dot"></span>ETH <strong class="font-mono">$3.5k</strong></a>
-      <a href="{% url 'markets:overview' %}" class="pulse-chip">EUR/USD</a>
+    <div class="glass-card p-3 market-pulse d-flex flex-wrap gap-2 align-items-center" id="market-pulse" data-live-prices>
+      <span class="small text-muted me-1"><i class="bi bi-broadcast-pin"></i> Live</span>
+      <a href="{% url 'markets:overview' %}" class="pulse-chip" data-price-chip="BTC">
+        <span class="pulse-dot"></span>BTC <strong class="font-mono" data-price-val="BTC">${{ market_ticker.prices.BTC|default:"—" }}</strong>
+      </a>
+      <a href="{% url 'markets:overview' %}" class="pulse-chip" data-price-chip="ETH">
+        <span class="pulse-dot"></span>ETH <strong class="font-mono" data-price-val="ETH">${{ market_ticker.prices.ETH|default:"—" }}</strong>
+      </a>
+      <a href="{% url 'markets:overview' %}" class="pulse-chip" data-price-chip="BNB">
+        <span class="pulse-dot"></span>BNB <strong class="font-mono" data-price-val="BNB">${{ market_ticker.prices.BNB|default:"—" }}</strong>
+      </a>
+      <span class="small text-muted d-none d-md-inline" data-price-updated>
+        {% if market_ticker.source %}via {{ market_ticker.source }}{% endif %}
+      </span>
       <a href="{% url 'markets:chart' %}" class="btn btn-ghost btn-sm ms-auto">Open charts</a>
     </div>
   </div>
@@ -317,6 +326,32 @@
   document.addEventListener('DOMContentLoaded', function () {
     initEarningsChart('earningsChart', {{ chart_labels|safe }}, {{ chart_values|safe }});
     initPortfolioChart('portfolioChart', {{ portfolio_labels|safe }}, {{ portfolio_values|safe }});
+
+    // Live market pulse from free API (poll every 60s)
+    function fmtUsd(n) {
+      n = parseFloat(n);
+      if (isNaN(n)) return '—';
+      if (n >= 1000) return '$' + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+      if (n >= 1) return '$' + n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      return '$' + n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+    }
+    function applyTicker(data) {
+      var prices = (data && data.prices) || {};
+      document.querySelectorAll('[data-price-val]').forEach(function (el) {
+        var key = el.getAttribute('data-price-val');
+        if (prices[key] != null) el.textContent = fmtUsd(prices[key]);
+      });
+      var meta = document.querySelector('[data-price-updated]');
+      if (meta && data.source) meta.textContent = 'via ' + data.source;
+    }
+    function loadPrices() {
+      fetch('/api/prices/', { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (d && d.ok) applyTicker(d); })
+        .catch(function () {});
+    }
+    loadPrices();
+    setInterval(loadPrices, 60000);
   });
 </script>
 {% endblock %}

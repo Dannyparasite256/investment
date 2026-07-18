@@ -319,6 +319,13 @@ def build_balance_api_payload(user, currency: str | None = None) -> dict:
     from investments.models import Investment
     from transactions.models import Deposit
 
+    # Soft-refresh free market prices so conversions stay current
+    try:
+        from core.price_feed import ensure_fresh_prices
+        ensure_fresh_prices()
+    except Exception:
+        pass
+
     code = resolve_currency_code(user, currency)
     if code is None:
         return {'ok': False, 'error': 'Invalid display currency.'}

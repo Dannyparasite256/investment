@@ -24,6 +24,13 @@ def home(request):
 @login_required
 def dashboard(request):
     user = request.user
+    # Soft-refresh live prices (free APIs, cached ~2 min)
+    try:
+        from core.price_feed import ensure_fresh_prices, get_ticker_snapshot
+        ensure_fresh_prices()
+        market_ticker = get_ticker_snapshot()
+    except Exception:
+        market_ticker = {}
     wallet, _ = Wallet.objects.get_or_create(user=user)
 
     active_investments = Investment.objects.filter(user=user, status=Investment.Status.ACTIVE)
@@ -85,6 +92,7 @@ def dashboard(request):
         'portfolio_labels': json.dumps(portfolio_labels),
         'portfolio_values': json.dumps(portfolio_values),
         'active_investments_list': active_investments.select_related('plan')[:5],
+        'market_ticker': market_ticker,
     }
     # Portfolio equity curve + VIP
     try:
