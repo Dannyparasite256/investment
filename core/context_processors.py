@@ -32,7 +32,8 @@ def site_settings(request):
         ctx['show_tour'] = not getattr(user, 'tour_completed', True)
         try:
             from core.vip import get_user_tier
-            ctx['user_vip_tier'] = get_user_tier(user)
+            tier = get_user_tier(user)
+            ctx['user_vip_tier'] = tier
         except Exception:
             pass
         try:

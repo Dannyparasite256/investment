@@ -1,5 +1,5 @@
 {% extends "base_app.html" %}
-{% load humanize %}
+{% load humanize static %}
 
 {% block title %}Dashboard — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
@@ -101,20 +101,31 @@
     </div>
   </div>
   <div class="col-lg-4">
-    <a href="{% url 'core:vip' %}" class="glass-card p-3 d-block text-decoration-none h-100">
-      <div class="d-flex justify-content-between align-items-center mb-1">
-        <span class="small text-muted">VIP progress</span>
-        <span class="badge badge-featured">{% if vip_ctx.tier %}{{ vip_ctx.tier.name }}{% else %}Starter{% endif %}</span>
-      </div>
-      <div class="progress-ci mb-1" style="height:8px">
-        <div class="bar" style="width:{{ vip_ctx.vip_progress_pct|default:0 }}%"></div>
-      </div>
-      <div class="small text-muted">
-        {% if vip_ctx.next_tier %}
-        {{ vip_ctx.vip_remaining }} to {{ vip_ctx.next_tier.name }}
-        {% else %}
-        Top tier{% if vip_ctx.tier %} — {{ vip_ctx.tier.name }}{% endif %}
-        {% endif %}
+    <a href="{% url 'core:vip' %}" class="glass-card p-3 d-block text-decoration-none h-100 vip-dash-card">
+      <div class="d-flex align-items-center gap-3">
+        <div class="vip-sticker vip-sticker--dash vip-sticker--{{ vip_ctx.sticker_key|default:'starter' }}">
+          <img src="{% static vip_ctx.sticker_path|default:'img/vip/starter.svg' %}"
+               alt="VIP badge" width="64" height="64" class="vip-sticker-img" loading="lazy">
+        </div>
+        <div class="min-w-0 flex-grow-1">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small text-muted">VIP progress</span>
+            <span class="badge badge-featured">
+              {{ vip_ctx.sticker_emoji|default:'⭐' }}
+              {% if vip_ctx.tier %}{{ vip_ctx.tier.name }}{% else %}Starter{% endif %}
+            </span>
+          </div>
+          <div class="progress-ci mb-1" style="height:8px">
+            <div class="bar" style="width:{{ vip_ctx.vip_progress_pct|default:0 }}%"></div>
+          </div>
+          <div class="small text-muted text-truncate">
+            {% if vip_ctx.next_tier %}
+            {{ vip_ctx.vip_remaining|money:0 }} to {{ vip_ctx.next_tier.name }}
+            {% else %}
+            Top tier{% if vip_ctx.tier %} — {{ vip_ctx.tier.name }}{% endif %}
+            {% endif %}
+          </div>
+        </div>
       </div>
     </a>
   </div>

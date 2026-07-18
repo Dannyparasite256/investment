@@ -7,6 +7,88 @@ from core.platform_models import VIPTier
 from core.utils import quantize_amount
 from wallets.models import Wallet
 
+# Animated sticker assets (SVG with SMIL animation — plays like a sticker/gif)
+TIER_STICKERS = {
+    'starter': 'img/vip/starter.svg',
+    'bronze': 'img/vip/bronze.svg',
+    'silver': 'img/vip/silver.svg',
+    'gold': 'img/vip/gold.svg',
+    'platinum': 'img/vip/platinum.svg',
+    'diamond': 'img/vip/diamond.svg',
+    'elite': 'img/vip/diamond.svg',
+    'legend': 'img/vip/diamond.svg',
+}
+
+TIER_EMOJIS = {
+    'starter': '⭐',
+    'bronze': '🥉',
+    'silver': '🥈',
+    'gold': '🥇',
+    'platinum': '💎',
+    'diamond': '👑',
+    'elite': '👑',
+    'legend': '👑',
+}
+
+TIER_TAGLINES = {
+    'starter': 'Begin your climb',
+    'bronze': 'Solid foundation',
+    'silver': 'Rising star',
+    'gold': 'Premium member',
+    'platinum': 'Elite status',
+    'diamond': 'Legendary',
+}
+
+
+def tier_sticker_key(tier) -> str:
+    """Map a VIPTier (or name/slug string) to a sticker key."""
+    if tier is None:
+        return 'starter'
+    slug = (getattr(tier, 'slug', None) or '').strip().lower()
+    name = (getattr(tier, 'name', None) or str(tier) or '').strip().lower()
+    for key in TIER_STICKERS:
+        if key in slug or key in name:
+            return key
+    # Heuristic by sort / invest floor
+    try:
+        m = Decimal(str(getattr(tier, 'min_total_invested', 0) or 0))
+        if m >= 50000:
+            return 'platinum'
+        if m >= 10000:
+            return 'gold'
+        if m >= 1000:
+            return 'silver'
+        if m > 0:
+            return 'bronze'
+    except Exception:
+        pass
+    return 'bronze'
+
+
+def tier_sticker_static(tier) -> str:
+    """Relative static path for the animated tier sticker."""
+    return TIER_STICKERS.get(tier_sticker_key(tier), TIER_STICKERS['starter'])
+
+
+def tier_emoji(tier) -> str:
+    return TIER_EMOJIS.get(tier_sticker_key(tier), '⭐')
+
+
+def tier_tagline(tier) -> str:
+    return TIER_TAGLINES.get(tier_sticker_key(tier), 'VIP member')
+
+
+def decorate_tier(tier):
+    """Attach sticker metadata on a VIPTier instance for templates."""
+    if tier is None:
+        return None
+    key = tier_sticker_key(tier)
+    tier.sticker_key = key
+    tier.sticker_path = TIER_STICKERS.get(key, TIER_STICKERS['starter'])
+    tier.sticker_emoji = TIER_EMOJIS.get(key, '⭐')
+    tier.sticker_tagline = TIER_TAGLINES.get(key, 'VIP member')
+    return tier
+
 
 def user_total_invested(user) -> Decimal:
     wallet, _ = Wallet.objects.get_or_create(user=user)
@@ -19,7 +101,7 @@ def user_total_invested(user) -> Decimal:
 
 
 def get_user_tier(user):
-    return VIPTier.for_amount(user_total_invested(user))
+    return decorate_tier(VIPTier.for_amount(user_total_invested(user)))
 
 
 def apply_deposit_fee(user, amount) -> tuple:
@@ -45,7 +127,7 @@ def refresh_user_vip_context(user):
     from core.platform_models import VIPTier
     tier = get_user_tier(user)
     total = user_total_invested(user)
-    next_tier = (
+    next_tier = decorate_tier(
         VIPTier.objects.filter(is_active=True, min_total_invested__gt=total)
         .order_by('min_total_invested')
         .first()
@@ -64,4 +146,7 @@ def refresh_user_vip_context(user):
         'next_tier': next_tier,
         'vip_progress_pct': progress_pct,
         'vip_remaining': remaining,
+        'sticker_path': tier_sticker_static(tier) if tier else TIER_STICKERS['starter'],
+        'sticker_emoji': tier_emoji(tier) if tier else '⭐',
+        'sticker_key': tier_sticker_key(tier) if tier else 'starter',
     }

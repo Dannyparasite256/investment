@@ -3188,3 +3188,263 @@ body::after { opacity: 0.018; }
   background: rgba(99, 102, 241, 0.35);
   color: #fff;
 }
+
+/* ==========================================================================
+   VIP animated stickers / tier cards
+   ========================================================================== */
+
+.vip-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 1.5rem 1.75rem !important;
+  border-radius: 22px;
+}
+
+.vip-hero-glow {
+  position: absolute;
+  inset: -40% -20% auto auto;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--tier-color, #6366F1) 45%, transparent), transparent 70%);
+  pointer-events: none;
+  animation: vipGlowPulse 3s ease-in-out infinite;
+}
+
+@keyframes vipGlowPulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+.vip-sticker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.35));
+}
+
+.vip-sticker-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  pointer-events: none;
+  animation: vipStickerFloat 3.2s ease-in-out infinite;
+}
+
+.vip-sticker--hero .vip-sticker-img {
+  width: 132px;
+  height: 132px;
+}
+
+.vip-sticker--card .vip-sticker-img {
+  width: 108px;
+  height: 108px;
+}
+
+.vip-sticker--dash .vip-sticker-img {
+  width: 64px;
+  height: 64px;
+  animation-duration: 2.6s;
+}
+
+@keyframes vipStickerFloat {
+  0%, 100% { transform: translateY(0) rotate(-2deg) scale(1); }
+  50% { transform: translateY(-8px) rotate(2deg) scale(1.04); }
+}
+
+/* Sparkles around hero sticker */
+.vip-sticker-spark {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 10px #fff, 0 0 18px var(--tier-color, #a78bfa);
+  animation: vipSpark 1.6s ease-in-out infinite;
+}
+.vip-sticker-spark.s1 { top: 8%; right: 12%; animation-delay: 0s; }
+.vip-sticker-spark.s2 { bottom: 18%; left: 8%; animation-delay: 0.45s; width: 6px; height: 6px; }
+.vip-sticker-spark.s3 { top: 40%; right: 0; animation-delay: 0.9s; width: 5px; height: 5px; }
+
+@keyframes vipSpark {
+  0%, 100% { opacity: 0; transform: scale(0.4); }
+  40% { opacity: 1; transform: scale(1.2); }
+  70% { opacity: 0.3; transform: scale(0.8); }
+}
+
+/* Tier cards */
+.vip-tier-card {
+  position: relative;
+  overflow: hidden;
+  padding: 1.25rem 1rem 1.15rem !important;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--tier-color, #6366F1) 28%, var(--ci-border));
+  transition: transform 0.25s var(--ci-ease), box-shadow 0.25s var(--ci-ease), border-color 0.25s;
+  animation: vipCardIn 0.55s var(--ci-ease) both;
+  animation-delay: calc(var(--tier-delay, 0) * 0.08s);
+}
+
+@keyframes vipCardIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.vip-tier-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.28), 0 0 0 1px color-mix(in srgb, var(--tier-color) 40%, transparent);
+  border-color: color-mix(in srgb, var(--tier-color) 55%, transparent);
+}
+
+.vip-tier-card.is-current {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tier-color) 50%, transparent),
+              0 16px 40px color-mix(in srgb, var(--tier-color) 22%, transparent);
+}
+
+.vip-tier-card.is-locked {
+  opacity: 0.72;
+  filter: saturate(0.75);
+}
+
+.vip-tier-card.is-locked .vip-sticker-img {
+  filter: grayscale(0.35);
+}
+
+.vip-tier-card-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(125deg, transparent 30%, color-mix(in srgb, var(--tier-color) 14%, transparent) 48%, transparent 62%);
+  background-size: 200% 200%;
+  animation: vipShine 4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes vipShine {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.vip-you-badge,
+.vip-lock-badge,
+.vip-unlocked-badge {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 2;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
+.vip-you-badge {
+  background: color-mix(in srgb, var(--tier-color) 25%, transparent);
+  color: var(--tier-color);
+  border: 1px solid color-mix(in srgb, var(--tier-color) 45%, transparent);
+}
+
+.vip-lock-badge {
+  background: rgba(100, 116, 139, 0.2);
+  color: var(--ci-text-muted);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.vip-unlocked-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34D399;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.vip-tier-name {
+  font-weight: 750;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.vip-tier-threshold {
+  color: var(--ci-text-muted);
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  display: inline-block;
+  width: 100%;
+}
+
+.vip-perks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.vip-perks li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--ci-text-muted);
+  padding: 0.35rem 0.5rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.vip-perks li i {
+  color: var(--tier-color);
+  opacity: 0.9;
+}
+
+.vip-fun-strip {
+  border-radius: 16px;
+}
+
+.vip-bounce-emoji {
+  font-size: 1.75rem;
+  display: inline-block;
+  animation: vipBounce 1.4s ease-in-out infinite;
+}
+
+@keyframes vipBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.vip-dash-card:hover {
+  border-color: rgba(167, 139, 250, 0.35);
+}
+
+.vip-progress-bar {
+  transition: width 0.8s var(--ci-ease);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .vip-sticker-img,
+  .vip-sticker-spark,
+  .vip-tier-card-shine,
+  .vip-hero-glow,
+  .vip-bounce-emoji,
+  .vip-tier-card {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .vip-sticker--hero .vip-sticker-img {
+    width: 104px;
+    height: 104px;
+  }
+  .vip-sticker--card .vip-sticker-img {
+    width: 88px;
+    height: 88px;
+  }
+}

@@ -40,9 +40,11 @@ def portfolio_performance(request):
 
 @login_required
 def vip_status(request):
-    ctx = refresh_user_vip_context(request.user)
     from core.platform_models import VIPTier
-    tiers = list(VIPTier.objects.filter(is_active=True))
+    from core.vip import decorate_tier, refresh_user_vip_context
+
+    ctx = refresh_user_vip_context(request.user)
+    tiers = [decorate_tier(t) for t in VIPTier.objects.filter(is_active=True)]
     return render(request, 'core/vip_status.html', {
         **ctx,
         'tiers': tiers,

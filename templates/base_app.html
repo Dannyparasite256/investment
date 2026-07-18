@@ -126,7 +126,8 @@
       </div>
       <div class="topbar-right">
         {% if user_vip_tier %}
-        <a href="{% url 'core:vip' %}" class="badge badge-featured d-none d-xl-inline-flex text-decoration-none" style="background:{{ user_vip_tier.badge_color }}33;color:{{ user_vip_tier.badge_color }}">
+        <a href="{% url 'core:vip' %}" class="badge badge-featured d-none d-xl-inline-flex text-decoration-none align-items-center gap-1" style="background:{{ user_vip_tier.badge_color }}33;color:{{ user_vip_tier.badge_color }}">
+          <span aria-hidden="true">{% if user_vip_tier.sticker_emoji %}{{ user_vip_tier.sticker_emoji }}{% else %}🏅{% endif %}</span>
           {{ user_vip_tier.name }}
         </a>
         {% endif %}

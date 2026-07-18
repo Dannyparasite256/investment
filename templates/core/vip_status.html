@@ -1,45 +1,98 @@
 {% extends "base_app.html" %}
+{% load static %}
 {% block title %}VIP — {{ SITE_NAME }}{% endblock %}
-{% block page_title %}VIP status{% endblock %}
-{% block page_subtitle %}Unlock lower fees and referral boosts{% endblock %}
+{% block page_title %}VIP Lounge{% endblock %}
+{% block page_subtitle %}Animated tiers · lower fees · referral boosts{% endblock %}
 
 {% block content %}
-<div class="glass-card p-4 mb-4 balance-hero">
-  <div class="row align-items-center g-3">
-    <div class="col-md-7">
-      <div class="stat-label mb-2">Your tier</div>
-      <div class="display-6 fw-bold" style="color:{% if tier %}{{ tier.badge_color }}{% else %}var(--ci-primary-bright){% endif %}">
-        {% if tier %}{{ tier.name }}{% else %}Starter{% endif %}
+{# ── Hero: your current tier ── #}
+<div class="glass-card vip-hero mb-4 animate-in">
+  <div class="vip-hero-glow" style="--tier-color:{% if tier %}{{ tier.badge_color }}{% else %}#6366F1{% endif %}"></div>
+  <div class="row align-items-center g-4 position-relative">
+    <div class="col-auto text-center">
+      <div class="vip-sticker vip-sticker--hero vip-sticker--{{ sticker_key|default:'starter' }}">
+        <img src="{% static sticker_path|default:'img/vip/starter.svg' %}"
+             alt="{% if tier %}{{ tier.name }}{% else %}Starter{% endif %} badge"
+             width="140" height="140" class="vip-sticker-img"
+             loading="eager">
+        <span class="vip-sticker-spark s1"></span>
+        <span class="vip-sticker-spark s2"></span>
+        <span class="vip-sticker-spark s3"></span>
       </div>
-      <p class="text-muted mb-0">Total invested (lifetime): <strong class="font-mono">{{ total_invested|money:2 }}</strong></p>
     </div>
-    <div class="col-md-5">
-      {% if next_tier %}
-      <div class="small text-muted mb-1">Progress to {{ next_tier.name }}</div>
-      <div class="progress-ci mb-2" style="height:10px">
-        <div class="bar" style="width:{{ progress_pct }}%"></div>
+    <div class="col">
+      <div class="stat-label mb-2">Your tier</div>
+      <div class="display-6 fw-bold mb-1" style="color:{% if tier %}{{ tier.badge_color }}{% else %}var(--ci-primary-bright){% endif %}">
+        {% if tier %}{{ tier.sticker_emoji }} {{ tier.name }}{% else %}⭐ Starter{% endif %}
       </div>
-      <div class="small">Deposit/invest <strong class="font-mono">{{ remaining|money:2 }}</strong> more to unlock {{ next_tier.name }}</div>
+      <p class="text-muted mb-2">
+        {% if tier %}{{ tier.sticker_tagline }}{% else %}Begin your climb{% endif %}
+        · Lifetime invested
+        <strong class="font-mono">{{ total_invested|money:2 }}</strong>
+      </p>
+      {% if next_tier %}
+      <div class="small text-muted mb-1">
+        Progress to <strong style="color:{{ next_tier.badge_color }}">{{ next_tier.sticker_emoji }} {{ next_tier.name }}</strong>
+      </div>
+      <div class="progress-ci mb-2" style="height:12px;max-width:420px">
+        <div class="bar vip-progress-bar" style="width:{{ progress_pct }}%;background:linear-gradient(90deg,{{ tier.badge_color|default:'#6366F1' }},{{ next_tier.badge_color }})"></div>
+      </div>
+      <div class="small">
+        Invest <strong class="font-mono">{{ remaining|money:2 }}</strong> more to unlock {{ next_tier.name }}
+      </div>
       {% else %}
-      <div class="badge badge-featured">Top tier reached</div>
+      <div class="badge badge-featured mt-1">🏆 Top tier unlocked</div>
       {% endif %}
     </div>
   </div>
 </div>
 
-<div class="row g-3">
+{# ── Tier gallery ── #}
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+  <div>
+    <h5 class="mb-0">All tiers</h5>
+    <small class="text-muted">Collect badges as your portfolio grows</small>
+  </div>
+</div>
+
+<div class="row g-3 g-lg-4 vip-tier-grid">
   {% for t in tiers %}
-  <div class="col-md-6 col-xl-3">
-    <div class="glass-card p-3 h-100 {% if tier and t.pk == tier.pk %}border border-ci{% endif %}" style="border-color:{{ t.badge_color }}55 !important">
-      <div class="d-flex justify-content-between mb-2">
-        <strong style="color:{{ t.badge_color }}">{{ t.name }}</strong>
-        {% if tier and t.pk == tier.pk %}<span class="badge badge-status badge-active">You</span>{% endif %}
+  <div class="col-6 col-md-6 col-xl-3">
+    <div class="vip-tier-card glass-card h-100 {% if tier and t.pk == tier.pk %}is-current{% endif %} {% if tier and t.min_total_invested > total_invested %}is-locked{% endif %}"
+         style="--tier-color:{{ t.badge_color }};--tier-delay:{{ forloop.counter0 }}">
+      <div class="vip-tier-card-shine"></div>
+
+      {% if tier and t.pk == tier.pk %}
+      <span class="vip-you-badge">You</span>
+      {% elif tier and t.min_total_invested > total_invested %}
+      <span class="vip-lock-badge"><i class="bi bi-lock-fill"></i></span>
+      {% else %}
+      <span class="vip-unlocked-badge"><i class="bi bi-check-lg"></i></span>
+      {% endif %}
+
+      <div class="vip-sticker vip-sticker--card vip-sticker--{{ t.sticker_key }}">
+        <img src="{% static t.sticker_path %}"
+             alt="{{ t.name }} animated badge"
+             width="112" height="112"
+             class="vip-sticker-img"
+             loading="lazy">
       </div>
-      <div class="small text-muted mb-2">From <span class="font-mono">{{ t.min_total_invested }}</span> invested</div>
-      <ul class="small text-muted mb-0 ps-3">
-        <li>Deposit fee {{ t.deposit_fee_percent }}%</li>
-        <li>Withdraw fee {{ t.withdrawal_fee_percent }}%</li>
-        <li>Referral boost +{{ t.referral_bonus_boost }}%</li>
+
+      <div class="text-center mt-2 mb-2">
+        <div class="vip-tier-name" style="color:{{ t.badge_color }}">
+          {{ t.sticker_emoji }} {{ t.name }}
+        </div>
+        <div class="small text-muted">{{ t.sticker_tagline }}</div>
+      </div>
+
+      <div class="vip-tier-threshold font-mono small text-center mb-3">
+        From {{ t.min_total_invested|money:0 }} invested
+      </div>
+
+      <ul class="vip-perks small mb-0">
+        <li><i class="bi bi-download"></i> Deposit fee <strong>{{ t.deposit_fee_percent }}%</strong></li>
+        <li><i class="bi bi-upload"></i> Withdraw fee <strong>{{ t.withdrawal_fee_percent }}%</strong></li>
+        <li><i class="bi bi-people"></i> Referral +<strong>{{ t.referral_bonus_boost }}%</strong></li>
       </ul>
     </div>
   </div>
@@ -51,5 +104,19 @@
     </div>
   </div>
   {% endfor %}
+</div>
+
+{# Fun strip #}
+<div class="glass-card p-3 mt-4 vip-fun-strip">
+  <div class="d-flex flex-wrap align-items-center gap-3 justify-content-between">
+    <div class="d-flex align-items-center gap-2">
+      <span class="vip-bounce-emoji">🚀</span>
+      <div>
+        <strong class="small">Level up your badge</strong>
+        <div class="small text-muted">Invest more capital to unlock the next animated sticker and better fees.</div>
+      </div>
+    </div>
+    <a href="{% url 'investments:plans' %}" class="btn btn-ci btn-sm">Browse plans</a>
+  </div>
 </div>
 {% endblock %}

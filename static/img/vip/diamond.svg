@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="dMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E0F2FE"/>
+      <stop offset="40%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0369A1"/>
+    </linearGradient>
+    <radialGradient id="dGlow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#7DD3FC" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0EA5E9" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="94" fill="url(#dGlow)">
+    <animate attributeName="r" values="88;100;88" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+  <g>
+    <animateTransform attributeName="transform" type="rotate" values="-6 100 100;6 100 100;-6 100 100" dur="2s" repeatCount="indefinite"/>
+    <path d="M100 18 L140 40 L166 78 L166 122 L140 160 L100 182 L60 160 L34 122 L34 78 Z" fill="url(#dMetal)" stroke="#F0F9FF" stroke-width="3"/>
+    <circle cx="100" cy="100" r="44" fill="#0C1A2A" stroke="#E0F2FE" stroke-width="3"/>
+    <text x="100" y="116" text-anchor="middle" font-size="42">👑</text>
+  </g>
+  <circle cx="100" cy="100" r="84" fill="none" stroke="#7DD3FC" stroke-width="2" stroke-dasharray="3 7">
+    <animateTransform attributeName="transform" type="rotate" from="0 100 100" to="360 100 100" dur="5s" repeatCount="indefinite"/>
+  </circle>
+</svg>

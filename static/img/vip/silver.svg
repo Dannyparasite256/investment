@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="siMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="40%" stop-color="#C0C7D1"/>
+      <stop offset="100%" stop-color="#6B7280"/>
+    </linearGradient>
+    <radialGradient id="siGlow" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#E5E7EB" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#9CA3AF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="90" fill="url(#siGlow)">
+    <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <g>
+    <animateTransform attributeName="transform" type="rotate" values="-3 100 100;3 100 100;-3 100 100" dur="2.8s" repeatCount="indefinite"/>
+    <path d="M100 26 L130 46 L152 76 L152 124 L130 154 L100 174 L70 154 L48 124 L48 76 Z" fill="url(#siMetal)" stroke="#F8FAFC" stroke-width="2.5"/>
+    <circle cx="100" cy="100" r="40" fill="#111827" stroke="#F1F5F9" stroke-width="2.5"/>
+    <text x="100" y="114" text-anchor="middle" font-size="42">🥈</text>
+  </g>
+  <!-- sparkles -->
+  <circle cx="48" cy="56" r="3" fill="#fff">
+    <animate attributeName="opacity" values="0;1;0" dur="1.6s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="152" cy="64" r="2.5" fill="#fff">
+    <animate attributeName="opacity" values="0;1;0" dur="1.8s" begin="0.4s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="156" cy="130" r="3" fill="#fff">
+    <animate attributeName="opacity" values="0;1;0" dur="1.5s" begin="0.8s" repeatCount="indefinite"/>
+  </circle>
+</svg>
