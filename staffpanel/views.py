@@ -659,23 +659,50 @@ def referrals_admin(request):
         User.objects.filter(referral_earnings__gt=0)
         .order_by('-referral_earnings')[:20]
     )
-    if request.method == 'POST' and program:
-        program.commission_percent = Decimal(request.POST.get('commission_percent') or program.commission_percent)
-        program.commission_on = request.POST.get('commission_on') or program.commission_on
-        program.is_active = request.POST.get('is_active') == 'on'
-        program.save()
-        messages.success(request, 'Referral program updated.')
+    if request.method == 'POST':
+        pct = Decimal(request.POST.get('commission_percent') or (program.commission_percent if program else '5'))
+        commission_on = request.POST.get('commission_on') or 'deposit'
+        is_active = request.POST.get('is_active') == 'on'
+        l2 = Decimal(request.POST.get('level2_percent') or (program.level2_percent if program else '0'))
+        l3 = Decimal(request.POST.get('level3_percent') or (program.level3_percent if program else '0'))
+        max_levels = int(request.POST.get('max_levels') or (program.max_levels if program else 1))
+        max_levels = max(1, min(3, max_levels))
+        min_dep = Decimal(request.POST.get('min_deposit_for_commission') or (program.min_deposit_for_commission if program else '0'))
+        if program:
+            program.commission_percent = pct
+            program.level1_percent = pct  # always apply on deposit
+            program.level2_percent = l2
+            program.level3_percent = l3
+            program.max_levels = max_levels
+            program.min_deposit_for_commission = min_dep
+            program.commission_on = commission_on
+            program.is_active = is_active
+            program.save()
+            messages.success(
+                request,
+                f'Referral program updated — Level 1 commission is now {pct}% on every {commission_on}.',
+            )
+        else:
+            ReferralProgram.objects.create(
+                name='Standard Referral',
+                commission_percent=pct,
+                level1_percent=pct,
+                level2_percent=l2,
+                level3_percent=l3,
+                max_levels=max_levels,
+                min_deposit_for_commission=min_dep,
+                commission_on=commission_on,
+                is_active=is_active,
+            )
+            messages.success(request, f'Referral program created at {pct}%.')
         return redirect('staffpanel:referrals')
-    if request.method == 'POST' and not program:
-        ReferralProgram.objects.create(
-            commission_percent=Decimal(request.POST.get('commission_percent') or '5'),
-            commission_on=request.POST.get('commission_on') or 'deposit',
-            is_active=True,
-        )
-        messages.success(request, 'Referral program created.')
-        return redirect('staffpanel:referrals')
+    from referrals.services import get_program_rates
+    live = get_program_rates(program)
     return render(request, 'staffpanel/referrals.html', {
-        'program': program, 'commissions': commissions, 'leaders': leaders,
+        'program': program,
+        'commissions': commissions,
+        'leaders': leaders,
+        'live_rates': live,
     })
 
 

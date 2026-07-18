@@ -43,9 +43,15 @@ class ReferralProgram(TimeStampedModel):
     def __str__(self):
         return f'{self.name} ({self.commission_percent}%)'
 
+    def save(self, *args, **kwargs):
+        # Keep L1 in sync with the staff-facing commission % so deposits always use the latest rate
+        if self.commission_percent is not None:
+            self.level1_percent = self.commission_percent
+        super().save(*args, **kwargs)
+
     @classmethod
     def get_active(cls):
-        return cls.objects.filter(is_active=True).order_by('-created_at').first()
+        return cls.objects.filter(is_active=True).order_by('-updated_at', '-created_at').first()
 
 
 class ReferralCommission(UUIDModel, TimeStampedModel):

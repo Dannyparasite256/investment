@@ -161,6 +161,21 @@ class Deposit(UUIDModel, TimeStampedModel):
                 },
             },
         )
+        # Pay referrers using the *current* active commission % (idempotent)
+        try:
+            from referrals.services import process_referral_commission
+            process_referral_commission(
+                self.user,
+                credit,
+                source='deposit',
+                reference_type='deposit',
+                reference_id=self.id,
+            )
+        except Exception:
+            import logging
+            logging.getLogger('transactions').exception(
+                'Referral commission failed for deposit %s', self.id,
+            )
         return self
 
     @transaction.atomic

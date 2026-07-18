@@ -15,6 +15,8 @@ User = get_user_model()
 def dashboard(request):
     user = request.user
     program = ReferralProgram.get_active()
+    from referrals.services import get_program_rates
+    live = get_program_rates(program)
     referred = user.referrals.all().order_by('-date_joined')
     commissions = ReferralCommission.objects.filter(referrer=user).select_related('referred_user')
     stats = {
@@ -26,7 +28,10 @@ def dashboard(request):
         'paid': commissions.filter(status=ReferralCommission.Status.PAID).aggregate(
             t=Sum('amount')
         )['t'] or 0,
-        'rate': program.commission_percent if program else 5,
+        'rate': live['rates'][1],
+        'rate_l2': live['rates'][2],
+        'rate_l3': live['rates'][3],
+        'pays_on': live['source'],
     }
     referral_link = request.build_absolute_uri(
         reverse('accounts:register') + f'?ref={user.referral_code}'
