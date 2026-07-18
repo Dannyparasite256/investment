@@ -43,11 +43,10 @@
   </div>
   {% empty %}
   <div class="col-12">
-    <div class="empty-state glass-card">
-      <i class="bi bi-briefcase"></i>
-      <p>No investments yet. Start with a plan that matches your risk profile.</p>
-      <div class="d-flex gap-2 justify-content-center flex-wrap">
-        <a href="{% url 'investments:plans' %}" class="btn btn-ci btn-sm">Browse plans</a>
+    <div class="empty-state glass-card p-4">
+      {% url 'investments:plans' as plans_url %}
+      {% include "partials/ui_sticker.html" with kind="invest" size="lg" title="No investments yet" text="Start with a plan that matches your risk profile and grow your capital." cta_url=plans_url cta_label="Browse plans" %}
+      <div class="d-flex gap-2 justify-content-center flex-wrap mt-2">
         <a href="{% url 'core:risk_quiz' %}" class="btn btn-outline-ci btn-sm">Risk quiz</a>
         <a href="{% url 'transactions:deposit_create' %}" class="btn btn-ghost btn-sm">Deposit first</a>
       </div>

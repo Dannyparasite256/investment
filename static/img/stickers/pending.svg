@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="pG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FBBF24"/><stop offset="100%" stop-color="#F59E0B"/></linearGradient>
+    <radialGradient id="pGlow" cx="50%" cy="45%" r="55%"><stop offset="0%" stop-color="#FDE68A" stop-opacity="0.55"/><stop offset="100%" stop-opacity="0"/></radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="88" fill="url(#pGlow)"><animate attributeName="opacity" values="0.4;1;0.4" dur="1.8s" repeatCount="indefinite"/></circle>
+  <ellipse cx="100" cy="58" rx="42" ry="14" fill="#3B2A0A" stroke="url(#pG)" stroke-width="3"/>
+  <path d="M62 58 C62 58 70 100 100 100 C130 100 138 58 138 58" fill="#2A1F0A" stroke="url(#pG)" stroke-width="3"/>
+  <ellipse cx="100" cy="142" rx="42" ry="14" fill="#3B2A0A" stroke="url(#pG)" stroke-width="3"/>
+  <path d="M62 142 C62 142 70 100 100 100 C130 100 138 142 138 142" fill="#2A1F0A" stroke="url(#pG)" stroke-width="3"/>
+  <circle cx="100" cy="100" r="8" fill="#FBBF24">
+    <animateTransform attributeName="transform" type="rotate" from="0 100 100" to="360 100 100" dur="2.5s" repeatCount="indefinite"/>
+    <animate attributeName="cy" values="78;122;78" dur="2.5s" repeatCount="indefinite"/>
+  </circle>
+</svg>

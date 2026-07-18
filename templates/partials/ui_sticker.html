@@ -1,0 +1,30 @@
+{% load static %}
+{#
+  Reusable animated sticker block.
+  kinds: deposit withdraw invest pending success empty kyc profit referral rejected notification
+  Example:
+    {% include "partials/ui_sticker.html" with kind="pending" title="Under review" text="Usually 1–24h" size="md" %}
+#}
+{% with k=kind|default:"empty" %}
+{% with path="img/stickers/"|add:k|add:".svg" %}
+<div class="ui-sticker-block ui-sticker-block--{{ size|default:'md' }} {% if compact %}ui-sticker-block--compact{% endif %} {{ extra_class|default:'' }}">
+  <div class="ui-sticker ui-sticker--{{ k }}">
+    <img src="{% static path %}"
+         alt="{{ title|default:k }}"
+         class="ui-sticker-img"
+         width="{% if size == 'lg' %}128{% elif size == 'sm' %}56{% else %}88{% endif %}"
+         height="{% if size == 'lg' %}128{% elif size == 'sm' %}56{% else %}88{% endif %}"
+         loading="lazy">
+  </div>
+  {% if title or text or cta_url %}
+  <div class="ui-sticker-copy">
+    {% if title %}<div class="ui-sticker-title">{{ title }}</div>{% endif %}
+    {% if text %}<p class="ui-sticker-text">{{ text }}</p>{% endif %}
+    {% if cta_url %}
+    <a href="{{ cta_url }}" class="btn btn-ci btn-sm mt-2">{{ cta_label|default:"Continue" }}</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endwith %}
+{% endwith %}

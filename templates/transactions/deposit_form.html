@@ -4,6 +4,9 @@
 {% block page_subtitle %}Amount is in the crypto you select — not USD{% endblock %}
 
 {% block content %}
+<div class="ui-flow-hero glass-card p-3 mb-3">
+  {% include "partials/ui_sticker.html" with kind="deposit" size="sm" compact=1 title="Fund your wallet" text="Send crypto, submit the TxID, and we credit after approval." %}
+</div>
 <div class="row g-4">
   <div class="col-lg-6">
     <div class="glass-card p-4">

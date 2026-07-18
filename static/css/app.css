@@ -3448,3 +3448,129 @@ body::after { opacity: 0.018; }
     height: 88px;
   }
 }
+
+/* ==========================================================================
+   Platform UI stickers (deposit / withdraw / invest / pending / empty …)
+   ========================================================================== */
+
+.ui-sticker-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+}
+
+.ui-sticker-block--compact {
+  flex-direction: row;
+  text-align: left;
+  gap: 0.85rem;
+  align-items: center;
+  padding: 0;
+}
+
+.ui-sticker-block--compact .ui-sticker-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-sticker {
+  position: relative;
+  display: inline-flex;
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.28));
+}
+
+.ui-sticker-img {
+  display: block;
+  width: 88px;
+  height: 88px;
+  animation: uiStickerBob 2.8s ease-in-out infinite;
+  user-select: none;
+  pointer-events: none;
+}
+
+.ui-sticker-block--sm .ui-sticker-img { width: 56px; height: 56px; }
+.ui-sticker-block--lg .ui-sticker-img { width: 120px; height: 120px; }
+.ui-sticker-block--compact .ui-sticker-img { width: 64px; height: 64px; }
+
+@keyframes uiStickerBob {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.03); }
+}
+
+.ui-sticker-title {
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+  color: var(--ci-text);
+}
+
+.ui-sticker-text {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--ci-text-muted);
+  max-width: 28rem;
+  line-height: 1.45;
+}
+
+/* Empty states upgraded with stickers */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.empty-state .ui-sticker-block {
+  padding-bottom: 0.25rem;
+}
+
+/* Inline status row (detail pages) */
+.ui-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  border-radius: 16px;
+  border: 1px solid var(--ci-border);
+  background: rgba(255, 255, 255, 0.03);
+  margin-bottom: 1rem;
+}
+
+.ui-status-banner.is-pending {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.ui-status-banner.is-success {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.ui-status-banner.is-rejected {
+  border-color: rgba(244, 63, 94, 0.35);
+  background: rgba(244, 63, 94, 0.06);
+}
+
+.ui-status-banner .ui-sticker-img {
+  width: 56px;
+  height: 56px;
+}
+
+/* Form page hero strip */
+.ui-flow-hero {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ui-flow-hero .ui-sticker-img {
+  width: 72px;
+  height: 72px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-sticker-img { animation: none !important; }
+}

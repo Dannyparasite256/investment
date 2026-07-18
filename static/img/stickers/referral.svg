@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="rG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#A78BFA"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient>
+    <radialGradient id="rGlow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#C4B5FD" stop-opacity="0.45"/><stop offset="100%" stop-opacity="0"/></radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="88" fill="url(#rGlow)"><animate attributeName="opacity" values="0.4;0.95;0.4" dur="2s" repeatCount="indefinite"/></circle>
+  <circle cx="78" cy="86" r="22" fill="#1E1035" stroke="url(#rG)" stroke-width="3"/>
+  <circle cx="122" cy="86" r="22" fill="#1E1035" stroke="url(#rG)" stroke-width="3"/>
+  <circle cx="100" cy="120" r="26" fill="#1E1035" stroke="url(#rG)" stroke-width="3">
+    <animate attributeName="r" values="24;28;24" dur="1.8s" repeatCount="indefinite"/>
+  </circle>
+  <path d="M70 140 C70 124 130 124 130 140" fill="none" stroke="#A78BFA" stroke-width="3"/>
+</svg>

@@ -29,7 +29,9 @@
     {% endif %}
   </div>
   {% empty %}
-  <div class="empty-state"><i class="bi bi-bell"></i><p>No notifications</p></div>
+  <div class="empty-state p-4">
+    {% include "partials/ui_sticker.html" with kind="notification" size="md" title="All quiet" text="You’ll see deposit, withdrawal, investment, and system alerts here." %}
+  </div>
   {% endfor %}
 </div>
 {% endblock %}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="eG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#94A3B8"/><stop offset="100%" stop-color="#64748B"/></linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="80" fill="#111827" opacity="0.5"/>
+  <path d="M55 78 L100 52 L145 78 L145 128 L100 154 L55 128 Z" fill="#1E293B" stroke="url(#eG)" stroke-width="3">
+    <animateTransform attributeName="transform" type="translate" values="0 0;0 -4;0 0" dur="2.4s" repeatCount="indefinite"/>
+  </path>
+  <path d="M55 78 L100 104 L145 78" fill="none" stroke="#64748B" stroke-width="2.5"/>
+  <path d="M100 104 L100 154" stroke="#64748B" stroke-width="2.5"/>
+  <circle cx="100" cy="90" r="10" fill="none" stroke="#94A3B8" stroke-width="3"/>
+  <path d="M100 102 L100 118" stroke="#94A3B8" stroke-width="3" stroke-linecap="round"/>
+</svg>

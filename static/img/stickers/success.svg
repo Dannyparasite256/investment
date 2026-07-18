@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="sG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4ADE80"/><stop offset="100%" stop-color="#16A34A"/></linearGradient>
+    <radialGradient id="sGlow" cx="50%" cy="45%" r="55%"><stop offset="0%" stop-color="#86EFAC" stop-opacity="0.6"/><stop offset="100%" stop-opacity="0"/></radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="90" fill="url(#sGlow)"><animate attributeName="r" values="84;96;84" dur="1.8s" repeatCount="indefinite"/></circle>
+  <circle cx="100" cy="100" r="58" fill="#0F2918" stroke="url(#sG)" stroke-width="5"/>
+  <path d="M72 102 L90 120 L130 78" fill="none" stroke="#4ADE80" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <animate attributeName="stroke-dasharray" values="0 80;80 0" dur="1.2s" fill="freeze"/>
+  </path>
+  <g>
+    <circle cx="42" cy="56" r="4" fill="#fff"><animate attributeName="opacity" values="0;1;0" dur="1.4s" repeatCount="indefinite"/></circle>
+    <circle cx="160" cy="64" r="3" fill="#fff"><animate attributeName="opacity" values="0;1;0" dur="1.2s" begin="0.3s" repeatCount="indefinite"/></circle>
+    <circle cx="148" cy="140" r="3.5" fill="#fff"><animate attributeName="opacity" values="0;1;0" dur="1.5s" begin="0.5s" repeatCount="indefinite"/></circle>
+  </g>
+</svg>

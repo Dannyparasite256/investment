@@ -24,7 +24,10 @@
           <td><a href="{% url 'transactions:deposit_detail' d.pk %}" class="small">View</a></td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="text-center text-muted py-5">No deposits yet</td></tr>
+        <tr><td colspan="6" class="py-5">
+          {% url 'transactions:deposit_create' as deposit_url %}
+          {% include "partials/ui_sticker.html" with kind="empty" size="md" title="No deposits yet" text="Make your first crypto deposit to fund investments." cta_url=deposit_url cta_label="New deposit" %}
+        </td></tr>
         {% endfor %}
       </tbody>
     </table>

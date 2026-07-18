@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="iG" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#38BDF8"/><stop offset="100%" stop-color="#6366F1"/></linearGradient>
+    <radialGradient id="iGlow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#A5B4FC" stop-opacity="0.5"/><stop offset="100%" stop-opacity="0"/></radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="88" fill="url(#iGlow)"><animate attributeName="r" values="82;92;82" dur="2.2s" repeatCount="indefinite"/></circle>
+  <rect x="42" y="50" width="116" height="100" rx="18" fill="#10182B" stroke="url(#iG)" stroke-width="3"/>
+  <polyline points="58,120 82,96 102,108 128,70 148,78" fill="none" stroke="#818CF8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <animate attributeName="stroke-dasharray" values="0 200;200 0" dur="2s" repeatCount="indefinite"/>
+  </polyline>
+  <circle cx="128" cy="70" r="7" fill="#38BDF8"><animate attributeName="r" values="5;9;5" dur="1.2s" repeatCount="indefinite"/></circle>
+</svg>

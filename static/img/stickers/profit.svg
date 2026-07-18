@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="prG" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#FDE68A"/><stop offset="100%" stop-color="#F59E0B"/></linearGradient>
+    <radialGradient id="prGlow" cx="50%" cy="45%" r="55%"><stop offset="0%" stop-color="#FCD34D" stop-opacity="0.55"/><stop offset="100%" stop-opacity="0"/></radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="88" fill="url(#prGlow)"><animate attributeName="opacity" values="0.5;1;0.5" dur="1.8s" repeatCount="indefinite"/></circle>
+  <circle cx="100" cy="108" r="46" fill="#2A1F08" stroke="url(#prG)" stroke-width="5"/>
+  <circle cx="100" cy="88" r="40" fill="#3B2A0A" stroke="url(#prG)" stroke-width="4" opacity="0.95">
+    <animate attributeName="cy" values="92;84;92" dur="1.6s" repeatCount="indefinite"/>
+  </circle>
+  <text x="100" y="96" text-anchor="middle" font-size="28" font-weight="800" fill="#FDE68A" font-family="system-ui,sans-serif">$</text>
+  <path d="M130 60 L148 48 L148 64 L164 64 L150 76 L164 90 L148 90 L148 106 L130 94 Z" fill="#FBBF24" opacity="0.9">
+    <animateTransform attributeName="transform" type="rotate" values="-8 148 76;8 148 76;-8 148 76" dur="1.4s" repeatCount="indefinite"/>
+  </path>
+</svg>

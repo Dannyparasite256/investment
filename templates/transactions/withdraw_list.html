@@ -47,7 +47,10 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7" class="text-center text-muted py-5">No withdrawals</td></tr>
+        <tr><td colspan="7" class="py-5">
+          {% url 'transactions:withdraw_create' as withdraw_url %}
+          {% include "partials/ui_sticker.html" with kind="empty" size="md" title="No withdrawals yet" text="When you’re ready, request a payout to your wallet." cta_url=withdraw_url cta_label="New withdrawal" %}
+        </td></tr>
         {% endfor %}
       </tbody>
     </table>

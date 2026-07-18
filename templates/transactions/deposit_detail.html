@@ -4,6 +4,19 @@
 {% block page_subtitle %}Track your deposit from submit to credit{% endblock %}
 
 {% block content %}
+{% if deposit.status == 'approved' %}
+<div class="ui-status-banner is-success">
+  {% include "partials/ui_sticker.html" with kind="success" size="sm" compact=1 title="Deposit approved" text="Funds were credited to your platform balance." %}
+</div>
+{% elif deposit.status == 'rejected' %}
+<div class="ui-status-banner is-rejected">
+  {% include "partials/ui_sticker.html" with kind="rejected" size="sm" compact=1 title="Deposit rejected" text=deposit.rejection_reason|default:"Contact support if you need help." %}
+</div>
+{% else %}
+<div class="ui-status-banner is-pending">
+  {% include "partials/ui_sticker.html" with kind="pending" size="sm" compact=1 title="Pending review" text="We’re confirming your transfer. This usually takes under a few hours." %}
+</div>
+{% endif %}
 <div class="row g-4">
   <div class="col-lg-7">
     <div class="glass-card p-4 mb-4">

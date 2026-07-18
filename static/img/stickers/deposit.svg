@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="dG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#34D399"/><stop offset="100%" stop-color="#059669"/></linearGradient>
+    <radialGradient id="dGlow" cx="50%" cy="45%" r="55%"><stop offset="0%" stop-color="#6EE7B7" stop-opacity="0.55"/><stop offset="100%" stop-opacity="0"/></radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="88" fill="url(#dGlow)"><animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"/></circle>
+  <rect x="48" y="58" width="104" height="84" rx="16" fill="#0F291E" stroke="url(#dG)" stroke-width="3"/>
+  <path d="M100 72 L100 118" stroke="#6EE7B7" stroke-width="6" stroke-linecap="round"/>
+  <path d="M82 102 L100 120 L118 102" fill="none" stroke="#6EE7B7" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <animateTransform attributeName="transform" type="translate" values="0 -6;0 0;0 -6" dur="1.4s" repeatCount="indefinite"/>
+  </path>
+  <circle cx="100" cy="48" r="10" fill="#34D399"><animate attributeName="cy" values="40;52;40" dur="1.6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.3;1;0.3" dur="1.6s" repeatCount="indefinite"/></circle>
+</svg>

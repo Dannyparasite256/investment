@@ -4,6 +4,9 @@
 {% block page_subtitle %}Amounts in {{ currency_symbol|default:display_currency }} · live exchange rates{% endblock %}
 
 {% block content %}
+<div class="ui-flow-hero glass-card p-3 mb-3">
+  {% include "partials/ui_sticker.html" with kind="withdraw" size="sm" compact=1 title="Cash out securely" text="Enter the amount in your display currency. We convert with live rates and lock funds until paid." %}
+</div>
 <div class="row g-4">
   <div class="col-lg-7">
     <div class="glass-card p-4 mb-3">

@@ -4,6 +4,9 @@
 {% block page_subtitle %}{{ plan.name }} · amounts in {{ currency_symbol|default:display_currency|default:"USD" }}{% endblock %}
 
 {% block content %}
+<div class="ui-flow-hero glass-card p-3 mb-3">
+  {% include "partials/ui_sticker.html" with kind="invest" size="sm" compact=1 title="Grow with a plan" text="Lock capital in your display currency. Profits credit on the plan schedule." %}
+</div>
 <div class="row justify-content-center">
   <div class="col-lg-6">
     <div class="glass-card p-4">

@@ -272,9 +272,8 @@
             {% empty %}
             <tr><td colspan="4">
               <div class="empty-state py-4">
-                <i class="bi bi-clock-history"></i>
-                <p class="mb-2">No transactions yet</p>
-                <a href="{% url 'transactions:deposit_create' %}" class="btn btn-ci btn-sm">Make your first deposit</a>
+                {% url 'transactions:deposit_create' as deposit_url %}
+                {% include "partials/ui_sticker.html" with kind="empty" size="md" title="No transactions yet" text="Deposits, investments, and payouts will appear here." cta_url=deposit_url cta_label="Make your first deposit" %}
               </div>
             </td></tr>
             {% endfor %}
@@ -306,9 +305,8 @@
         </a>
         {% empty %}
         <div class="empty-state py-4">
-          <i class="bi bi-briefcase"></i>
-          <p class="mb-2">No active investments</p>
-          <a href="{% url 'investments:plans' %}" class="btn btn-ci btn-sm">Browse plans</a>
+          {% url 'investments:plans' as plans_url %}
+          {% include "partials/ui_sticker.html" with kind="invest" size="md" title="No active investments" text="Pick a plan and put idle balance to work." cta_url=plans_url cta_label="Browse plans" %}
         </div>
         {% endfor %}
       </div>
