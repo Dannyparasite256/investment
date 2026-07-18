@@ -10,6 +10,7 @@ from wallets.models import Cryptocurrency
 
 User = get_user_model()
 
+# usd_price = USD value of 1 unit of that crypto (required for display conversion)
 CRYPTOS = [
     {
         'symbol': 'BTC',
@@ -19,6 +20,7 @@ CRYPTOS = [
         'min_deposit': Decimal('0.0001'),
         'min_withdrawal': Decimal('0.001'),
         'deposit_address': '16LUSj9T99VJMxem4DN3PsgxkdVtkV4ejB',
+        'usd_price': Decimal('95000'),
         'sort_order': 1,
     },
     {
@@ -29,6 +31,7 @@ CRYPTOS = [
         'min_deposit': Decimal('0.01'),
         'min_withdrawal': Decimal('0.05'),
         'deposit_address': '0x576b6b2a3506c3f207a88119648a5c32836d2bb8',
+        'usd_price': Decimal('3500'),
         'sort_order': 2,
     },
     {
@@ -39,6 +42,7 @@ CRYPTOS = [
         'min_deposit': Decimal('10'),
         'min_withdrawal': Decimal('10'),
         'deposit_address': 'TX3rxziMTWTRQZrzZhTeHBCKLUFehu3R3c',
+        'usd_price': Decimal('1'),
         'sort_order': 3,
     },
     {
@@ -49,6 +53,7 @@ CRYPTOS = [
         'min_deposit': Decimal('10'),
         'min_withdrawal': Decimal('20'),
         'deposit_address': '0x576b6b2a3506c3f207a88119648a5c32836d2bb8',
+        'usd_price': Decimal('1'),
         'sort_order': 4,
     },
     {
@@ -59,6 +64,7 @@ CRYPTOS = [
         'min_deposit': Decimal('10'),
         'min_withdrawal': Decimal('10'),
         'deposit_address': '0x576b6b2a3506c3f207a88119648a5c32836d2bb8',
+        'usd_price': Decimal('1'),
         'sort_order': 5,
     },
     {
@@ -69,6 +75,7 @@ CRYPTOS = [
         'min_deposit': Decimal('0.05'),
         'min_withdrawal': Decimal('0.1'),
         'deposit_address': '0x576b6b2a3506c3f207a88119648a5c32836d2bb8',
+        'usd_price': Decimal('600'),
         'sort_order': 6,
     },
     {
@@ -79,6 +86,7 @@ CRYPTOS = [
         'min_deposit': Decimal('0.1'),
         'min_withdrawal': Decimal('0.5'),
         'deposit_address': 'LZeJKupiMPyhUjmcyCEZfKjvmoG3cdnQAB',
+        'usd_price': Decimal('90'),
         'sort_order': 7,
     },
 ]
