@@ -1,20 +1,34 @@
 {% load static %}
 {#
   Reusable animated sticker block.
-  kinds: deposit withdraw invest pending success empty kyc profit referral rejected notification
-  Example:
-    {% include "partials/ui_sticker.html" with kind="pending" title="Under review" text="Usually 1–24h" size="md" %}
+  kinds: deposit, withdraw, invest, pending, success, empty, kyc, profit, referral, rejected, notification
 #}
 {% with k=kind|default:"empty" %}
-{% with path="img/stickers/"|add:k|add:".svg" %}
-<div class="ui-sticker-block ui-sticker-block--{{ size|default:'md' }} {% if compact %}ui-sticker-block--compact{% endif %} {{ extra_class|default:'' }}">
+<div class="ui-sticker-block ui-sticker-block--{{ size|default:'md' }}{% if compact %} ui-sticker-block--compact{% endif %}{% if extra_class %} {{ extra_class }}{% endif %}">
   <div class="ui-sticker ui-sticker--{{ k }}">
-    <img src="{% static path %}"
-         alt="{{ title|default:k }}"
-         class="ui-sticker-img"
-         width="{% if size == 'lg' %}128{% elif size == 'sm' %}56{% else %}88{% endif %}"
-         height="{% if size == 'lg' %}128{% elif size == 'sm' %}56{% else %}88{% endif %}"
-         loading="lazy">
+    {% if k == "deposit" %}
+    <img src="{% static 'img/stickers/deposit.svg' %}" alt="" class="ui-sticker-img" width="88" height="88" loading="lazy">
+    {% elif k == "withdraw" %}
+    <img src="{% static 'img/stickers/withdraw.svg' %}" alt="" class="ui-sticker-img" width="88" height="88" loading="lazy">
+    {% elif k == "invest" %}
+    <img src="{% static 'img/stickers/invest.svg' %}" alt="" class="ui-sticker-img" width="88" height="88" loading="lazy">
+    {% elif k == "pending" %}
+    <img src="{% static 'img/stickers/pending.svg' %}" alt="" class="ui-sticker-img" width="88" height="88" loading="lazy">
+    {% elif k == "success" %}
+    <img src="{% static 'img/stickers/success.svg' %}" alt="" class="ui-sticker-img" width="88" height="88" loading="lazy">
+    {% elif k == "kyc" %}
+    <img src="{% static 'img/stickers/kyc.svg' %}" alt="" class="ui-sticker-img" width="88" height="88" loading="lazy">
+    {% elif k == "profit" %}
+    <img src="{% static 'img/stickers/profit.svg' %}" alt="" class="ui-sticker-img" width="88" height="88" loading="lazy">
+    {% elif k == "referral" %}
+    <img src="{% static 'img/stickers/referral.svg' %}" alt="" class="ui-sticker-img" width="88" height="88" loading="lazy">
+    {% elif k == "rejected" %}
+    <img src="{% static 'img/stickers/rejected.svg' %}" alt="" class="ui-sticker-img" width="88" height="88" loading="lazy">
+    {% elif k == "notification" %}
+    <img src="{% static 'img/stickers/notification.svg' %}" alt="" class="ui-sticker-img" width="88" height="88" loading="lazy">
+    {% else %}
+    <img src="{% static 'img/stickers/empty.svg' %}" alt="" class="ui-sticker-img" width="88" height="88" loading="lazy">
+    {% endif %}
   </div>
   {% if title or text or cta_url %}
   <div class="ui-sticker-copy">
@@ -26,5 +40,4 @@
   </div>
   {% endif %}
 </div>
-{% endwith %}
 {% endwith %}
