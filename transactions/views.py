@@ -178,30 +178,45 @@ def deposit_detail(request, pk):
 @ratelimit(key='user', rate='10/h', method='POST', block=True)
 @require_http_methods(['GET', 'POST'])
 def withdraw_create(request):
+    from wallets.display import (
+        format_amount_for_code,
+        get_currency_meta,
+        get_default_display_code,
+    )
+
+    # Live rates for accurate conversion
+    try:
+        from core.price_feed import ensure_fresh_prices
+        ensure_fresh_prices()
+    except Exception:
+        pass
+
     wallet, _ = Wallet.objects.get_or_create(user=request.user)
-    form = WithdrawalForm(user=request.user, data=request.POST or None)
+    display_code = get_default_display_code(request.user, request=request)
+    currency_meta = get_currency_meta(display_code)
+    form = WithdrawalForm(
+        user=request.user,
+        currency_code=display_code,
+        data=request.POST or None,
+    )
     if request.method == 'POST' and form.is_valid():
         try:
             with transaction.atomic():
                 w = form.save(commit=False)
                 w.user = request.user
+                # Platform USD amounts from form.clean()
+                w.amount = form.cleaned_data['amount']
                 w.fee = form.cleaned_data.get('fee') or 0
-                w.net_amount = w.amount - w.fee
+                w.net_amount = form.cleaned_data.get('net_amount') or (w.amount - w.fee)
                 w.network = w.cryptocurrency.network
                 w.status = Withdrawal.Status.PENDING
-                # Lock funds so available balance decreases
+                # Lock platform USD balance
                 wallet_locked = Wallet.objects.select_for_update().get(user=request.user)
                 wallet_locked.lock_funds(w.amount)
                 w.funds_locked = True
-                # VIP fee + priority + SLA
                 try:
                     from core.models import SiteConfiguration
-                    from core.vip import apply_withdrawal_fee, get_user_tier
-                    fee, _pct = apply_withdrawal_fee(
-                        request.user, w.amount, w.cryptocurrency.withdrawal_fee,
-                    )
-                    w.fee = fee
-                    w.net_amount = w.amount - fee
+                    from core.vip import get_user_tier
                     tier = get_user_tier(request.user)
                     w.priority = int(tier.sort_order) if tier else 0
                     hours = SiteConfiguration.get_solo().withdrawal_sla_hours or 24
@@ -210,7 +225,20 @@ def withdraw_create(request):
                     w.sla_deadline = tz.now() + td(hours=hours)
                 except Exception:
                     pass
+                # Snapshot rates / display for ops in admin notes
+                disp_amt = form.cleaned_data.get('display_amount')
+                disp_cur = form.cleaned_data.get('display_currency') or display_code
+                crypto_amt = form.cleaned_data.get('crypto_amount')
+                rate = form.cleaned_data.get('rate_usd')
+                w.admin_notes = (
+                    f'Display: {disp_amt} {disp_cur} · '
+                    f'Payout: {crypto_amt} {w.cryptocurrency.symbol} · '
+                    f'Rate: 1 {w.cryptocurrency.symbol} = ${rate} · '
+                    f'Platform lock: {w.amount} USD'
+                )
                 w.save()
+
+                display_label = format_amount_for_code(w.amount, disp_cur)['label']
                 Transaction.objects.create(
                     user=request.user,
                     tx_type=Transaction.TxType.WITHDRAWAL,
@@ -220,36 +248,110 @@ def withdraw_create(request):
                     network=w.network,
                     wallet_address=w.wallet_address,
                     status=Transaction.Status.PENDING,
-                    description=f'Withdrawal to {w.wallet_address[:16]}…',
+                    description=(
+                        f'Withdraw {crypto_amt} {w.cryptocurrency.symbol} '
+                        f'({display_label}) → {w.wallet_address[:14]}…'
+                    ),
                     reference_type='withdrawal',
                     reference_id=str(w.id),
+                    metadata={
+                        'display_amount': str(disp_amt),
+                        'display_currency': disp_cur,
+                        'crypto_amount': str(crypto_amt),
+                        'crypto_symbol': w.cryptocurrency.symbol,
+                        'rate_usd': str(rate),
+                        'platform_usd': str(w.amount),
+                        'fee_usd': str(w.fee),
+                        'net_usd': str(w.net_amount),
+                        'fee_percent': str(form.cleaned_data.get('fee_percent') or 0),
+                    },
                 )
             create_audit_log(
                 request=request,
                 user=request.user,
                 action=AuditLog.Action.WITHDRAW_CREATE,
-                message=f'Withdrawal {w.amount} to {w.wallet_address[:20]}',
+                message=(
+                    f'Withdrawal {disp_amt} {disp_cur} → '
+                    f'{crypto_amt} {w.cryptocurrency.symbol} '
+                    f'(platform {w.amount} USD) to {w.wallet_address[:20]}'
+                ),
                 object_type='Withdrawal',
                 object_id=str(w.id),
             )
             notify(
                 request.user,
                 'Withdrawal Requested',
-                f'Your withdrawal of {w.amount} is pending approval.',
+                f'Your withdrawal of {display_label} '
+                f'({crypto_amt} {w.cryptocurrency.symbol}) is pending approval.',
                 category=Notification.Category.WITHDRAWAL,
             )
-            messages.success(request, 'Withdrawal request submitted.')
+            messages.success(
+                request,
+                f'Withdrawal submitted: {display_label} → '
+                f'{crypto_amt} {w.cryptocurrency.symbol} on {w.network}.',
+            )
             return redirect('transactions:withdraw_list')
         except ValueError as exc:
             messages.error(request, str(exc))
-    return render(request, 'transactions/withdraw_form.html', {'form': form, 'wallet': wallet})
+
+    from decimal import Decimal
+    from wallets.display import convert_from_usd, crypto_units_to_usd
+    from wallets.models import Cryptocurrency
+
+    available_display = format_amount_for_code(wallet.available_balance, display_code)
+    cryptos = list(
+        Cryptocurrency.objects.filter(is_active=True).order_by('sort_order', 'symbol')
+    )
+    rates = []
+    for c in cryptos:
+        price = c.usd_price or 0
+        one_crypto_in_display = convert_from_usd(Decimal(str(price or 0)), display_code)
+        min_usd = crypto_units_to_usd(c.min_withdrawal or 0, c)
+        min_disp = format_amount_for_code(min_usd, display_code)
+        rates.append({
+            'id': c.pk,
+            'symbol': c.symbol,
+            'network': c.network,
+            'network_label': c.get_network_display(),
+            'usd_price': str(price),
+            'display_per_unit': str(one_crypto_in_display),
+            'min_label': min_disp['label'],
+            'min_value': min_disp['value'],
+            'fee_units': str(c.withdrawal_fee or 0),
+        })
+
+    return render(request, 'transactions/withdraw_form.html', {
+        'form': form,
+        'wallet': wallet,
+        'available_display': available_display,
+        'display_currency': display_code,
+        'currency_symbol': currency_meta['symbol'],
+        'currency_decimals': currency_meta['decimals'],
+        'crypto_rates': rates,
+    })
 
 
 @login_required
 def withdraw_list(request):
+    from wallets.display import format_amount_for_code, get_default_display_code, get_currency_meta
+
+    code = get_default_display_code(request.user, request=request)
     qs = Withdrawal.objects.filter(user=request.user).select_related('cryptocurrency')
     page = Paginator(qs, 15).get_page(request.GET.get('page'))
-    return render(request, 'transactions/withdraw_list.html', {'page': page})
+    for w in page:
+        w.amount_display = format_amount_for_code(w.amount, code)
+        w.fee_display = format_amount_for_code(w.fee or 0, code)
+        # Crypto payout estimate from current rate (historical rate may differ slightly)
+        try:
+            from wallets.display import usd_to_crypto_units
+            w.crypto_payout = usd_to_crypto_units(w.net_amount or w.amount, w.cryptocurrency)
+        except Exception:
+            w.crypto_payout = None
+    return render(request, 'transactions/withdraw_list.html', {
+        'page': page,
+        'display_currency': code,
+        'currency_symbol': get_currency_meta(code)['symbol'],
+    })
 
 
 @login_required
