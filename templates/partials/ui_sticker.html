@@ -1,8 +1,5 @@
 {% load static %}
-{#
-  Reusable animated sticker block.
-  kinds: deposit, withdraw, invest, pending, success, empty, kyc, profit, referral, rejected, notification
-#}
+
 {% with k=kind|default:"empty" %}
 <div class="ui-sticker-block ui-sticker-block--{{ size|default:'md' }}{% if compact %} ui-sticker-block--compact{% endif %}{% if extra_class %} {{ extra_class }}{% endif %}">
   <div class="ui-sticker ui-sticker--{{ k }}">

@@ -1,7 +1,4 @@
-/**
- * Markets — TradingView Advanced Chart integration
- * Candlesticks, bars, line, area, Heikin Ashi, hollow candles + intervals
- */
+
 (function () {
   'use strict';
 
@@ -34,7 +31,6 @@
   }
 
   function chartHeight() {
-    // Large chart: ~80% of viewport, minimum 720px on desktop
     var isMobile = window.innerWidth < 768;
     var chrome = isMobile ? 260 : 200;
     var h = window.innerHeight - chrome;
@@ -125,8 +121,6 @@
     if (interval && interval.value) params.set('interval', interval.value);
     window.location.href = '/markets/chart/?' + params.toString();
   };
-
-  // Large symbol overview widgets on markets home
   window.initMarketTickers = function () {
     var nodes = document.querySelectorAll('[data-tv-ticker]');
     if (!nodes.length) return;
@@ -172,10 +166,8 @@
         });
         node.appendChild(s);
       });
-    }).catch(function () { /* ignore ticker failures */ });
+    }).catch(function () {  });
   };
-
-  // Search filter on overview
   window.filterMarketPairs = function (q) {
     q = (q || '').toLowerCase().trim();
     document.querySelectorAll('[data-pair-card]').forEach(function (card) {
@@ -189,7 +181,6 @@
     if (!document.getElementById('tv_chart_container')) return;
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(function () {
-      // Rebuild at new size so TradingView fills the large container
       initMarketChart();
     }, 400);
   });

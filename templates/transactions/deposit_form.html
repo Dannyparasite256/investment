@@ -39,7 +39,7 @@
           {% for e in form.cryptocurrency.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
         </div>
 
-        {# Filled by JS when a currency is selected #}
+        
         <div id="crypto-info" class="mb-3">
           <p class="text-muted small mb-0">Select a currency to see the deposit wallet address &amp; QR code.</p>
         </div>
@@ -95,7 +95,6 @@
   </div>
 </div>
 
-{# Safe JSON payload — no fragile URL replace #}
 {{ cryptos_data|json_script:"cryptos-data" }}
 {% endblock %}
 

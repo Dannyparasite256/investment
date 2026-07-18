@@ -6,7 +6,7 @@
 {% block page_subtitle %}Your portfolio at a glance{% endblock %}
 
 {% block content %}
-{# Hero balance — live-updated via /api/balances/ when currency changes #}
+
 <div class="glass-card balance-hero mb-4 animate-in reveal" data-balance-root>
   <div class="row align-items-end g-4">
     <div class="col-lg-7">
@@ -80,7 +80,6 @@
   </div>
 </div>
 
-{# Market pulse + VIP strip — live free API prices #}
 <div class="row g-3 mb-3">
   <div class="col-lg-8">
     <div class="glass-card p-3 market-pulse d-flex flex-wrap gap-2 align-items-center" id="market-pulse" data-live-prices>
@@ -131,7 +130,6 @@
   </div>
 </div>
 
-{# Stats #}
 <div class="row g-3 mb-4 stagger-children">
   <div class="col-6 col-xl-3">
     <div class="glass-card stat-card h-100 interactive">
@@ -214,7 +212,6 @@
   </div>
 </div>
 
-{# Charts #}
 <div class="row g-4 mb-4">
   <div class="col-lg-8 animate-in animate-delay-1 reveal">
     <div class="glass-card p-4 h-100">
@@ -241,7 +238,6 @@
   </div>
 </div>
 
-{# Tables row #}
 <div class="row g-4">
   <div class="col-lg-7 animate-in animate-delay-2">
     <div class="glass-card p-0 overflow-hidden">

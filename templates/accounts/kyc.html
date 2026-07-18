@@ -6,7 +6,7 @@
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-lg-8">
-    {# Progress steps #}
+    
     <div class="kyc-steps glass-card p-3 mb-4">
       <div class="kyc-step {% if user.is_kyc_verified %}done{% elif pending %}done{% else %}current{% endif %}">
         <span class="kyc-num">1</span>

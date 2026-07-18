@@ -5,7 +5,7 @@
 {% block page_subtitle %}Animated tiers · lower fees · referral boosts{% endblock %}
 
 {% block content %}
-{# ── Hero: your current tier ── #}
+
 <div class="glass-card vip-hero mb-4 animate-in">
   <div class="vip-hero-glow" style="--tier-color:{% if tier %}{{ tier.badge_color }}{% else %}#6366F1{% endif %}"></div>
   <div class="row align-items-center g-4 position-relative">
@@ -47,7 +47,6 @@
   </div>
 </div>
 
-{# ── Tier gallery ── #}
 <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
   <div>
     <h5 class="mb-0">All tiers</h5>
@@ -106,7 +105,6 @@
   {% endfor %}
 </div>
 
-{# Fun strip #}
 <div class="glass-card p-3 mt-4 vip-fun-strip">
   <div class="d-flex flex-wrap align-items-center gap-3 justify-content-between">
     <div class="d-flex align-items-center gap-2">

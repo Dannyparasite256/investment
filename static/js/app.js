@@ -1,13 +1,8 @@
-/**
- * CryptoInvest — premium UI interactions
- * Theme · charts · counters · ripple · toasts · WebSocket
- */
+
 (function () {
   'use strict';
 
   var EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
-
-  // HTMX CSRF
   document.body.addEventListener('htmx:configRequest', function (event) {
     var csrf = document.querySelector('[name=csrfmiddlewaretoken]');
     if (csrf) event.detail.headers['X-CSRFToken'] = csrf.value;
@@ -15,8 +10,6 @@
       .find(function (c) { return c.startsWith('csrftoken='); });
     if (cookie) event.detail.headers['X-CSRFToken'] = cookie.split('=')[1];
   });
-
-  // Theme
   window.setTheme = function (theme) {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
@@ -66,7 +59,6 @@
     decimals = decimals == null ? 2 : decimals;
     var n = Number(String(value).replace(/,/g, ''));
     if (isNaN(n)) return decimals === 0 ? '0' : '0.00';
-    // Always use en-US so thousands separators are commas site-wide
     return n.toLocaleString('en-US', {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
@@ -74,18 +66,14 @@
     });
   };
 
-  /** Parse "1,234.56" / "5.05" / "137.07142857" into a number. */
+  
   function parseAmount(str) {
     if (str == null || str === '') return NaN;
     var s = String(str).trim().replace(/[^\d.\-eE+]/g, '');
-    // keep last dot as decimal if multiple (strip thousands commas already)
     return parseFloat(s);
   }
 
-  /**
-   * Infer decimal places from a formatted sample or target number.
-   * UGX-style integers → 0; USD → 2; crypto → up to 8.
-   */
+  
   function inferDecimals(target, formatSample, explicit) {
     if (explicit != null && explicit !== '') {
       var d = parseInt(explicit, 10);
@@ -102,10 +90,7 @@
     return Math.min(8, (t.split('.')[1] || '').replace(/0+$/, '').length || 2);
   }
 
-  /**
-   * Count from 0 (or `from`) up to target on an element.
-   * Uses ease-out cubic; final text matches data-count-format when possible.
-   */
+  
   window.countUp = function (el, target, opts) {
     opts = opts || {};
     if (!el) return;
@@ -124,15 +109,12 @@
       el.textContent = finalText != null ? finalText : formatMoney(to, decimals);
       return;
     }
-
-    // Cancel any in-flight count on this element
     if (el._countUpRaf) cancelAnimationFrame(el._countUpRaf);
     el.classList.add('is-counting');
     var start = performance.now();
 
     function tick(now) {
       var p = Math.min(1, (now - start) / duration);
-      // easeOutExpo-ish for a premium cash-register feel
       var eased = p === 1 ? 1 : 1 - Math.pow(2, -10 * p);
       var val = from + (to - from) * eased;
       el.textContent = formatMoney(val, decimals);
@@ -147,7 +129,7 @@
     el._countUpRaf = requestAnimationFrame(tick);
   };
 
-  /** Run count-up on every [data-count-up] element (page load / refresh). */
+  
   window.runPageCountUps = function () {
     var nodes = document.querySelectorAll('[data-count-up]');
     nodes.forEach(function (el, i) {
@@ -158,7 +140,6 @@
       var formatSample = el.getAttribute('data-count-format') || '';
       var decimalsAttr = el.getAttribute('data-count-decimals');
       var finalText = formatSample || null;
-      // Stagger slightly so the hero leads, then stats follow
       var delay = Math.min(i * 60, 360);
       setTimeout(function () {
         countUp(el, raw, {
@@ -170,15 +151,11 @@
       }, delay);
     });
   };
-
-  // Legacy [data-count-to] without data-count-up
   document.querySelectorAll('[data-count-to]:not([data-count-up])').forEach(function (el) {
     countUp(el, el.getAttribute('data-count-to'), {
       decimals: el.getAttribute('data-count-decimals'),
     });
   });
-
-  // Primary: count balances up on every refresh
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       runPageCountUps();
@@ -186,8 +163,6 @@
   } else {
     runPageCountUps();
   }
-
-  // Button ripple (visual burst)
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('.btn');
     if (!btn || btn.disabled) return;
@@ -203,8 +178,6 @@
     btn.appendChild(ripple);
     setTimeout(function () { ripple.remove(); }, 650);
   });
-
-  // Password visibility toggle
   window.togglePassword = function (inputId, btn) {
     var input = document.getElementById(inputId) || document.querySelector(inputId);
     if (!input) return;
@@ -217,8 +190,6 @@
       }
     }
   };
-
-  // Chart defaults
   function chartColors() {
     var muted = getComputedStyle(document.documentElement).getPropertyValue('--ci-text-muted').trim() || '#9CA3AF';
     return {
@@ -339,15 +310,11 @@
     var profit = amount * (parseFloat(rate) / 100) * (parseFloat(periods) || 1);
     if (resultEl) resultEl.textContent = formatMoney(profit, 4);
   };
-
-  // Auto-dismiss bootstrap alerts
   setTimeout(function () {
     document.querySelectorAll('.alert-dismissible').forEach(function (el) {
-      try { bootstrap.Alert.getOrCreateInstance(el).close(); } catch (e) { /* ignore */ }
+      try { bootstrap.Alert.getOrCreateInstance(el).close(); } catch (e) {  }
     });
   }, 6500);
-
-  // Toasts
   window.showToast = function (title, message, level) {
     level = level || 'info';
     var container = document.getElementById('toast-container');
@@ -383,8 +350,6 @@
       }
     }, 5500);
   };
-
-  // WebSocket notifications
   (function initNotificationSocket() {
     if (!document.body || !document.body.dataset.userAuthenticated) return;
     var proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -398,12 +363,10 @@
         if (data.type === 'notification' && data.data) {
           showToast(data.data.title, data.data.message, data.data.level);
         }
-      } catch (e) { /* ignore */ }
+      } catch (e) {  }
     };
     ws.onclose = function () { setTimeout(initNotificationSocket, 5000); };
   })();
-
-  // Stagger entrance for stat grids (skipped if reduced motion)
   if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     document.querySelectorAll('.stagger-children > *').forEach(function (el, i) {
       el.style.opacity = '0';
@@ -411,8 +374,6 @@
       el.style.animationDelay = (i * 0.07) + 's';
     });
   }
-
-  // ── Live display currency / balance API ──────────────────────────────
   function csrfToken() {
     var el = document.querySelector('[name=csrfmiddlewaretoken]');
     if (el && el.value) return el.value;
@@ -452,8 +413,6 @@
       if (val == null && path === 'symbol') val = data.symbol;
       if (val == null && path === 'currency') val = data.currency;
       if (val == null) return;
-
-      // Numeric balance fields: count up from 0 on currency switch
       if (el.hasAttribute('data-count-up') || /\.formatted$|\.value$|count$|usd_equivalent/.test(path)) {
         var numPath = path.replace(/\.formatted$/, '.value');
         var raw = dig(data, numPath);
@@ -461,7 +420,6 @@
         var finalText = (typeof val === 'string' && /[a-zA-Z,]/.test(val) === false) || path.indexOf('formatted') !== -1
           ? String(val)
           : null;
-        // Prefer formatted string as final text when available
         if (path.indexOf('formatted') !== -1) finalText = String(val);
         el.setAttribute('data-count-to', String(raw));
         if (finalText) el.setAttribute('data-count-format', finalText);
@@ -476,7 +434,6 @@
         pulse(el);
       }
     });
-    // Keep every currency select in sync
     document.querySelectorAll('[data-currency-select]').forEach(function (sel) {
       if (data.currency && sel.value !== data.currency) {
         sel.value = data.currency;
@@ -530,7 +487,6 @@
       throw new Error(msg);
     }
     var saved = data.currency || currency;
-    // Permanent client backup (survives refresh; server also stores on user + cookie)
     try { localStorage.setItem('display_currency', saved); } catch (e) {}
     try {
       document.cookie = 'display_currency=' + encodeURIComponent(saved)
@@ -541,8 +497,6 @@
     if (data.message && window.showToast) {
       showToast('Currency', data.message, 'success');
     }
-
-    // Full reload so investments min/max and every server-rendered amount use the saved currency
     setTimeout(function () {
       window.location.reload();
     }, 350);
@@ -550,7 +504,6 @@
   };
 
   function fallbackCurrencyFormSubmit(sel) {
-    // Full page POST — works even if fetch/API fails (e.g. CSRF, static issues)
     var form = sel && sel.closest('form');
     if (!form) {
       form = document.querySelector('form[data-currency-form]');
@@ -559,7 +512,6 @@
       window.location.href = '/dashboard/?currency=' + encodeURIComponent(sel.value);
       return;
     }
-    // Allow native submit (do not preventDefault)
     if (sel && form.querySelector('[name=currency]') && form.querySelector('[name=currency]') !== sel) {
       form.querySelector('[name=currency]').value = sel.value;
     }
@@ -589,13 +541,10 @@
           });
       });
     });
-
-    // Prefer live update; fall back to full submit on error
     document.querySelectorAll('form[data-currency-form]').forEach(function (form) {
       form.addEventListener('submit', function (e) {
         var sel = form.querySelector('[data-currency-select], [name=currency]');
         if (!sel || !sel.value) return;
-        // If JS live API exists, use it; otherwise allow normal POST
         if (typeof window.setDisplayCurrency !== 'function') return;
         e.preventDefault();
         setBalanceStatus('Updating…');
@@ -610,12 +559,8 @@
       });
     });
   })();
-
-  // ── Motion / interactivity layer ─────────────────────────────────────
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var finePointer = window.matchMedia('(pointer: fine)').matches;
-
-  // Scroll reveal
   (function initReveal() {
     if (reduceMotion || !('IntersectionObserver' in window)) {
       document.querySelectorAll('.reveal, .reveal-stagger').forEach(function (el) {
@@ -623,7 +568,6 @@
       });
       return;
     }
-    // Auto-tag common dashboard blocks if not already marked
     document.querySelectorAll(
       '.main-content .glass-card:not(.reveal):not(.balance-hero), ' +
       '.page-content > .row, .page-content > .glass-card'
@@ -651,8 +595,6 @@
       io.observe(el);
     });
   })();
-
-  // Pointer spotlight on body + glass cards
   (function initPointerGlow() {
     if (reduceMotion || !finePointer) return;
     document.body.classList.add('pointer-glow');
@@ -680,8 +622,6 @@
       }, { passive: true });
     });
   })();
-
-  // 3D tilt on interactive cards (desktop)
   (function initTilt() {
     if (reduceMotion || !finePointer) return;
     var maxTilt = 7;
@@ -703,8 +643,6 @@
       });
     });
   })();
-
-  // Magnetic buttons
   (function initMagnetic() {
     if (reduceMotion || !finePointer) return;
     document.querySelectorAll('.btn-ci, .btn-outline-ci, .quick-actions .btn').forEach(function (btn) {
@@ -721,8 +659,6 @@
       });
     });
   })();
-
-  // Topbar scroll shadow
   (function initTopbarScroll() {
     var topbar = document.querySelector('.topbar');
     if (!topbar) return;
@@ -734,8 +670,6 @@
     (main === window ? window : main).addEventListener('scroll', onScroll, { passive: true });
     onScroll();
   })();
-
-  // Smooth number morph helper (optional use)
   window.animateNumber = function (el, to, opts) {
     opts = opts || {};
     if (!el) return;
@@ -752,8 +686,6 @@
     }
     requestAnimationFrame(tick);
   };
-
-  // Subtle parallax on balance hero
   (function initHeroParallax() {
     if (reduceMotion || !finePointer) return;
     var hero = document.querySelector('.balance-hero');

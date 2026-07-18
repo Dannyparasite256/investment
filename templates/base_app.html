@@ -244,7 +244,6 @@
   </div>
 </div>
 
-{# Mobile bottom navigation #}
 <nav class="mobile-bottom-nav d-lg-none" aria-label="Primary">
   <a href="{% url 'core:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
     <i class="bi bi-grid-1x2"></i><span>Home</span>
@@ -263,10 +262,8 @@
   </a>
 </nav>
 
-{# Global search results popover #}
 <div id="search-popover" class="search-popover d-none" role="listbox"></div>
 
-{# Command palette #}
 <div id="cmdk-overlay" class="cmdk-overlay d-none" aria-hidden="true">
   <div class="cmdk-panel glass-card">
     <div class="cmdk-input-wrap">
@@ -278,7 +275,6 @@
   </div>
 </div>
 
-{# Product tour #}
 {% if show_tour %}
 <div id="tour-root" class="tour-root" data-tour-active="1">
   <div class="tour-backdrop"></div>
@@ -294,7 +290,6 @@
 </div>
 {% endif %}
 
-{# PWA install banner #}
 <div id="pwa-banner" class="pwa-banner d-none glass-card">
   <div>
     <strong class="small">Install {{ SITE_NAME }}</strong>
@@ -306,7 +301,6 @@
   </div>
 </div>
 
-{# Image lightbox #}
 <div id="lightbox" class="lightbox d-none" role="dialog" aria-modal="true">
   <button type="button" class="lightbox-close" aria-label="Close">&times;</button>
   <img src="" alt="Preview" id="lightbox-img">

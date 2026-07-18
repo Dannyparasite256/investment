@@ -12,8 +12,6 @@
     var m = document.cookie.match(/csrftoken=([^;]+)/);
     return m ? decodeURIComponent(m[1]) : '';
   }
-
-  // ── Confetti ──────────────────────────────────────────────────────
   window.celebrate = function () {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     var c = document.getElementById('confetti-canvas');
@@ -58,13 +56,9 @@
     }
     requestAnimationFrame(frame);
   };
-
-  // Celebrate after success messages
   if (qs('.alert-success')) {
     setTimeout(function () { celebrate(); }, 200);
   }
-
-  // ── Density toggle ────────────────────────────────────────────────
   window.toggleDensity = function () {
     var shell = qs('.app-shell');
     if (!shell) return;
@@ -72,8 +66,6 @@
     shell.setAttribute('data-density', next);
     document.cookie = 'density=' + next + ';path=/;max-age=31536000;samesite=lax';
   };
-
-  // ── Lightbox ──────────────────────────────────────────────────────
   (function () {
     var box = qs('#lightbox');
     var img = qs('#lightbox-img');
@@ -91,8 +83,6 @@
     box.addEventListener('click', function (e) { if (e.target === box) close(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
   })();
-
-  // ── Global search (top bar) ───────────────────────────────────────
   (function () {
     var input = qs('#global-search-input');
     var pop = qs('#search-popover');
@@ -140,7 +130,6 @@
     document.addEventListener('click', function (e) {
       if (!pop.contains(e.target) && e.target !== input) pop.classList.add('d-none');
     });
-    // slash to focus
     document.addEventListener('keydown', function (e) {
       if (e.key === '/' && !e.metaKey && !e.ctrlKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
         e.preventDefault();
@@ -148,8 +137,6 @@
       }
     });
   })();
-
-  // ── Command palette Ctrl/Cmd+K ────────────────────────────────────
   (function () {
     var overlay = qs('#cmdk-overlay');
     var input = qs('#cmdk-input');
@@ -222,8 +209,6 @@
     input.addEventListener('input', function () { render(input.value); });
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
   })();
-
-  // ── Product tour ──────────────────────────────────────────────────
   (function () {
     var root = qs('#tour-root');
     if (!root) return;
@@ -263,8 +248,6 @@
     if (skip) skip.addEventListener('click', complete);
     show();
   })();
-
-  // ── PWA install + service worker ──────────────────────────────────
   (function () {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(function () {});
@@ -291,8 +274,6 @@
       if (banner) banner.classList.add('d-none');
     });
   })();
-
-  // Manifest link
   if (!qs('link[rel=manifest]')) {
     var l = document.createElement('link');
     l.rel = 'manifest';
