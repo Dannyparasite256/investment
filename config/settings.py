@@ -183,16 +183,20 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+# Manifest storage breaks collectstatic if any static path is missing.
+# CompressedStaticFilesStorage is safer for PythonAnywhere.
+_static_backend = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+if not DEBUG:
+    _static_backend = env(
+        'STATICFILES_STORAGE',
+        default='whitenoise.storage.CompressedStaticFilesStorage',
+    )
 STORAGES = {
     'default': {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
     },
     'staticfiles': {
-        'BACKEND': (
-            'django.contrib.staticfiles.storage.StaticFilesStorage'
-            if DEBUG
-            else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-        ),
+        'BACKEND': _static_backend,
     },
 }
 
