@@ -8,58 +8,58 @@
    Design tokens
    -------------------------------------------------------------------------- */
 :root {
-  /* Surfaces */
-  --ci-bg-deep: #060816;
-  --ci-bg: #0A1023;
+  /* Surfaces — institutional dark (Coinbase / Stripe dashboard) */
+  --ci-bg-deep: #070B14;
+  --ci-bg: #0B1220;
   --ci-bg-elevated: #111827;
-  --ci-bg-card: rgba(255, 255, 255, 0.08);
-  --ci-bg-glass: rgba(255, 255, 255, 0.06);
-  --ci-bg-input: rgba(255, 255, 255, 0.05);
+  --ci-bg-card: rgba(17, 24, 39, 0.72);
+  --ci-bg-glass: rgba(15, 23, 42, 0.78);
+  --ci-bg-input: rgba(255, 255, 255, 0.04);
 
-  /* Accents */
-  --ci-primary: #7C3AED;
-  --ci-primary-bright: #8B5CF6;
-  --ci-primary-soft: rgba(124, 58, 237, 0.18);
-  --ci-secondary: #3B82F6;
-  --ci-secondary-soft: rgba(59, 130, 246, 0.16);
-  --ci-success: #22C55E;
-  --ci-success-soft: rgba(34, 197, 94, 0.15);
+  /* Accents — refined indigo / violet */
+  --ci-primary: #6366F1;
+  --ci-primary-bright: #818CF8;
+  --ci-primary-soft: rgba(99, 102, 241, 0.16);
+  --ci-secondary: #38BDF8;
+  --ci-secondary-soft: rgba(56, 189, 248, 0.14);
+  --ci-success: #10B981;
+  --ci-success-soft: rgba(16, 185, 129, 0.14);
   --ci-warning: #F59E0B;
-  --ci-warning-soft: rgba(245, 158, 11, 0.15);
-  --ci-danger: #EF4444;
-  --ci-danger-soft: rgba(239, 68, 68, 0.15);
+  --ci-warning-soft: rgba(245, 158, 11, 0.14);
+  --ci-danger: #F43F5E;
+  --ci-danger-soft: rgba(244, 63, 94, 0.14);
 
   /* Text */
-  --ci-text: #FFFFFF;
-  --ci-text-soft: #E5E7EB;
-  --ci-text-muted: #9CA3AF;
-  --ci-text-faint: #6B7280;
-  --ci-silver: #C0C7D1;
+  --ci-text: #F8FAFC;
+  --ci-text-soft: #E2E8F0;
+  --ci-text-muted: #94A3B8;
+  --ci-text-faint: #64748B;
+  --ci-silver: #CBD5E1;
 
-  /* Borders & effects */
-  --ci-border: rgba(255, 255, 255, 0.15);
-  --ci-border-soft: rgba(255, 255, 255, 0.08);
-  --ci-border-glow: rgba(139, 92, 246, 0.45);
-  --ci-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
-  --ci-shadow-lg: 0 28px 80px rgba(0, 0, 0, 0.45);
-  --ci-glow-purple: 0 0 40px rgba(124, 58, 237, 0.35);
-  --ci-glow-blue: 0 0 40px rgba(59, 130, 246, 0.25);
+  /* Borders & effects — quieter, more premium */
+  --ci-border: rgba(148, 163, 184, 0.14);
+  --ci-border-soft: rgba(148, 163, 184, 0.08);
+  --ci-border-glow: rgba(99, 102, 241, 0.35);
+  --ci-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 40px rgba(0, 0, 0, 0.28);
+  --ci-shadow-lg: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 24px 64px rgba(0, 0, 0, 0.4);
+  --ci-glow-purple: 0 0 48px rgba(99, 102, 241, 0.18);
+  --ci-glow-blue: 0 0 40px rgba(56, 189, 248, 0.12);
 
   /* Gradients */
-  --ci-gradient: linear-gradient(135deg, #7C3AED 0%, #8B5CF6 45%, #3B82F6 100%);
-  --ci-gradient-btn: linear-gradient(135deg, #7C3AED 0%, #8B5CF6 100%);
-  --ci-gradient-danger: linear-gradient(135deg, #EF4444 0%, #F97316 100%);
-  --ci-gradient-success: linear-gradient(135deg, #16A34A 0%, #22C55E 100%);
-  --ci-gradient-subtle: linear-gradient(145deg, rgba(124, 58, 237, 0.14), rgba(59, 130, 246, 0.08));
-  --ci-gradient-text: linear-gradient(135deg, #FFFFFF 0%, #C4B5FD 50%, #93C5FD 100%);
+  --ci-gradient: linear-gradient(135deg, #4F46E5 0%, #6366F1 40%, #0EA5E9 100%);
+  --ci-gradient-btn: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  --ci-gradient-danger: linear-gradient(135deg, #E11D48 0%, #F43F5E 100%);
+  --ci-gradient-success: linear-gradient(135deg, #059669 0%, #10B981 100%);
+  --ci-gradient-subtle: linear-gradient(145deg, rgba(99, 102, 241, 0.12), rgba(14, 165, 233, 0.06));
+  --ci-gradient-text: linear-gradient(135deg, #F8FAFC 0%, #A5B4FC 55%, #7DD3FC 100%);
 
-  /* Geometry */
-  --ci-radius: 24px;
-  --ci-radius-md: 16px;
-  --ci-radius-sm: 12px;
+  /* Geometry — tighter, more product-like */
+  --ci-radius: 18px;
+  --ci-radius-md: 14px;
+  --ci-radius-sm: 10px;
   --ci-radius-pill: 999px;
-  --ci-sidebar-w: 272px;
-  --ci-topbar-h: 72px;
+  --ci-sidebar-w: 264px;
+  --ci-topbar-h: 64px;
   --ci-bottom-nav-h: 0px;
   --ci-safe-top: env(safe-area-inset-top, 0px);
   --ci-safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -71,8 +71,9 @@
   --ci-transition: 300ms cubic-bezier(0.4, 0, 0.2, 1);
   --ci-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* Type */
-  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  /* Type — Inter for UI chrome, Jakarta for display */
+  --font-sans: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
 
   /* Bootstrap bridge */
@@ -86,12 +87,12 @@
 
 /* Light theme */
 [data-theme="light"] {
-  --ci-bg-deep: #F4F6FB;
-  --ci-bg: #EEF1F8;
+  --ci-bg-deep: #F1F5F9;
+  --ci-bg: #F8FAFC;
   --ci-bg-elevated: #FFFFFF;
-  --ci-bg-card: rgba(255, 255, 255, 0.72);
-  --ci-bg-glass: rgba(255, 255, 255, 0.65);
-  --ci-bg-input: rgba(255, 255, 255, 0.9);
+  --ci-bg-card: rgba(255, 255, 255, 0.9);
+  --ci-bg-glass: rgba(255, 255, 255, 0.86);
+  --ci-bg-input: #FFFFFF;
   --ci-text: #0F172A;
   --ci-text-soft: #1E293B;
   --ci-text-muted: #64748B;
@@ -99,9 +100,9 @@
   --ci-silver: #475569;
   --ci-border: rgba(15, 23, 42, 0.1);
   --ci-border-soft: rgba(15, 23, 42, 0.06);
-  --ci-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
-  --ci-shadow-lg: 0 28px 70px rgba(15, 23, 42, 0.12);
-  --ci-gradient-text: linear-gradient(135deg, #0F172A 0%, #7C3AED 60%, #3B82F6 100%);
+  --ci-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 10px 30px rgba(15, 23, 42, 0.06);
+  --ci-shadow-lg: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 20px 50px rgba(15, 23, 42, 0.1);
+  --ci-gradient-text: linear-gradient(135deg, #0F172A 0%, #4F46E5 55%, #0284C7 100%);
   --bs-body-bg: var(--ci-bg);
   --bs-body-color: var(--ci-text);
 }
@@ -141,7 +142,7 @@ body {
   min-width: 0;
 }
 
-/* Animated gradient mesh + glows */
+/* Subtle ambient background — professional, less neon */
 body::before {
   content: '';
   position: fixed;
@@ -149,12 +150,11 @@ body::before {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 70% 50% at 15% 10%, rgba(124, 58, 237, 0.28), transparent 55%),
-    radial-gradient(ellipse 55% 45% at 85% 15%, rgba(59, 130, 246, 0.22), transparent 50%),
-    radial-gradient(ellipse 50% 40% at 50% 90%, rgba(139, 92, 246, 0.12), transparent 55%),
-    radial-gradient(ellipse 40% 30% at 70% 60%, rgba(59, 130, 246, 0.08), transparent 50%),
-    linear-gradient(180deg, var(--ci-bg-deep) 0%, var(--ci-bg) 45%, var(--ci-bg-elevated) 100%);
-  animation: meshDrift 22s ease-in-out infinite alternate;
+    radial-gradient(ellipse 80% 55% at 12% 0%, rgba(79, 70, 229, 0.16), transparent 55%),
+    radial-gradient(ellipse 60% 45% at 92% 8%, rgba(14, 165, 233, 0.1), transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 100%, rgba(99, 102, 241, 0.06), transparent 55%),
+    linear-gradient(180deg, var(--ci-bg-deep) 0%, var(--ci-bg) 50%, #0A1020 100%);
+  animation: none;
 }
 
 /* Noise overlay */
@@ -171,9 +171,10 @@ body::after {
 
 [data-theme="light"] body::before {
   background:
-    radial-gradient(ellipse 70% 50% at 15% 10%, rgba(124, 58, 237, 0.12), transparent 55%),
-    radial-gradient(ellipse 55% 45% at 85% 15%, rgba(59, 130, 246, 0.1), transparent 50%),
-    linear-gradient(180deg, #F8FAFC 0%, #EEF2FF 50%, #F1F5F9 100%);
+    radial-gradient(ellipse 70% 50% at 12% 0%, rgba(99, 102, 241, 0.08), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 90% 10%, rgba(14, 165, 233, 0.06), transparent 50%),
+    linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 55%, #EEF2FF 100%);
+  animation: none;
 }
 
 [data-theme="light"] body::after { opacity: 0.02; }
@@ -246,11 +247,14 @@ a:hover { color: #C4B5FD; }
    Typography
    -------------------------------------------------------------------------- */
 h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display, var(--font-sans));
   font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--ci-text);
   line-height: 1.2;
 }
+
+.text-faint { color: var(--ci-text-faint) !important; }
 
 h1 { font-size: clamp(2rem, 4vw, 3rem); }
 h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
@@ -2551,4 +2555,636 @@ form button[type="submit"].btn,
 .invest-confirm-panel {
   max-height: min(90dvh, 640px);
   overflow-y: auto;
+}
+
+/* ==========================================================================
+   PRO UI v2 — Industry-grade fintech polish (Stripe / Coinbase / Linear)
+   Layered overrides — keeps structure, elevates craft
+   ========================================================================== */
+
+/* Quieter noise */
+body::after { opacity: 0.018; }
+[data-theme="light"] body::after { opacity: 0.012; }
+
+/* Orbs: softer, more institutional */
+.bg-orbs span { opacity: 0.22; filter: blur(72px); }
+[data-theme="light"] .bg-orbs span { opacity: 0.14; }
+
+/* --------------------------------------------------------------------------
+   Shell
+   -------------------------------------------------------------------------- */
+.app-shell {
+  padding: 10px;
+  gap: 10px;
+}
+
+.sidebar {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, rgba(11, 18, 32, 0.94) 100%);
+  border: 1px solid var(--ci-border);
+  border-radius: 20px;
+  box-shadow: var(--ci-shadow);
+  backdrop-filter: blur(20px) saturate(140%);
+}
+
+[data-theme="light"] .sidebar {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+}
+
+.sidebar-brand {
+  padding: 1.15rem 1.15rem 1rem;
+  gap: 0.75rem;
+}
+
+.logo-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  font-size: 0.95rem;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+}
+
+.sidebar-brand .logo-text {
+  font-size: 1.02rem;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+
+.sidebar-nav {
+  padding: 0.65rem 0.7rem 1rem;
+}
+
+.nav-section-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  color: var(--ci-text-faint);
+  padding: 0.85rem 0.85rem 0.35rem;
+  font-weight: 700;
+}
+
+.sidebar .nav-link {
+  gap: 0.7rem;
+  padding: 0.58rem 0.8rem;
+  border-radius: 11px;
+  font-size: 0.875rem;
+  font-weight: 525;
+  margin-bottom: 2px;
+  color: var(--ci-text-muted);
+}
+
+.sidebar .nav-link i {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.95rem;
+  opacity: 1;
+}
+
+[data-theme="light"] .sidebar .nav-link i {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.sidebar .nav-link:hover {
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--ci-text);
+}
+
+.sidebar .nav-link:hover i {
+  background: rgba(99, 102, 241, 0.14);
+  color: var(--ci-primary-bright);
+  transform: none;
+}
+
+.sidebar .nav-link.active {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0.05));
+  color: #E0E7FF;
+  border-color: rgba(129, 140, 248, 0.22);
+  box-shadow: none;
+  font-weight: 600;
+}
+
+[data-theme="light"] .sidebar .nav-link.active {
+  color: #3730A3;
+}
+
+.sidebar .nav-link.active i {
+  background: rgba(99, 102, 241, 0.22);
+  color: var(--ci-primary-bright);
+}
+
+.sidebar .nav-link.active::before {
+  width: 3px;
+  top: 22%;
+  bottom: 22%;
+  background: var(--ci-gradient);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.55);
+}
+
+.sidebar-footer {
+  padding: 0.85rem;
+  border-top: 1px solid var(--ci-border-soft);
+}
+
+/* Topbar */
+.topbar {
+  min-height: var(--ci-topbar-h);
+  padding: 0.55rem 1rem;
+  border-radius: 16px;
+  background: var(--ci-bg-glass);
+  border: 1px solid var(--ci-border);
+  box-shadow: var(--ci-shadow);
+  gap: 0.65rem;
+}
+
+.topbar .page-heading {
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.topbar .btn-ghost.btn-sm {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.topbar .avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  object-fit: cover;
+}
+
+.search-pill {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--ci-border-soft);
+  padding: 0.4rem 0.9rem;
+  min-width: 200px;
+}
+
+[data-theme="light"] .search-pill {
+  background: #F1F5F9;
+}
+
+/* Page content */
+.page-content {
+  padding-top: 0.35rem;
+  max-width: 1400px;
+}
+
+/* --------------------------------------------------------------------------
+   Cards — solid product surfaces
+   -------------------------------------------------------------------------- */
+.glass-card {
+  background: var(--ci-bg-card);
+  border: 1px solid var(--ci-border);
+  border-radius: var(--ci-radius);
+  box-shadow: var(--ci-shadow);
+  backdrop-filter: blur(18px) saturate(130%);
+}
+
+.glass-card.interactive:hover,
+.glass-card:hover.lift {
+  transform: translateY(-3px);
+  box-shadow: var(--ci-shadow-lg);
+  border-color: rgba(129, 140, 248, 0.28);
+}
+
+/* Stat cards */
+.stat-card {
+  padding: 1.2rem 1.25rem;
+  border-radius: var(--ci-radius);
+}
+
+.stat-card::before {
+  width: 100px;
+  height: 100px;
+  opacity: 0.55;
+  filter: blur(28px);
+}
+
+.stat-card .stat-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  margin-bottom: 0.5rem;
+}
+
+.stat-card .stat-value {
+  font-size: clamp(1.35rem, 2.2vw, 1.7rem);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+}
+
+.stat-card .stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--ci-primary-soft);
+  color: var(--ci-primary-bright);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  border: 1px solid rgba(129, 140, 248, 0.15);
+}
+
+/* Balance hero — flagship product surface */
+.balance-hero {
+  border-radius: 22px;
+  padding: 1.75rem !important;
+  background:
+    radial-gradient(ellipse 80% 90% at 100% 0%, rgba(99, 102, 241, 0.22), transparent 50%),
+    radial-gradient(ellipse 50% 60% at 0% 100%, rgba(14, 165, 233, 0.1), transparent 50%),
+    linear-gradient(145deg, rgba(17, 24, 39, 0.95), rgba(15, 23, 42, 0.88));
+  border: 1px solid rgba(129, 140, 248, 0.18);
+  box-shadow: var(--ci-shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="light"] .balance-hero {
+  background:
+    radial-gradient(ellipse 80% 90% at 100% 0%, rgba(99, 102, 241, 0.12), transparent 50%),
+    linear-gradient(145deg, #FFFFFF, #F8FAFC);
+  border-color: rgba(99, 102, 241, 0.14);
+}
+
+.balance-hero::after {
+  width: 280px;
+  height: 280px;
+  right: -80px;
+  top: -100px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.28), transparent 70%);
+  opacity: 0.85;
+}
+
+.balance-hero .stat-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 650;
+  color: var(--ci-text-muted);
+}
+
+.balance-hero .display-5 {
+  font-size: clamp(1.85rem, 4.5vw, 2.65rem) !important;
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+}
+
+.balance-hero .quick-actions .btn {
+  min-height: 42px;
+  padding-left: 1.15rem;
+  padding-right: 1.15rem;
+  font-size: 0.875rem;
+  border-radius: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons — precise, product-grade
+   -------------------------------------------------------------------------- */
+.btn {
+  border-radius: 12px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  font-size: 0.9rem;
+  padding: 0.55rem 1.15rem;
+  transition: transform 0.18s var(--ci-ease), box-shadow 0.18s var(--ci-ease),
+    background 0.18s var(--ci-ease), border-color 0.18s var(--ci-ease), filter 0.18s;
+}
+
+.btn-ci,
+.btn-primary {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 8px 20px rgba(79, 70, 229, 0.28) !important;
+}
+
+.btn-ci:hover,
+.btn-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.14) inset, 0 12px 28px rgba(79, 70, 229, 0.38) !important;
+}
+
+.btn-outline-ci {
+  border-radius: 12px !important;
+  border: 1px solid rgba(129, 140, 248, 0.35) !important;
+  color: #C7D2FE !important;
+  background: rgba(99, 102, 241, 0.06) !important;
+}
+
+[data-theme="light"] .btn-outline-ci {
+  color: #4338CA !important;
+}
+
+.btn-ghost {
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid var(--ci-border) !important;
+}
+
+[data-theme="light"] .btn-ghost {
+  background: #FFFFFF !important;
+}
+
+.btn-sm {
+  padding: 0.38rem 0.8rem;
+  font-size: 0.8rem;
+  border-radius: 10px;
+}
+
+.btn-lg {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border-radius: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   Forms
+   -------------------------------------------------------------------------- */
+.form-control,
+.form-select {
+  border-radius: 12px !important;
+  padding: 0.7rem 0.95rem !important;
+  font-size: 0.925rem !important;
+  border: 1px solid var(--ci-border) !important;
+  background: rgba(255, 255, 255, 0.035) !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: rgba(129, 140, 248, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+.form-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+  color: var(--ci-text-muted);
+}
+
+.input-group-text {
+  border-radius: 0 12px 12px 0 !important;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--ci-border);
+  color: var(--ci-text-muted);
+  font-weight: 650;
+  font-size: 0.8rem;
+}
+
+.input-group .form-control {
+  border-radius: 12px 0 0 12px !important;
+}
+
+/* --------------------------------------------------------------------------
+   Tables
+   -------------------------------------------------------------------------- */
+.table-ci thead th {
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  padding: 0.8rem 1rem;
+  background: rgba(15, 23, 42, 0.55);
+  border-bottom: 1px solid var(--ci-border);
+}
+
+[data-theme="light"] .table-ci thead th {
+  background: #F8FAFC;
+}
+
+.table-ci tbody td {
+  padding: 0.85rem 1rem;
+  font-size: 0.9rem;
+  border-color: var(--ci-border-soft);
+}
+
+.table-ci tbody tr:hover {
+  background: rgba(99, 102, 241, 0.05);
+}
+
+/* --------------------------------------------------------------------------
+   Badges
+   -------------------------------------------------------------------------- */
+.badge-status,
+.badge-featured,
+.badge {
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  padding: 0.28em 0.55em;
+}
+
+.badge-featured {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(14, 165, 233, 0.12));
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  color: #C7D2FE;
+}
+
+/* --------------------------------------------------------------------------
+   Market pulse / chips
+   -------------------------------------------------------------------------- */
+.market-pulse {
+  border-radius: 14px;
+  gap: 0.45rem !important;
+}
+
+.pulse-chip {
+  padding: 0.4rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--ci-border-soft);
+  font-size: 0.8rem;
+  font-weight: 550;
+}
+
+.pulse-chip:hover {
+  border-color: rgba(129, 140, 248, 0.35);
+  background: rgba(99, 102, 241, 0.08);
+  transform: none;
+}
+
+/* --------------------------------------------------------------------------
+   Investment plan cards
+   -------------------------------------------------------------------------- */
+.plan-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 1.35rem !important;
+  border-radius: 18px;
+}
+
+.plan-card .plan-return {
+  font-size: 1.55rem;
+  font-weight: 750;
+  font-family: var(--font-mono);
+  letter-spacing: -0.04em;
+  background: var(--ci-gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* --------------------------------------------------------------------------
+   Auth
+   -------------------------------------------------------------------------- */
+.auth-card {
+  max-width: 420px;
+  padding: 2.25rem 2rem;
+  border-radius: 22px;
+  box-shadow: var(--ci-shadow-lg);
+}
+
+.auth-card .logo-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   Mobile bottom nav
+   -------------------------------------------------------------------------- */
+.mobile-bottom-nav {
+  background: rgba(7, 11, 20, 0.94);
+  border-top: 1px solid var(--ci-border);
+  backdrop-filter: blur(20px) saturate(150%);
+  padding-top: 0.45rem;
+}
+
+[data-theme="light"] .mobile-bottom-nav {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.mobile-bottom-nav a {
+  font-size: 0.6rem;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+}
+
+.mobile-bottom-nav .fab-circle {
+  width: 48px;
+  height: 48px;
+  box-shadow: 0 8px 22px rgba(79, 70, 229, 0.4);
+}
+
+/* --------------------------------------------------------------------------
+   Dropdowns / menus
+   -------------------------------------------------------------------------- */
+.dropdown-menu {
+  background: var(--ci-bg-elevated) !important;
+  border: 1px solid var(--ci-border) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--ci-shadow-lg) !important;
+  padding: 0.4rem !important;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  border-radius: 9px !important;
+  color: var(--ci-text-soft) !important;
+  font-size: 0.875rem !important;
+  padding: 0.55rem 0.75rem !important;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: rgba(99, 102, 241, 0.1) !important;
+  color: var(--ci-text) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Progress / misc
+   -------------------------------------------------------------------------- */
+.progress-ci {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.progress-ci .bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ci-gradient);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--ci-text-muted);
+}
+
+.empty-state i {
+  font-size: 1.75rem;
+  opacity: 0.45;
+  display: block;
+  margin-bottom: 0.65rem;
+}
+
+/* Section headers inside cards */
+.glass-card h5,
+.glass-card h6 {
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+
+/* Alert polish */
+.alert.glass-card {
+  border-radius: 14px;
+  border: 1px solid var(--ci-border) !important;
+}
+
+/* Landing hero */
+.hero-title {
+  letter-spacing: -0.045em;
+}
+
+.navbar {
+  backdrop-filter: blur(16px);
+}
+
+/* Sticky form actions */
+@media (max-width: 991.98px) {
+  .form-sticky-actions {
+    background: linear-gradient(180deg, transparent 0%, rgba(7, 11, 20, 0.92) 24%, rgba(7, 11, 20, 0.98) 100%);
+  }
+  [data-theme="light"] .form-sticky-actions {
+    background: linear-gradient(180deg, transparent 0%, rgba(248, 250, 252, 0.95) 24%, #F8FAFC 100%);
+  }
+}
+
+/* Desktop content width balance */
+@media (min-width: 992px) {
+  .page-content {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    padding-bottom: 2.25rem;
+  }
+}
+
+/* Subtle scrollbars */
+.sidebar-nav,
+.table-responsive {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(129, 140, 248, 0.25) transparent;
+}
+
+/* Reduce aggressive hover lift on dense tables */
+.glass-card.p-0.overflow-hidden:hover {
+  transform: none;
+  box-shadow: var(--ci-shadow);
+}
+
+/* Selection color */
+::selection {
+  background: rgba(99, 102, 241, 0.35);
+  color: #fff;
 }

@@ -7,50 +7,58 @@
 
 {% block content %}
 {# Hero balance — live-updated via /api/balances/ when currency changes #}
-<div class="glass-card balance-hero p-4 p-md-5 mb-4 animate-in reveal" data-balance-root>
-  <div class="row align-items-center g-4">
+<div class="glass-card balance-hero mb-4 animate-in reveal" data-balance-root>
+  <div class="row align-items-end g-4">
     <div class="col-lg-7">
-      <div class="stat-label mb-2">Available balance
-        <span class="badge badge-status badge-info ms-1" data-balance="symbol">{{ available_display.symbol|default:display_currency|default:"USD" }}</span>
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <span class="stat-label mb-0">Available balance</span>
+        <span class="badge badge-status badge-info" data-balance="symbol">{{ available_display.symbol|default:display_currency|default:"USD" }}</span>
       </div>
       {% if available_display %}
-      <div class="display-5 fw-bold font-mono mb-1">
+      <div class="display-5 fw-bold font-mono mb-2">
         <span data-balance="available.formatted"
               data-count-up
               data-count-to="{{ available_display.value }}"
               data-count-format="{{ available_display.formatted }}">0</span>
-        <span class="fs-5 text-muted" data-balance="available.symbol">{{ available_display.symbol }}</span>
+        <span class="fs-5 text-muted fw-semibold" data-balance="available.symbol">{{ available_display.symbol }}</span>
       </div>
-      <p class="text-muted mb-3 mb-lg-0">
-        Wallet <span data-balance="balance.formatted"
-                     data-count-up
-                     data-count-to="{{ bal_display.value }}"
-                     data-count-format="{{ bal_display.formatted }}">0</span>
-        <span data-balance="balance.symbol">{{ bal_display.symbol }}</span>
-        · Profit <span class="text-profit">+<span data-balance="profit.formatted"
-                     data-count-up
-                     data-count-to="{{ profit_display.value }}"
-                     data-count-format="{{ profit_display.formatted }}">0</span>
-        <span data-balance="profit.symbol">{{ profit_display.symbol }}</span></span>
-      </p>
-      <p class="small text-muted mb-2 mb-lg-0 d-none d-md-block">
-        ≈ <span data-balance="available.usd_equivalent"
+      <div class="d-flex flex-wrap gap-3 gap-md-4 small text-muted mb-3">
+        <span>
+          <span class="d-block text-faint" style="font-size:0.65rem;letter-spacing:0.08em;text-transform:uppercase">Wallet</span>
+          <span class="font-mono text-soft" data-balance="balance.formatted"
+                data-count-up
+                data-count-to="{{ bal_display.value }}"
+                data-count-format="{{ bal_display.formatted }}">0</span>
+          <span data-balance="balance.symbol">{{ bal_display.symbol }}</span>
+        </span>
+        <span>
+          <span class="d-block text-faint" style="font-size:0.65rem;letter-spacing:0.08em;text-transform:uppercase">Profit</span>
+          <span class="font-mono text-profit">+<span data-balance="profit.formatted"
+                data-count-up
+                data-count-to="{{ profit_display.value }}"
+                data-count-format="{{ profit_display.formatted }}">0</span>
+          <span data-balance="profit.symbol">{{ profit_display.symbol }}</span></span>
+        </span>
+        <span class="d-none d-md-inline">
+          <span class="d-block text-faint" style="font-size:0.65rem;letter-spacing:0.08em;text-transform:uppercase">Platform</span>
+          <span class="font-mono">≈ <span data-balance="available.usd_equivalent"
                 data-count-up
                 data-count-to="{{ available_display.usd_equivalent }}"
-                data-count-decimals="2">0</span> USD platform value
-      </p>
+                data-count-decimals="2">0</span> USD</span>
+        </span>
+      </div>
       {% else %}
-      <div class="display-5 fw-bold font-mono mb-1"
+      <div class="display-5 fw-bold font-mono mb-2"
            data-balance="available.formatted"
            data-count-up
            data-count-to="{{ available_balance }}">0</div>
       {% endif %}
-      <form method="post" action="{% url 'core:set_display_currency' %}" class="d-flex flex-wrap gap-2 align-items-center mt-2" data-currency-form>
+      <form method="post" action="{% url 'core:set_display_currency' %}" class="d-flex flex-wrap gap-2 align-items-center" data-currency-form>
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ request.get_full_path }}">
-        <label class="small text-muted mb-0" for="dash-display-currency">Display currency</label>
+        <label class="small text-muted mb-0" for="dash-display-currency">Currency</label>
         <select class="form-select form-select-sm" name="currency" id="dash-display-currency"
-                style="width:auto;min-width:140px" data-currency-select
+                style="width:auto;min-width:132px" data-currency-select
                 onchange="if(!window.setDisplayCurrency){this.form.submit()}">
           {% for o in display_options %}
           <option value="{{ o.code }}" {% if display_currency == o.code %}selected{% endif %}>{{ o.label }}</option>
