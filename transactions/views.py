@@ -371,14 +371,114 @@ def withdraw_cancel(request, pk):
 
 @login_required
 def history(request):
+    from wallets.display import format_amount_for_code, get_default_display_code
+
+    code = get_default_display_code(request.user, request=request)
     qs = Transaction.objects.filter(user=request.user)
     tx_type = request.GET.get('type')
     if tx_type:
         qs = qs.filter(tx_type=tx_type)
     page = Paginator(qs, 20).get_page(request.GET.get('page'))
+    for tx in page:
+        tx.amount_display = format_amount_for_code(tx.amount, code)
+        tx.fee_display = format_amount_for_code(tx.fee or 0, code) if tx.fee else None
     if request.headers.get('HX-Request'):
-        return render(request, 'transactions/partials/history_table.html', {'page': page})
-    return render(request, 'transactions/history.html', {'page': page, 'tx_types': Transaction.TxType.choices})
+        return render(request, 'transactions/partials/history_table.html', {
+            'page': page,
+            'display_currency': code,
+        })
+    return render(request, 'transactions/history.html', {
+        'page': page,
+        'tx_types': Transaction.TxType.choices,
+        'display_currency': code,
+    })
+
+
+def _sticker_for_transaction(tx: Transaction) -> str:
+    """Map transaction type/status to animated sticker kind."""
+    if tx.status in (Transaction.Status.FAILED, Transaction.Status.CANCELLED):
+        return 'rejected'
+    if tx.status in (Transaction.Status.PENDING, Transaction.Status.PROCESSING):
+        return 'pending'
+    mapping = {
+        Transaction.TxType.DEPOSIT: 'deposit',
+        Transaction.TxType.WITHDRAWAL: 'withdraw',
+        Transaction.TxType.INVESTMENT: 'invest',
+        Transaction.TxType.REINVEST: 'invest',
+        Transaction.TxType.PROFIT: 'profit',
+        Transaction.TxType.REFERRAL: 'referral',
+        Transaction.TxType.REFUND: 'success',
+        Transaction.TxType.FEE: 'pending',
+        Transaction.TxType.ADJUSTMENT: 'success',
+    }
+    return mapping.get(tx.tx_type, 'success')
+
+
+@login_required
+@require_GET
+def transaction_receipt(request, pk):
+    """Official receipt for any ledger transaction belonging to the user."""
+    from wallets.display import format_amount_for_code, get_currency_meta, get_default_display_code
+
+    tx = get_object_or_404(Transaction, pk=pk, user=request.user)
+    code = get_default_display_code(request.user, request=request)
+    meta = get_currency_meta(code)
+    amount_disp = format_amount_for_code(tx.amount, code)
+    fee_disp = format_amount_for_code(tx.fee or 0, code) if tx.fee else None
+    net_usd = (tx.amount or 0) - (tx.fee or 0)
+    net_disp = format_amount_for_code(net_usd, code)
+
+    sticker = _sticker_for_transaction(tx)
+    rows = [
+        ('Receipt ID', str(tx.id)),
+        ('Type', tx.get_tx_type_display()),
+        ('Status', tx.get_status_display()),
+        ('Amount', amount_disp['label']),
+    ]
+    if fee_disp and (tx.fee or 0) > 0:
+        rows.append(('Fee', fee_disp['label']))
+        rows.append(('Net', net_disp['label']))
+    if tx.currency:
+        rows.append(('Currency / asset', tx.currency))
+    if tx.network:
+        rows.append(('Network', tx.network))
+    if tx.wallet_address:
+        rows.append(('Wallet address', tx.wallet_address))
+    if tx.tx_hash:
+        rows.append(('Transaction hash', tx.tx_hash))
+    if tx.description:
+        rows.append(('Description', tx.description))
+    if tx.reference_type and tx.reference_id:
+        rows.append(('Reference', f'{tx.reference_type}:{tx.reference_id}'))
+    rows.append(('Date', tx.created_at))
+
+    # Extra metadata (display amounts, crypto payout, etc.)
+    extra = []
+    md = tx.metadata or {}
+    if md.get('display_amount') and md.get('display_currency'):
+        extra.append(('Entered amount', f"{md['display_amount']} {md['display_currency']}"))
+    if md.get('crypto_amount') and md.get('crypto_symbol'):
+        extra.append(('Crypto amount', f"{md['crypto_amount']} {md['crypto_symbol']}"))
+    if md.get('rate_usd'):
+        extra.append(('Rate (USD)', f"1 unit ≈ ${md['rate_usd']}"))
+    if md.get('platform_credit'):
+        extra.append(('Platform credit', str(md['platform_credit'])))
+
+    return render(request, 'transactions/receipt.html', {
+        'kind': 'transaction',
+        'tx': tx,
+        'title': f'{tx.get_tx_type_display()} receipt',
+        'sticker_kind': sticker,
+        'amount_display': amount_disp,
+        'fee_display': fee_disp,
+        'net_display': net_disp,
+        'display_currency': code,
+        'currency_symbol': meta['symbol'],
+        'rows': rows,
+        'extra_rows': extra,
+        'status_class': tx.status,
+        'status_label': tx.get_status_display(),
+    })
 
 
 @login_required

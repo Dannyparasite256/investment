@@ -1,7 +1,14 @@
 <div class="table-responsive">
   <table class="table table-ci table-hover mb-0">
     <thead>
-      <tr><th>Date</th><th>Type</th><th>Description</th><th>Amount</th><th>Status</th></tr>
+      <tr>
+        <th>Date</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Amount</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
     </thead>
     <tbody>
       {% for tx in page %}
@@ -10,12 +17,22 @@
         <td class="text-capitalize">{{ tx.get_tx_type_display }}</td>
         <td class="small">{{ tx.description|truncatechars:40 }}</td>
         <td class="font-mono {% if tx.tx_type == 'profit' or tx.tx_type == 'deposit' or tx.tx_type == 'referral' %}text-profit{% elif tx.tx_type == 'withdrawal' or tx.tx_type == 'investment' %}text-loss{% endif %}">
-          {{ tx.amount|money:4 }}
+          {% if tx.amount_display %}{{ tx.amount_display.label }}{% else %}{{ tx.amount|money:4 }}{% endif %}
         </td>
         <td><span class="badge badge-status badge-{{ tx.status }}">{{ tx.get_status_display }}</span></td>
+        <td class="text-end">
+          <a href="{% url 'transactions:receipt' tx.pk %}" class="btn btn-ghost btn-sm">
+            <i class="bi bi-receipt"></i> Receipt
+          </a>
+        </td>
       </tr>
       {% empty %}
-      <tr><td colspan="5" class="text-center text-muted py-5">No transactions</td></tr>
+      <tr>
+        <td colspan="6" class="py-5">
+          {% url 'transactions:deposit_create' as deposit_url %}
+          {% include "partials/ui_sticker.html" with kind="empty" size="md" title="No transactions yet" text="Every deposit, investment, profit, and withdrawal gets a receipt here." cta_url=deposit_url cta_label="Make a deposit" %}
+        </td>
+      </tr>
       {% endfor %}
     </tbody>
   </table>
@@ -23,9 +40,9 @@
 {% if page.has_other_pages %}
 <nav class="p-3">
   <ul class="pagination pagination-sm justify-content-center mb-0">
-    {% if page.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page.previous_page_number }}">Prev</a></li>{% endif %}
+    {% if page.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page.previous_page_number }}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">Prev</a></li>{% endif %}
     <li class="page-item disabled"><span class="page-link">{{ page.number }} / {{ page.paginator.num_pages }}</span></li>
-    {% if page.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page.next_page_number }}">Next</a></li>{% endif %}
+    {% if page.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page.next_page_number }}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">Next</a></li>{% endif %}
   </ul>
 </nav>
 {% endif %}

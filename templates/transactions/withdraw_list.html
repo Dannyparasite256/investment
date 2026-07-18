@@ -37,7 +37,8 @@
           </td>
           <td class="font-mono small">{{ w.wallet_address|truncatechars:16 }}</td>
           <td><span class="badge badge-status badge-{{ w.status }}">{{ w.get_status_display }}</span></td>
-          <td>
+          <td class="text-nowrap">
+            <a href="{% url 'core:withdraw_receipt' w.pk %}" class="btn btn-ghost btn-sm" title="Receipt"><i class="bi bi-receipt"></i></a>
             {% if w.status == 'pending' %}
             <form method="post" action="{% url 'transactions:withdraw_cancel' w.pk %}" class="d-inline">
               {% csrf_token %}

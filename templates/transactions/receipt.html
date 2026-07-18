@@ -1,45 +1,159 @@
 {% extends "base_app.html" %}
+{% load static %}
 {% block title %}{{ title }} — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}{{ title }}{% endblock %}
+{% block page_subtitle %}Official record · {{ currency_symbol|default:display_currency|default:"USD" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .receipt-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 22px;
+  }
+  .receipt-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 4px;
+    background: var(--ci-gradient);
+  }
+  .receipt-hero {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .receipt-amount {
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    font-weight: 750;
+    font-family: var(--font-mono);
+    letter-spacing: -0.04em;
+    line-height: 1.15;
+  }
+  .receipt-watermark {
+    position: absolute;
+    right: -12px;
+    bottom: -18px;
+    font-size: 7rem;
+    opacity: 0.04;
+    pointer-events: none;
+    user-select: none;
+  }
+  @media print {
+    body * { visibility: hidden !important; }
+    #receipt-print, #receipt-print * { visibility: visible !important; }
+    #receipt-print {
+      position: absolute;
+      left: 0; top: 0; width: 100%;
+      background: #fff !important;
+      color: #111 !important;
+      box-shadow: none !important;
+      border: 1px solid #ddd !important;
+    }
+    .no-print { display: none !important; }
+    .sidebar, .topbar, .mobile-bottom-nav, .bg-orbs { display: none !important; }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-lg-6">
-    <div class="glass-card p-4 p-md-5 receipt-card" id="receipt-print">
-      <div class="d-flex justify-content-between align-items-start mb-4">
-        <div>
-          <div class="logo-mark mb-2" style="width:40px;height:40px;font-size:1rem">C</div>
-          <strong>{{ SITE_NAME }}</strong>
-          <div class="small text-muted">Official transaction receipt</div>
+    <div class="glass-card p-4 p-md-5 receipt-card animate-in" id="receipt-print">
+      <div class="receipt-watermark">C</div>
+
+      <div class="d-flex justify-content-between align-items-start mb-3 gap-2 flex-wrap">
+        <div class="d-flex align-items-center gap-2">
+          <div class="logo-mark" style="width:40px;height:40px;font-size:1rem">C</div>
+          <div>
+            <strong>{{ SITE_NAME }}</strong>
+            <div class="small text-muted">Transaction receipt</div>
+          </div>
         </div>
-        <span class="badge badge-status badge-{% if kind == 'deposit' %}{{ deposit.status }}{% else %}{{ withdrawal.status }}{% endif %}">
-          {% if kind == 'deposit' %}{{ deposit.get_status_display }}{% else %}{{ withdrawal.get_status_display }}{% endif %}
-        </span>
+        <span class="badge badge-status badge-{{ status_class|default:'info' }}">{{ status_label|default:"—" }}</span>
       </div>
-      <table class="table table-ci">
-        {% if kind == 'deposit' %}
+
+      <div class="receipt-hero">
+        {% include "partials/ui_sticker.html" with kind=sticker_kind|default:"success" size="sm" compact=1 %}
+        <div class="min-w-0">
+          <div class="stat-label mb-1">{{ title }}</div>
+          {% if amount_display %}
+          <div class="receipt-amount {% if sticker_kind == 'deposit' or sticker_kind == 'profit' or sticker_kind == 'referral' or sticker_kind == 'success' %}text-profit{% elif sticker_kind == 'withdraw' or sticker_kind == 'invest' %}text-loss{% endif %}">
+            {{ amount_display.label }}
+          </div>
+          {% elif kind == 'deposit' and deposit %}
+          <div class="receipt-amount">{{ deposit.amount|money_trim:8 }} {{ deposit.cryptocurrency.symbol }}</div>
+          {% elif kind == 'withdrawal' and withdrawal %}
+          <div class="receipt-amount">{{ withdrawal.amount|money_trim:8 }}</div>
+          {% endif %}
+          {% if fee_display and fee_display.value != '0' and fee_display.value != '0.00' %}
+          <div class="small text-muted mt-1">Fee {{ fee_display.label }}{% if net_display %} · Net {{ net_display.label }}{% endif %}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <table class="table table-ci mb-3">
+        {% for label, value in rows %}
+        <tr>
+          <td class="text-muted">{{ label }}</td>
+          <td class="text-end {% if label == 'Receipt ID' or label == 'Tx hash' or label == 'Transaction hash' or label == 'Wallet address' or label == 'Address' %}font-mono small{% endif %}"
+              style="{% if label == 'Tx hash' or label == 'Transaction hash' or label == 'Wallet address' or label == 'Address' %}word-break:break-all{% endif %}">
+            {% if label == 'Date' or label == 'Submitted' %}{{ value|when:"full" }}{% else %}{{ value }}{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        {% if kind == 'deposit' and deposit %}
         <tr><td class="text-muted">Receipt ID</td><td class="font-mono text-end small">{{ deposit.id }}</td></tr>
-        <tr><td class="text-muted">Type</td><td class="text-end">Crypto deposit</td></tr>
         <tr><td class="text-muted">Amount</td><td class="font-mono text-end">{{ deposit.amount|money_trim:8 }} {{ deposit.cryptocurrency.symbol }}</td></tr>
-        <tr><td class="text-muted">Network</td><td class="text-end"><span class="badge badge-status badge-info">{{ deposit.network }}</span></td></tr>
-        <tr><td class="text-muted">Tx hash</td><td class="font-mono small text-end" style="word-break:break-all">{{ deposit.transaction_hash }}</td></tr>
-        <tr><td class="text-muted">Submitted</td><td class="text-end">{{ deposit.created_at }}</td></tr>
-        {% if deposit.credit_amount %}<tr><td class="text-muted">Credited</td><td class="font-mono text-end">{{ deposit.credit_amount|money:2 }} platform</td></tr>{% endif %}
-        {% else %}
+        {% elif kind == 'withdrawal' and withdrawal %}
         <tr><td class="text-muted">Receipt ID</td><td class="font-mono text-end small">{{ withdrawal.id }}</td></tr>
-        <tr><td class="text-muted">Type</td><td class="text-end">Withdrawal</td></tr>
-        <tr><td class="text-muted">Amount</td><td class="font-mono text-end">{{ withdrawal.amount|money_trim:8 }} {{ withdrawal.cryptocurrency.symbol }}</td></tr>
-        <tr><td class="text-muted">Fee</td><td class="font-mono text-end">{{ withdrawal.fee|money_trim:8 }}</td></tr>
-        <tr><td class="text-muted">Address</td><td class="font-mono small text-end" style="word-break:break-all">{{ withdrawal.wallet_address }}</td></tr>
-        <tr><td class="text-muted">Submitted</td><td class="text-end">{{ withdrawal.created_at }}</td></tr>
+        <tr><td class="text-muted">Amount</td><td class="font-mono text-end">{{ withdrawal.amount|money_trim:8 }}</td></tr>
         {% endif %}
+        {% endfor %}
+        {% for label, value in extra_rows %}
+        <tr>
+          <td class="text-muted">{{ label }}</td>
+          <td class="text-end font-mono small">{{ value }}</td>
+        </tr>
+        {% endfor %}
       </table>
-      <p class="small text-muted mb-0">This receipt is for your records. Contact support with the Receipt ID if you need help.</p>
+
+      <p class="small text-muted mb-0">
+        Keep this receipt for your records. Quote the Receipt ID if you contact support.
+      </p>
     </div>
-    <div class="d-flex gap-2 mt-3">
-      <button class="btn btn-ci flex-fill" type="button" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
-      <a class="btn btn-ghost flex-fill" href="{% if kind == 'deposit' %}{% url 'transactions:deposit_detail' deposit.pk %}{% else %}{% url 'transactions:withdraw_list' %}{% endif %}">Back</a>
+
+    <div class="d-flex flex-wrap gap-2 mt-3 no-print">
+      <button class="btn btn-ci flex-fill" type="button" onclick="window.print()">
+        <i class="bi bi-printer me-1"></i> Print
+      </button>
+      <button class="btn btn-outline-ci flex-fill" type="button" id="receipt-copy-id"
+              data-id="{% if tx %}{{ tx.id }}{% elif deposit %}{{ deposit.id }}{% elif withdrawal %}{{ withdrawal.id }}{% endif %}">
+        <i class="bi bi-clipboard me-1"></i> Copy ID
+      </button>
+      <a class="btn btn-ghost flex-fill" href="{% url 'transactions:history' %}">History</a>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var btn = document.getElementById('receipt-copy-id');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    var id = btn.getAttribute('data-id') || '';
+    if (!id) return;
+    if (typeof copyText === 'function') {
+      copyText(id, btn);
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(id).then(function () {
+        btn.innerHTML = '<i class="bi bi-check2 me-1"></i> Copied';
+      });
+    }
+  });
+})();
+</script>
 {% endblock %}

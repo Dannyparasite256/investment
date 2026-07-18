@@ -108,22 +108,102 @@ def global_search(request):
 @login_required
 @require_GET
 def deposit_receipt(request, pk):
+    """Deposit receipt — prefer unified Transaction receipt when linked."""
+    from transactions.models import Transaction
+    from wallets.display import format_amount_for_code, get_currency_meta, get_default_display_code
+
     deposit = get_object_or_404(Deposit, pk=pk, user=request.user)
+    linked = Transaction.objects.filter(
+        user=request.user,
+        reference_type='deposit',
+        reference_id=str(deposit.id),
+    ).first()
+    if linked:
+        return redirect('transactions:receipt', pk=linked.pk)
+
+    code = get_default_display_code(request.user, request=request)
+    meta = get_currency_meta(code)
+    credit = deposit.credit_amount
+    amount_disp = (
+        format_amount_for_code(credit, code)
+        if credit is not None
+        else None
+    )
+    sticker = 'success' if deposit.status == 'approved' else (
+        'rejected' if deposit.status == 'rejected' else 'pending'
+    )
+    rows = [
+        ('Receipt ID', str(deposit.id)),
+        ('Type', 'Crypto deposit'),
+        ('Status', deposit.get_status_display()),
+        ('Crypto amount', f'{deposit.amount} {deposit.cryptocurrency.symbol}'),
+        ('Network', deposit.network or deposit.cryptocurrency.network),
+        ('Tx hash', deposit.transaction_hash or '—'),
+        ('Submitted', deposit.created_at),
+    ]
+    if credit is not None:
+        rows.append(('Platform credit', amount_disp['label'] if amount_disp else str(credit)))
     return render(request, 'transactions/receipt.html', {
-        'deposit': deposit,
         'kind': 'deposit',
+        'deposit': deposit,
         'title': 'Deposit receipt',
+        'sticker_kind': sticker,
+        'amount_display': amount_disp,
+        'display_currency': code,
+        'currency_symbol': meta['symbol'],
+        'rows': rows,
+        'extra_rows': [],
+        'status_class': deposit.status,
+        'status_label': deposit.get_status_display(),
     })
 
 
 @login_required
 @require_GET
 def withdraw_receipt(request, pk):
+    """Withdrawal receipt — prefer unified Transaction receipt when linked."""
+    from transactions.models import Transaction
+    from wallets.display import format_amount_for_code, get_currency_meta, get_default_display_code
+
     withdrawal = get_object_or_404(Withdrawal, pk=pk, user=request.user)
+    linked = Transaction.objects.filter(
+        user=request.user,
+        reference_type='withdrawal',
+        reference_id=str(withdrawal.id),
+    ).first()
+    if linked:
+        return redirect('transactions:receipt', pk=linked.pk)
+
+    code = get_default_display_code(request.user, request=request)
+    meta = get_currency_meta(code)
+    amount_disp = format_amount_for_code(withdrawal.amount, code)
+    fee_disp = format_amount_for_code(withdrawal.fee or 0, code)
+    sticker = 'success' if withdrawal.status in ('paid', 'completed', 'approved') else (
+        'rejected' if withdrawal.status in ('rejected', 'cancelled') else 'pending'
+    )
+    rows = [
+        ('Receipt ID', str(withdrawal.id)),
+        ('Type', 'Withdrawal'),
+        ('Status', withdrawal.get_status_display()),
+        ('Amount', amount_disp['label']),
+        ('Fee', fee_disp['label']),
+        ('Network', withdrawal.network or withdrawal.cryptocurrency.symbol),
+        ('Address', withdrawal.wallet_address),
+        ('Submitted', withdrawal.created_at),
+    ]
     return render(request, 'transactions/receipt.html', {
-        'withdrawal': withdrawal,
         'kind': 'withdrawal',
+        'withdrawal': withdrawal,
         'title': 'Withdrawal receipt',
+        'sticker_kind': sticker,
+        'amount_display': amount_disp,
+        'fee_display': fee_disp,
+        'display_currency': code,
+        'currency_symbol': meta['symbol'],
+        'rows': rows,
+        'extra_rows': [],
+        'status_class': withdrawal.status,
+        'status_label': withdrawal.get_status_display(),
     })
 
 
