@@ -284,20 +284,45 @@ def convert_from_usd(amount_usd, currency_code: str) -> Decimal:
 
 
 def convert_to_usd(amount, currency_code: str) -> Decimal:
+    """
+    Convert display/crypto units → platform USD-equivalent.
+    Uses higher precision (8 dp) so UGX/crypto rounds accurately into the wallet.
+    """
     amount = Decimal(str(amount or 0))
     code = (currency_code or 'USD').strip()
     if not code or code.upper() == 'USD':
-        return quantize_amount(amount, 2)
+        return quantize_amount(amount, 8)
 
     fiat = _fiat_rate(code)
     if fiat:
         rate, _meta = fiat
-        return quantize_amount(amount * rate, 2)
+        if rate <= 0:
+            return quantize_amount(amount, 8)
+        return quantize_amount(amount * rate, 8)
 
     crypto = resolve_display_crypto(code)
     if not crypto or not crypto.usd_price:
-        return quantize_amount(amount, 2)
-    return quantize_amount(amount * Decimal(str(crypto.usd_price)), 2)
+        return quantize_amount(amount, 8)
+    return quantize_amount(amount * Decimal(str(crypto.usd_price)), 8)
+
+
+def crypto_units_to_usd(units, crypto) -> Decimal:
+    """Convert on-chain crypto units → platform USD using live usd_price."""
+    units = Decimal(str(units or 0))
+    price = Decimal(str(getattr(crypto, 'usd_price', None) or 0))
+    if price <= 0:
+        price = Decimal('1')
+    return quantize_amount(units * price, 8)
+
+
+def usd_to_crypto_units(amount_usd, crypto) -> Decimal:
+    """Convert platform USD → crypto units using live usd_price."""
+    amount_usd = Decimal(str(amount_usd or 0))
+    price = Decimal(str(getattr(crypto, 'usd_price', None) or 0))
+    if price <= 0:
+        raise ValueError(f'No live USD price for {getattr(crypto, "symbol", "crypto")}. Try again shortly.')
+    places = min(8, int(getattr(crypto, 'decimals', 8) or 8))
+    return quantize_amount(amount_usd / price, places)
 
 
 def _format_amount(amount_usd, code: str) -> dict:

@@ -259,29 +259,82 @@ def risk_questionnaire(request):
 @login_required
 @require_GET
 def fee_preview_api(request):
-    """Live withdrawal fee estimate for the withdraw form."""
+    """
+    Live withdrawal fee estimate.
+    `amount` is in the user's display currency (or ?currency= override).
+    Returns fees/net in display currency + crypto payout units + rates.
+    """
+    from core.price_feed import ensure_fresh_prices
     from core.vip import apply_withdrawal_fee
+    from wallets.display import (
+        convert_from_usd,
+        convert_to_usd,
+        crypto_units_to_usd,
+        format_amount_for_code,
+        get_default_display_code,
+        usd_to_crypto_units,
+    )
     from wallets.models import Cryptocurrency
 
-    amount = Decimal(str(request.GET.get('amount') or 0))
+    try:
+        ensure_fresh_prices()
+    except Exception:
+        pass
+
+    amount_display = Decimal(str(request.GET.get('amount') or 0))
+    currency = (request.GET.get('currency') or '').strip()
+    if not currency:
+        currency = get_default_display_code(request.user, request=request)
     crypto_id = request.GET.get('crypto')
-    crypto_fee = Decimal('0')
-    symbol = 'USD'
+
+    c = None
     if crypto_id:
         c = Cryptocurrency.objects.filter(pk=crypto_id, is_active=True).first()
-        if c:
-            crypto_fee = Decimal(str(c.withdrawal_fee or 0))
-            symbol = c.symbol
-    fee_total, pct = apply_withdrawal_fee(request.user, amount, crypto_fee)
-    net = amount - fee_total if amount > fee_total else Decimal('0')
+    if not c:
+        return JsonResponse({'ok': False, 'error': 'Select a payout network.'}, status=400)
+
+    price = Decimal(str(c.usd_price or 0))
+    if price <= 0:
+        return JsonResponse({'ok': False, 'error': f'No live rate for {c.symbol}.'}, status=400)
+
+    amount_usd = convert_to_usd(amount_display, currency) if amount_display > 0 else Decimal('0')
+    network_fee_usd = crypto_units_to_usd(c.withdrawal_fee or 0, c)
+    fee_total_usd, pct = apply_withdrawal_fee(request.user, amount_usd, network_fee_usd)
+    net_usd = amount_usd - fee_total_usd if amount_usd > fee_total_usd else Decimal('0')
+
+    try:
+        crypto_gross = usd_to_crypto_units(amount_usd, c) if amount_usd > 0 else Decimal('0')
+        crypto_net = usd_to_crypto_units(net_usd, c) if net_usd > 0 else Decimal('0')
+    except ValueError as exc:
+        return JsonResponse({'ok': False, 'error': str(exc)}, status=400)
+
+    fee_disp = format_amount_for_code(fee_total_usd, currency)
+    net_disp = format_amount_for_code(net_usd, currency)
+    amt_disp = format_amount_for_code(amount_usd, currency)
+    one_unit_disp = convert_from_usd(price, currency)
+
     return JsonResponse({
         'ok': True,
-        'amount': str(amount),
-        'fee': str(fee_total),
+        'currency': currency,
+        'amount': str(amount_display),
+        'amount_label': amt_disp['label'],
+        'amount_usd': str(amount_usd),
+        'fee': fee_disp['formatted'],
+        'fee_label': fee_disp['label'],
+        'fee_usd': str(fee_total_usd),
         'fee_percent': str(pct),
-        'crypto_fee': str(crypto_fee),
-        'net': str(net),
-        'symbol': symbol,
+        'crypto_fee_units': str(c.withdrawal_fee or 0),
+        'network_fee_usd': str(network_fee_usd),
+        'net': net_disp['formatted'],
+        'net_label': net_disp['label'],
+        'net_usd': str(net_usd),
+        'symbol': fee_disp['symbol'],
+        'crypto_symbol': c.symbol,
+        'crypto_amount': str(crypto_gross),
+        'crypto_net': str(crypto_net),
+        'rate_usd': str(price),
+        'display_per_crypto': str(one_unit_disp),
+        'network': c.network,
     })
 
 

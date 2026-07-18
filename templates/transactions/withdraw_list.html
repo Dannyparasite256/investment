@@ -1,6 +1,7 @@
 {% extends "base_app.html" %}
 {% block title %}Withdrawals — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}Withdrawals{% endblock %}
+{% block page_subtitle %}Shown in {{ currency_symbol|default:display_currency|default:"USD" }}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-end mb-3">
@@ -10,14 +11,30 @@
   <div class="table-responsive">
     <table class="table table-ci table-hover">
       <thead>
-        <tr><th>Date</th><th>Currency</th><th>Amount</th><th>Address</th><th>Status</th><th></th></tr>
+        <tr>
+          <th>Date</th>
+          <th>Network</th>
+          <th>Amount ({{ currency_symbol|default:display_currency }})</th>
+          <th>Payout (crypto)</th>
+          <th>Address</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
       </thead>
       <tbody>
         {% for w in page %}
         <tr>
           <td class="small text-muted">{{ w.created_at|when }}</td>
-          <td>{{ w.cryptocurrency.symbol }}</td>
-          <td class="font-mono">{{ w.amount|money_trim:8 }}</td>
+          <td>
+            <span class="badge badge-status badge-info">{{ w.cryptocurrency.symbol }}</span>
+            <div class="small text-muted">{{ w.cryptocurrency.get_network_display }}</div>
+          </td>
+          <td class="font-mono">
+            {% if w.amount_display %}{{ w.amount_display.label }}{% else %}{{ w.amount|money:2 }}{% endif %}
+          </td>
+          <td class="font-mono small">
+            {% if w.crypto_payout %}≈ {{ w.crypto_payout }} {{ w.cryptocurrency.symbol }}{% else %}—{% endif %}
+          </td>
           <td class="font-mono small">{{ w.wallet_address|truncatechars:16 }}</td>
           <td><span class="badge badge-status badge-{{ w.status }}">{{ w.get_status_display }}</span></td>
           <td>
@@ -30,7 +47,7 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="text-center text-muted py-5">No withdrawals</td></tr>
+        <tr><td colspan="7" class="text-center text-muted py-5">No withdrawals</td></tr>
         {% endfor %}
       </tbody>
     </table>

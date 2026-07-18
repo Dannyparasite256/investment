@@ -1,28 +1,37 @@
 {% extends "base_app.html" %}
 {% block title %}Withdraw — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}Withdraw{% endblock %}
-{% block page_subtitle %}Live fee preview · funds lock until approved{% endblock %}
+{% block page_subtitle %}Amounts in {{ currency_symbol|default:display_currency }} · live exchange rates{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-6">
+<div class="row g-4">
+  <div class="col-lg-7">
     <div class="glass-card p-4 mb-3">
-      <div class="d-flex justify-content-between">
-        <span class="text-muted">Available balance</span>
-        <span class="font-mono fw-bold text-profit">{{ wallet.available_balance|money:2 }}</span>
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <div class="stat-label mb-1">Available to withdraw</div>
+          <div class="font-mono fs-4 fw-bold text-profit">
+            {% if available_display %}{{ available_display.label }}{% else %}{{ wallet.available_balance|money:2 }}{% endif %}
+          </div>
+        </div>
+        <span class="badge badge-status badge-info">{{ currency_symbol|default:display_currency }}</span>
       </div>
     </div>
+
     <div class="glass-card p-4">
       <div class="alert alert-warning glass-card border-0 small mb-3">
         <i class="bi bi-exclamation-triangle me-1"></i>
-        Double-check <strong>network</strong> and address. Sending to the wrong chain can permanently lose funds.
+        Enter the amount in <strong>{{ currency_symbol|default:display_currency }}</strong>.
+        Choose the <strong>crypto network</strong> you want paid to — we convert with the live rate and lock platform balance.
+        Wrong network can mean permanent loss of funds.
       </div>
       <form method="post" id="withdraw-form">
         {% csrf_token %}
         <div class="mb-3">
-          <label class="form-label" for="id_cryptocurrency">Currency / network</label>
+          <label class="form-label" for="id_cryptocurrency">Payout crypto / network</label>
           {{ form.cryptocurrency }}
           {% for e in form.cryptocurrency.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+          <div class="form-text" id="rate-hint">Live rate appears when you select a network.</div>
         </div>
         <div class="mb-3" id="saved-addr-wrap" style="display:none">
           <label class="form-label" for="saved-address-select">Saved wallet address</label>
@@ -31,9 +40,16 @@
           </select>
         </div>
         <div class="mb-3">
-          <label class="form-label" for="id_amount">Amount</label>
-          {{ form.amount }}
+          <label class="form-label" for="id_amount">
+            Amount
+            <span class="badge badge-status badge-info ms-1">{{ currency_symbol|default:display_currency }}</span>
+          </label>
+          <div class="input-group">
+            {{ form.amount }}
+            <span class="input-group-text">{{ currency_symbol|default:display_currency }}</span>
+          </div>
           {% for e in form.amount.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+          <div class="form-text" id="min-hint">Min / max depend on the selected network.</div>
         </div>
         <div class="mb-4">
           <label class="form-label" for="id_wallet_address">Wallet address</label>
@@ -42,6 +58,14 @@
         </div>
 
         <div class="glass-card p-3 mb-4 bg-elevated" id="fee-preview-box">
+          <div class="d-flex justify-content-between small mb-2">
+            <span class="text-muted">Live rate</span>
+            <span class="font-mono" id="rate-line">—</span>
+          </div>
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-muted">You send (crypto)</span>
+            <span class="font-mono" id="crypto-out">—</span>
+          </div>
           <div class="d-flex justify-content-between small mb-1">
             <span class="text-muted">Network / VIP fee</span>
             <span class="font-mono" id="fee-amount">—</span>
@@ -50,12 +74,12 @@
             <span class="text-muted">You receive (est.)</span>
             <span class="font-mono text-profit" id="fee-net">—</span>
           </div>
-          <div class="small text-muted" id="fee-note">Fees update as you type.</div>
+          <div class="small text-muted" id="fee-note">Fees and rates refresh as you type. Final fee confirmed at processing.</div>
         </div>
 
         <div class="form-sticky-actions">
           <button type="submit" class="btn btn-ci w-100" id="withdraw-submit"
-                  onclick="return confirm('Confirm withdrawal request? Funds will be locked until approved or rejected.');">
+                  onclick="return confirm('Confirm withdrawal? Funds will be locked until approved or rejected.');">
             Request withdrawal
           </button>
           <a href="{% url 'transactions:withdraw_list' %}" class="btn btn-ghost w-100">My withdrawals</a>
@@ -63,12 +87,50 @@
       </form>
     </div>
   </div>
+
+  <div class="col-lg-5">
+    <div class="glass-card p-4">
+      <h6 class="mb-3">Live rates
+        <span class="badge badge-featured ms-1">{{ currency_symbol|default:display_currency }}</span>
+      </h6>
+      <p class="small text-muted mb-3">1 unit of crypto → your display currency (from live feed).</p>
+      <div class="table-responsive">
+        <table class="table table-ci table-sm mb-0">
+          <thead>
+            <tr><th>Asset</th><th>Network</th><th class="text-end">Rate</th><th class="text-end">Min</th></tr>
+          </thead>
+          <tbody>
+            {% for r in crypto_rates %}
+            <tr data-rate-row data-id="{{ r.id }}">
+              <td class="fw-semibold">{{ r.symbol }}</td>
+              <td class="small text-muted">{{ r.network_label }}</td>
+              <td class="font-mono text-end small">{{ r.display_per_unit }} {{ currency_symbol }}</td>
+              <td class="font-mono text-end small">{{ r.min_label }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-muted text-center py-3">No cryptocurrencies configured</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+{{ crypto_rates|json_script:"crypto-rates-data" }}
 <script>
 (function () {
+  var currency = "{{ currency_symbol|default:display_currency|default:'USD'|escapejs }}";
+  var currencyCode = "{{ display_currency|default:'USD'|escapejs }}";
+  var decimals = parseInt('{{ currency_decimals|default:2 }}', 10) || 2;
+  var rates = [];
+  try {
+    var el = document.getElementById('crypto-rates-data');
+    if (el) rates = JSON.parse(el.textContent);
+  } catch (e) { rates = []; }
+
   var cryptoSelect = document.getElementById('id_cryptocurrency');
   var savedSelect = document.getElementById('saved-address-select');
   var wrap = document.getElementById('saved-addr-wrap');
@@ -77,7 +139,22 @@
   var feeAmount = document.getElementById('fee-amount');
   var feeNet = document.getElementById('fee-net');
   var feeNote = document.getElementById('fee-note');
+  var rateLine = document.getElementById('rate-line');
+  var cryptoOut = document.getElementById('crypto-out');
+  var rateHint = document.getElementById('rate-hint');
+  var minHint = document.getElementById('min-hint');
   var t = null;
+
+  function rateFor(id) {
+    id = String(id);
+    return rates.find(function (r) { return String(r.id) === id; });
+  }
+
+  function money(n) {
+    n = Number(n) || 0;
+    if (typeof formatMoney === 'function') return formatMoney(n, decimals) + ' ' + currency;
+    return n.toFixed(decimals) + ' ' + currency;
+  }
 
   function loadSaved() {
     if (!cryptoSelect || !cryptoSelect.value) {
@@ -110,25 +187,50 @@
       });
   }
 
+  function updateHints() {
+    var r = cryptoSelect ? rateFor(cryptoSelect.value) : null;
+    if (r) {
+      if (rateHint) rateHint.textContent = '1 ' + r.symbol + ' ≈ ' + r.display_per_unit + ' ' + currency + ' · network ' + r.network_label;
+      if (minHint) minHint.textContent = 'Minimum for this network: ' + r.min_label;
+      if (rateLine) rateLine.textContent = '1 ' + r.symbol + ' = ' + r.display_per_unit + ' ' + currency + ' ($' + r.usd_price + ')';
+      if (amountEl && r.min_value) amountEl.min = r.min_value;
+    }
+  }
+
   function refreshFee() {
     if (!amountEl) return;
     var amt = amountEl.value || '0';
     var crypto = cryptoSelect ? cryptoSelect.value : '';
     clearTimeout(t);
     t = setTimeout(function () {
-      fetch('/api/fee-preview/?amount=' + encodeURIComponent(amt) + '&crypto=' + encodeURIComponent(crypto), {
+      if (!crypto) return;
+      var url = '/api/fee-preview/?amount=' + encodeURIComponent(amt)
+        + '&crypto=' + encodeURIComponent(crypto)
+        + '&currency=' + encodeURIComponent(currencyCode);
+      fetch(url, {
         headers: { 'Accept': 'application/json' },
         credentials: 'same-origin',
       })
         .then(function (r) { return r.json(); })
         .then(function (d) {
-          if (!d.ok) return;
-          if (feeAmount) feeAmount.textContent = d.fee + ' (' + d.fee_percent + '% VIP + network)';
-          if (feeNet) feeNet.textContent = d.net + ' ' + (d.symbol || '');
-          if (feeNote) feeNote.textContent = 'Final fee confirmed at processing time.';
+          if (!d.ok) {
+            if (feeNote) feeNote.textContent = d.error || 'Could not estimate fee.';
+            return;
+          }
+          if (feeAmount) feeAmount.textContent = (d.fee_label || d.fee) + ' (' + d.fee_percent + '% VIP + network)';
+          if (feeNet) feeNet.textContent = d.net_label || (d.net + ' ' + (d.symbol || ''));
+          if (cryptoOut) cryptoOut.textContent = d.crypto_amount + ' ' + (d.crypto_symbol || '');
+          if (rateLine) {
+            rateLine.textContent = '1 ' + d.crypto_symbol + ' = ' + d.display_per_crypto + ' ' + (d.symbol || currency)
+              + ' ($' + d.rate_usd + ')';
+          }
+          if (feeNote) {
+            feeNote.textContent = '≈ ' + d.crypto_net + ' ' + d.crypto_symbol
+              + ' after fees · platform lock ' + d.amount_usd + ' USD';
+          }
         })
         .catch(function () {});
-    }, 200);
+    }, 220);
   }
 
   if (savedSelect && addrInput) {
@@ -137,11 +239,18 @@
     });
   }
   if (cryptoSelect) {
-    cryptoSelect.addEventListener('change', function () { loadSaved(); refreshFee(); });
+    cryptoSelect.addEventListener('change', function () {
+      loadSaved();
+      updateHints();
+      refreshFee();
+    });
     if (cryptoSelect.options.length && cryptoSelect.options[0].value === '') {
-      cryptoSelect.options[0].text = '— Select currency —';
+      cryptoSelect.options[0].text = '— Select payout network —';
     }
-    if (cryptoSelect.value) loadSaved();
+    if (cryptoSelect.value) {
+      loadSaved();
+      updateHints();
+    }
   }
   if (amountEl) amountEl.addEventListener('input', refreshFee);
   refreshFee();
