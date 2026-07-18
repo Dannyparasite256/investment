@@ -112,6 +112,10 @@ TEMPLATES = [
                 'core.context_processors.site_settings',
                 'notifications.context_processors.unread_notifications',
             ],
+            # Available in every template: {{ amount|money }} {{ amount|money:4 }}
+            'builtins': [
+                'core.templatetags.money_filters',
+            ],
         },
     },
 ]

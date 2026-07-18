@@ -36,7 +36,7 @@
       <h6>Recent commissions</h6>
       {% for c in commissions %}
       <div class="small py-1 border-bottom border-ci">
-        <div class="font-mono text-profit">+{{ c.amount }}</div>
+        <div class="font-mono text-profit">+{{ c.amount|money_trim:8 }}</div>
         <div class="text-muted">{{ c.referrer.email|truncatechars:16 }} ← {{ c.referred_user.email|truncatechars:16 }}</div>
       </div>
       {% empty %}<p class="text-muted small">None</p>{% endfor %}

@@ -64,11 +64,13 @@
 
   window.formatMoney = function (value, decimals) {
     decimals = decimals == null ? 2 : decimals;
-    var n = Number(value);
+    var n = Number(String(value).replace(/,/g, ''));
     if (isNaN(n)) return decimals === 0 ? '0' : '0.00';
-    return n.toLocaleString(undefined, {
+    // Always use en-US so thousands separators are commas site-wide
+    return n.toLocaleString('en-US', {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
+      useGrouping: true,
     });
   };
 

@@ -33,7 +33,7 @@
     <div class="glass-card p-4">
       <h6 class="mb-3">Plan rules</h6>
       <table class="table table-ci">
-        <tr><td class="text-muted">Min / Max deposit</td><td class="font-mono text-end">{{ plan.min_deposit }} – {{ plan.max_deposit }}</td></tr>
+        <tr><td class="text-muted">Min / Max deposit</td><td class="font-mono text-end">{{ plan.min_deposit|money:2 }} – {{ plan.max_deposit|money:2 }}</td></tr>
         <tr><td class="text-muted">Profit method</td><td class="text-end">{{ plan.get_profit_method_display }}</td></tr>
         <tr><td class="text-muted">Payout frequency</td><td class="text-end">{{ plan.get_payout_frequency_display }}</td></tr>
         <tr><td class="text-muted">Risk level</td><td class="text-end risk-{{ plan.risk_level }}">{{ plan.get_risk_level_display }}</td></tr>
@@ -47,7 +47,7 @@
     <div class="glass-card p-4 sticky-top" style="top:80px">
       {% if plan.is_available and user.is_authenticated %}
       <h5 class="mb-3">Start investing</h5>
-      <p class="small text-muted">Available balance: <strong class="font-mono">{{ wallet.available_balance }}</strong></p>
+      <p class="small text-muted">Available balance: <strong class="font-mono">{{ wallet.available_balance|money:2 }}</strong></p>
       <a href="{% url 'investments:invest' plan.slug %}" class="btn btn-ci w-100 mb-2">Invest now</a>
       {% elif not user.is_authenticated %}
       <p class="text-muted">Log in to invest in this plan.</p>

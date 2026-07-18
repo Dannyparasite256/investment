@@ -20,16 +20,16 @@
         {% if kind == 'deposit' %}
         <tr><td class="text-muted">Receipt ID</td><td class="font-mono text-end small">{{ deposit.id }}</td></tr>
         <tr><td class="text-muted">Type</td><td class="text-end">Crypto deposit</td></tr>
-        <tr><td class="text-muted">Amount</td><td class="font-mono text-end">{{ deposit.amount }} {{ deposit.cryptocurrency.symbol }}</td></tr>
+        <tr><td class="text-muted">Amount</td><td class="font-mono text-end">{{ deposit.amount|money_trim:8 }} {{ deposit.cryptocurrency.symbol }}</td></tr>
         <tr><td class="text-muted">Network</td><td class="text-end"><span class="badge badge-status badge-info">{{ deposit.network }}</span></td></tr>
         <tr><td class="text-muted">Tx hash</td><td class="font-mono small text-end" style="word-break:break-all">{{ deposit.transaction_hash }}</td></tr>
         <tr><td class="text-muted">Submitted</td><td class="text-end">{{ deposit.created_at }}</td></tr>
-        {% if deposit.credit_amount %}<tr><td class="text-muted">Credited</td><td class="font-mono text-end">{{ deposit.credit_amount }} platform</td></tr>{% endif %}
+        {% if deposit.credit_amount %}<tr><td class="text-muted">Credited</td><td class="font-mono text-end">{{ deposit.credit_amount|money:2 }} platform</td></tr>{% endif %}
         {% else %}
         <tr><td class="text-muted">Receipt ID</td><td class="font-mono text-end small">{{ withdrawal.id }}</td></tr>
         <tr><td class="text-muted">Type</td><td class="text-end">Withdrawal</td></tr>
-        <tr><td class="text-muted">Amount</td><td class="font-mono text-end">{{ withdrawal.amount }} {{ withdrawal.cryptocurrency.symbol }}</td></tr>
-        <tr><td class="text-muted">Fee</td><td class="font-mono text-end">{{ withdrawal.fee }}</td></tr>
+        <tr><td class="text-muted">Amount</td><td class="font-mono text-end">{{ withdrawal.amount|money_trim:8 }} {{ withdrawal.cryptocurrency.symbol }}</td></tr>
+        <tr><td class="text-muted">Fee</td><td class="font-mono text-end">{{ withdrawal.fee|money_trim:8 }}</td></tr>
         <tr><td class="text-muted">Address</td><td class="font-mono small text-end" style="word-break:break-all">{{ withdrawal.wallet_address }}</td></tr>
         <tr><td class="text-muted">Submitted</td><td class="text-end">{{ withdrawal.created_at }}</td></tr>
         {% endif %}

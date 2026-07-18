@@ -2,9 +2,9 @@
 {% block page_title %}Wallet management{% endblock %}
 {% block content %}
 <div class="row g-3 mb-3">
-  <div class="col-md-4"><div class="glass-card stat-card"><div class="stat-label">Total balances</div><div class="stat-value" style="font-size:1.3rem">{{ totals.bal|floatformat:2 }}</div></div></div>
-  <div class="col-md-4"><div class="glass-card stat-card"><div class="stat-label">Total profits</div><div class="stat-value text-profit" style="font-size:1.3rem">{{ totals.profit|floatformat:2 }}</div></div></div>
-  <div class="col-md-4"><div class="glass-card stat-card"><div class="stat-label">Total deposited</div><div class="stat-value" style="font-size:1.3rem">{{ totals.dep|floatformat:2 }}</div></div></div>
+  <div class="col-md-4"><div class="glass-card stat-card"><div class="stat-label">Total balances</div><div class="stat-value" style="font-size:1.3rem">{{ totals.bal|money }}</div></div></div>
+  <div class="col-md-4"><div class="glass-card stat-card"><div class="stat-label">Total profits</div><div class="stat-value text-profit" style="font-size:1.3rem">{{ totals.profit|money }}</div></div></div>
+  <div class="col-md-4"><div class="glass-card stat-card"><div class="stat-label">Total deposited</div><div class="stat-value" style="font-size:1.3rem">{{ totals.dep|money }}</div></div></div>
 </div>
 <div class="glass-card p-0 overflow-hidden table-responsive">
 <table class="table table-ci mb-0">

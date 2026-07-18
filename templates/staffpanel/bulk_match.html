@@ -37,7 +37,7 @@
               <td class="font-mono small">{{ r.line|truncatechars:24 }}</td>
               <td class="font-mono small">{{ r.hash|truncatechars:16 }}</td>
               <td class="small">{% if r.deposit %}{{ r.deposit.user.email }}{% else %}—{% endif %}</td>
-              <td class="font-mono small">{% if r.deposit %}{{ r.deposit.amount }} {{ r.deposit.cryptocurrency.symbol }}{% else %}—{% endif %}</td>
+              <td class="font-mono small">{% if r.deposit %}{{ r.deposit.amount|money_trim:8 }} {{ r.deposit.cryptocurrency.symbol }}{% else %}—{% endif %}</td>
               <td>
                 {% if r.status == 'matched' %}<span class="badge badge-status badge-info">Matched</span>
                 {% elif r.status == 'approved' %}<span class="badge badge-status badge-success">Approved</span>

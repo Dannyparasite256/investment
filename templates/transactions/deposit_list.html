@@ -18,7 +18,7 @@
         <tr>
           <td class="small text-muted">{{ d.created_at|date:"M d, H:i" }}</td>
           <td>{{ d.cryptocurrency.symbol }}</td>
-          <td class="font-mono">{{ d.amount }} <span class="text-muted">{{ d.cryptocurrency.symbol }}</span></td>
+          <td class="font-mono">{{ d.amount|money_trim:8 }} <span class="text-muted">{{ d.cryptocurrency.symbol }}</span></td>
           <td class="font-mono small">{{ d.transaction_hash|truncatechars:16 }}</td>
           <td><span class="badge badge-status badge-{{ d.status }}">{{ d.get_status_display }}</span></td>
           <td><a href="{% url 'transactions:deposit_detail' d.pk %}" class="small">View</a></td>

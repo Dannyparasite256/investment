@@ -29,8 +29,8 @@
             <span class="ring-label">{{ inv.progress_percent }}%</span>
           </div>
           <div class="min-w-0">
-            <div class="font-mono fs-5 text-body">{{ inv.amount|floatformat:2 }}</div>
-            <div class="small text-muted">Earned {{ inv.total_earned|floatformat:2 }}</div>
+            <div class="font-mono fs-5 text-body">{{ inv.amount|money }}</div>
+            <div class="small text-muted">Earned {{ inv.total_earned|money }}</div>
           </div>
         </div>
         <div class="progress-ci mb-2"><div class="bar" style="width:{{ inv.progress_percent }}%"></div></div>

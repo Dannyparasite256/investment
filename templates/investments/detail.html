@@ -14,7 +14,7 @@
         </div>
         <div class="text-end">
           <div class="text-muted small">Principal</div>
-          <div class="font-mono fs-4">{{ inv.amount }}</div>
+          <div class="font-mono fs-4">{{ inv.amount|money:2 }}</div>
         </div>
       </div>
       <div class="progress-ci mb-2" style="height:10px"><div class="bar" style="width:{{ inv.progress_percent }}%"></div></div>
@@ -24,7 +24,7 @@
         <span>Matures {{ inv.matures_at|date:"M d, Y H:i" }}</span>
       </div>
       <div class="row g-3">
-        <div class="col-6 col-md-3"><div class="text-muted small">Total earned</div><div class="font-mono text-profit">{{ inv.total_earned }}</div></div>
+        <div class="col-6 col-md-3"><div class="text-muted small">Total earned</div><div class="font-mono text-profit">{{ inv.total_earned|money:2 }}</div></div>
         <div class="col-6 col-md-3"><div class="text-muted small">Rate</div><div class="font-mono">{{ inv.profit_rate_percent }}%</div></div>
         <div class="col-6 col-md-3"><div class="text-muted small">Payouts</div><div>{{ inv.payouts_count }} / {{ inv.expected_payouts }}</div></div>
         <div class="col-6 col-md-3"><div class="text-muted small">Next payout</div><div class="small">{% if inv.next_payout_at %}{{ inv.next_payout_at|date:"M d, H:i" }}{% else %}—{% endif %}</div></div>
@@ -39,7 +39,7 @@
             {% for e in earnings %}
             <tr>
               <td>{{ e.period_number }}</td>
-              <td class="font-mono text-profit">{{ e.amount }}</td>
+              <td class="font-mono text-profit">{{ e.amount|money_trim:8 }}</td>
               <td>{% if e.is_reinvested %}Yes{% else %}No{% endif %}</td>
               <td class="text-muted small">{{ e.created_at|date:"M d, Y H:i" }}</td>
             </tr>

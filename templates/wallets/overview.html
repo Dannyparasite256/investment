@@ -72,8 +72,8 @@
             <tr>
               <td class="small text-muted">{{ e.created_at|date:"M d, H:i" }}</td>
               <td>{{ e.get_entry_type_display }}</td>
-              <td class="font-mono">{{ e.amount }}</td>
-              <td class="font-mono text-muted">{{ e.balance_after }}</td>
+              <td class="font-mono">{{ e.amount|money_trim:8 }}</td>
+              <td class="font-mono text-muted">{{ e.balance_after|money:2 }}</td>
             </tr>
             {% empty %}
             <tr><td colspan="4" class="text-center text-muted py-4">No ledger entries</td></tr>

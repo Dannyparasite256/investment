@@ -1,7 +1,7 @@
 """Display currency conversion — crypto + fiat (USD, UGX, …)."""
 from decimal import Decimal, ROUND_DOWN, ROUND_HALF_UP
 
-from core.utils import quantize_amount
+from core.utils import format_money, quantize_amount
 from transactions.models import Deposit
 from wallets.models import Cryptocurrency, Wallet
 
@@ -261,20 +261,22 @@ def _format_amount(amount_usd, code: str) -> dict:
     q = Decimal('1').scaleb(-places) if places > 0 else Decimal('1')
     rounding = ROUND_HALF_UP if places == 0 else ROUND_DOWN
     value = value.quantize(q, rounding=rounding)
+    # Always use thousands separators (commas) in UI
     if places == 0:
-        formatted = f'{int(value):,}'
+        formatted = format_money(value, 0)
     elif places > 2:
-        formatted = f'{value:f}'.rstrip('0').rstrip('.')
+        formatted = format_money(value, places, strip_trailing_zeros=True)
     else:
-        formatted = f'{value:.2f}'
+        formatted = format_money(value, 2)
 
+    usd_eq = quantize_amount(amount_usd, 2)
     return {
         'value': str(value),
         'symbol': symbol,
         'code': code_out,
         'formatted': formatted,
         'usd_price': usd_price,
-        'usd_equivalent': str(quantize_amount(amount_usd, 2)),
+        'usd_equivalent': format_money(usd_eq, 2),
         'label': f'{formatted} {symbol}',
     }
 

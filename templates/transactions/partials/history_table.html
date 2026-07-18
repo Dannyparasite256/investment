@@ -10,7 +10,7 @@
         <td class="text-capitalize">{{ tx.get_tx_type_display }}</td>
         <td class="small">{{ tx.description|truncatechars:40 }}</td>
         <td class="font-mono {% if tx.tx_type == 'profit' or tx.tx_type == 'deposit' or tx.tx_type == 'referral' %}text-profit{% elif tx.tx_type == 'withdrawal' or tx.tx_type == 'investment' %}text-loss{% endif %}">
-          {{ tx.amount|floatformat:4 }}
+          {{ tx.amount|money:4 }}
         </td>
         <td><span class="badge badge-status badge-{{ tx.status }}">{{ tx.get_status_display }}</span></td>
       </tr>

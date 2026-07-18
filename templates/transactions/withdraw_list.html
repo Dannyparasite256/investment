@@ -17,7 +17,7 @@
         <tr>
           <td class="small text-muted">{{ w.created_at|date:"M d, H:i" }}</td>
           <td>{{ w.cryptocurrency.symbol }}</td>
-          <td class="font-mono">{{ w.amount }}</td>
+          <td class="font-mono">{{ w.amount|money_trim:8 }}</td>
           <td class="font-mono small">{{ w.wallet_address|truncatechars:16 }}</td>
           <td><span class="badge badge-status badge-{{ w.status }}">{{ w.get_status_display }}</span></td>
           <td>

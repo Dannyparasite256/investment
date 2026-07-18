@@ -21,7 +21,7 @@
       <tr class="{% if row.overdue %}table-danger{% endif %}">
         <td>{{ row.w.priority }}</td>
         <td class="small"><a href="{% url 'staffpanel:user_detail' row.w.user_id %}">{{ row.w.user.email }}</a></td>
-        <td class="font-mono">{{ row.w.amount }} {{ row.w.cryptocurrency.symbol }}</td>
+        <td class="font-mono">{{ row.w.amount|money_trim:8 }} {{ row.w.cryptocurrency.symbol }}</td>
         <td><span class="badge badge-status badge-{{ row.w.status }}">{{ row.w.get_status_display }}</span></td>
         <td class="small {% if row.overdue %}text-loss fw-bold{% endif %}">
           {% if row.w.sla_deadline %}{{ row.w.sla_deadline|date:"M d H:i" }}{% if row.overdue %} · OVERDUE{% endif %}

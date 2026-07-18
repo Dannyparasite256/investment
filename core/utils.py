@@ -71,6 +71,45 @@ def quantize_amount(value, places=8):
     return Decimal(str(value)).quantize(q, rounding=ROUND_DOWN)
 
 
+def format_money(value, places=2, strip_trailing_zeros=False):
+    """
+    Format a number with thousands separators (commas).
+    Examples: 1234.5 → 1,234.50 ;  64424 → 64,424.00 ; UGX style places=0 → 5,290,075,005
+    """
+    if value is None or value == '':
+        value = 0
+    try:
+        amount = Decimal(str(value).replace(',', '').strip())
+    except Exception:
+        return str(value)
+
+    places = int(places) if places is not None else 2
+    places = max(0, min(12, places))
+
+    if places == 0:
+        # half-up style for whole units (UGX etc.)
+        from decimal import ROUND_HALF_UP
+        amount = amount.quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+        neg = amount < 0
+        n = abs(int(amount))
+        s = f'{n:,}'
+        return f'-{s}' if neg else s
+
+    amount = quantize_amount(amount, places)
+    neg = amount < 0
+    amount = abs(amount)
+    raw = f'{amount:.{places}f}'
+    whole, _, frac = raw.partition('.')
+    whole = f'{int(whole):,}'
+    if strip_trailing_zeros:
+        frac = frac.rstrip('0')
+        out = f'{whole}.{frac}' if frac else whole
+    else:
+        out = f'{whole}.{frac}'
+    return f'-{out}' if neg else out
+
+
 def format_crypto(amount, symbol='USDT', places=8):
     amount = quantize_amount(amount, places)
-    return f'{amount:.{places}f} {symbol}'.rstrip('0').rstrip('.') + f' {symbol}' if False else f'{amount} {symbol}'
+    body = format_money(amount, places, strip_trailing_zeros=True)
+    return f'{body} {symbol}'

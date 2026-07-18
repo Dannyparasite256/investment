@@ -126,7 +126,7 @@
           <div class="plan-return mb-1">{{ plan.expected_return_display }}</div>
           <div class="text-muted small mb-3">Expected return · {{ plan.get_payout_frequency_display }}</div>
           <ul class="list-unstyled small text-soft mb-4">
-            <li class="mb-1"><i class="bi bi-check2 text-profit me-1"></i> Min {{ plan.min_deposit }}</li>
+            <li class="mb-1"><i class="bi bi-check2 text-profit me-1"></i> Min {{ plan.min_deposit|money:2 }}</li>
             <li class="mb-1"><i class="bi bi-check2 text-profit me-1"></i> {{ plan.duration_days }} days</li>
             <li><i class="bi bi-check2 text-profit me-1"></i> Risk: {{ plan.get_risk_level_display }}</li>
           </ul>

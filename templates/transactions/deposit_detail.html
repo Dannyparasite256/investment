@@ -9,7 +9,7 @@
     <div class="glass-card p-4 mb-4">
       <div class="d-flex justify-content-between align-items-start mb-4">
         <div>
-          <h5 class="mb-1">{{ deposit.amount }} {{ deposit.cryptocurrency.symbol }}</h5>
+          <h5 class="mb-1">{{ deposit.amount|money_trim:8 }} {{ deposit.cryptocurrency.symbol }}</h5>
           <span class="badge badge-status badge-info network-badge">{{ deposit.network|default:deposit.cryptocurrency.network }}</span>
         </div>
         <span class="badge badge-status badge-{{ deposit.status }}">{{ deposit.get_status_display }}</span>
@@ -35,7 +35,7 @@
         <div class="status-step {% if deposit.status == 'approved' %}done{% endif %}">
           <div class="status-dot"></div>
           <div class="status-label">Credited</div>
-          <div class="status-meta">{% if deposit.credit_amount %}{{ deposit.credit_amount }} platform{% else %}After approval{% endif %}</div>
+          <div class="status-meta">{% if deposit.credit_amount %}{{ deposit.credit_amount|money:2 }} platform{% else %}After approval{% endif %}</div>
         </div>
       </div>
 

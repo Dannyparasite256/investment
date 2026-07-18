@@ -15,7 +15,7 @@
           <td class="text-muted small">{{ e.created_at|date:"M d, Y H:i" }}</td>
           <td>{{ e.investment.plan.name }}</td>
           <td>{{ e.period_number }}</td>
-          <td class="font-mono text-profit">{{ e.amount }}</td>
+          <td class="font-mono text-profit">{{ e.amount|money_trim:8 }}</td>
           <td>{% if e.is_reinvested %}<span class="badge badge-status badge-info">Yes</span>{% else %}—{% endif %}</td>
         </tr>
         {% empty %}

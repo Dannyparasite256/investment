@@ -242,7 +242,7 @@
             <tr>
               <td class="text-capitalize fw-medium">{{ tx.get_tx_type_display }}</td>
               <td class="font-mono {% if tx.tx_type == 'profit' or tx.tx_type == 'deposit' %}text-profit{% elif tx.tx_type == 'withdrawal' or tx.tx_type == 'investment' %}text-loss{% endif %}">
-                {{ tx.amount|floatformat:4 }}
+                {{ tx.amount|money:4 }}
               </td>
               <td><span class="badge badge-status badge-{{ tx.status }}">{{ tx.get_status_display }}</span></td>
               <td class="text-muted small">{{ tx.created_at|date:"M d, H:i" }}</td>
@@ -272,11 +272,11 @@
         <a href="{% url 'investments:detail' inv.pk %}" class="d-block mb-3 text-decoration-none">
           <div class="d-flex justify-content-between mb-1">
             <span class="fw-semibold" style="color:var(--ci-text)">{{ inv.plan.name }}</span>
-            <span class="font-mono" style="color:var(--ci-text)">{{ inv.amount|floatformat:2 }}</span>
+            <span class="font-mono" style="color:var(--ci-text)">{{ inv.amount|money }}</span>
           </div>
           <div class="progress-ci mb-1"><div class="bar" style="width:{{ inv.progress_percent }}%"></div></div>
           <div class="d-flex justify-content-between small text-muted">
-            <span>Earned {{ inv.total_earned|floatformat:2 }}</span>
+            <span>Earned {{ inv.total_earned|money }}</span>
             <span>{{ inv.progress_percent }}%</span>
           </div>
         </a>
@@ -329,11 +329,11 @@
 
     // Live market pulse from free API (poll every 60s)
     function fmtUsd(n) {
-      n = parseFloat(n);
+      n = parseFloat(String(n).replace(/,/g, ''));
       if (isNaN(n)) return '—';
-      if (n >= 1000) return '$' + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
-      if (n >= 1) return '$' + n.toLocaleString(undefined, { maximumFractionDigits: 2 });
-      return '$' + n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+      if (n >= 1000) return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+      if (n >= 1) return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 4 });
     }
     function applyTicker(data) {
       var prices = (data && data.prices) || {};

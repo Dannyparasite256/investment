@@ -21,7 +21,7 @@
         <tr>
           <td class="small text-muted">{{ w.created_at|date:"M d H:i" }}</td>
           <td class="small"><a href="{% url 'staffpanel:user_detail' w.user_id %}">{{ w.user.email }}</a></td>
-          <td class="font-mono">{{ w.amount }} <span class="text-muted">{{ w.cryptocurrency.symbol }}</span></td>
+          <td class="font-mono">{{ w.amount|money_trim:8 }} <span class="text-muted">{{ w.cryptocurrency.symbol }}</span></td>
           <td class="small">{{ w.network }}</td>
           <td class="font-mono small">{{ w.wallet_address|truncatechars:16 }}</td>
           <td><span class="badge badge-status badge-{{ w.status }}">{{ w.get_status_display }}</span></td>

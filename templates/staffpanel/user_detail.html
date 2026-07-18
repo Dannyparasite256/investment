@@ -13,7 +13,7 @@
         {% if target.is_kyc_verified %}<span class="badge badge-status badge-success">KYC</span>{% endif %}
         <span class="badge badge-status badge-info">{{ target.get_role_display }}</span>
       </div>
-      <div class="small mb-1">Balance: <strong class="font-mono">{{ wallet.balance }}</strong></div>
+      <div class="small mb-1">Balance: <strong class="font-mono">{{ wallet.balance|money:2 }}</strong></div>
       <div class="small mb-1">Profit: <strong class="font-mono text-profit">{{ wallet.total_profit }}</strong></div>
       <div class="small mb-1">Display currency: <strong>{{ target.preferred_currency }}</strong></div>
       <div class="small mb-3">Referral earnings: <strong class="font-mono">{{ target.referral_earnings }}</strong></div>
@@ -47,11 +47,11 @@
   <div class="col-lg-8">
     <div class="glass-card p-3 mb-3">
       <h6>Recent deposits</h6>
-      {% for d in deposits %}<div class="small d-flex justify-content-between border-bottom border-ci py-1"><span>{{ d.amount }} {{ d.cryptocurrency.symbol }}</span><span class="badge badge-status badge-{{ d.status }}">{{ d.status }}</span></div>{% empty %}<p class="text-muted small mb-0">None</p>{% endfor %}
+      {% for d in deposits %}<div class="small d-flex justify-content-between border-bottom border-ci py-1"><span>{{ d.amount|money_trim:8 }} {{ d.cryptocurrency.symbol }}</span><span class="badge badge-status badge-{{ d.status }}">{{ d.status }}</span></div>{% empty %}<p class="text-muted small mb-0">None</p>{% endfor %}
     </div>
     <div class="glass-card p-3 mb-3">
       <h6>Recent withdrawals</h6>
-      {% for w in withdrawals %}<div class="small d-flex justify-content-between border-bottom border-ci py-1"><span>{{ w.amount }}</span><span class="badge badge-status badge-{{ w.status }}">{{ w.status }}</span></div>{% empty %}<p class="text-muted small mb-0">None</p>{% endfor %}
+      {% for w in withdrawals %}<div class="small d-flex justify-content-between border-bottom border-ci py-1"><span>{{ w.amount|money_trim:8 }}</span><span class="badge badge-status badge-{{ w.status }}">{{ w.status }}</span></div>{% empty %}<p class="text-muted small mb-0">None</p>{% endfor %}
     </div>
     <div class="glass-card p-3">
       <h6>Login history</h6>

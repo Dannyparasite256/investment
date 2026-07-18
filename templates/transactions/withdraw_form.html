@@ -9,7 +9,7 @@
     <div class="glass-card p-4 mb-3">
       <div class="d-flex justify-content-between">
         <span class="text-muted">Available balance</span>
-        <span class="font-mono fw-bold text-profit">{{ wallet.available_balance }}</span>
+        <span class="font-mono fw-bold text-profit">{{ wallet.available_balance|money:2 }}</span>
       </div>
     </div>
     <div class="glass-card p-4">

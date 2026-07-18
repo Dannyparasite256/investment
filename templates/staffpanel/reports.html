@@ -12,9 +12,9 @@
   </div>
 </div>
 <div class="row g-3 mb-4">
-  <div class="col-md-3"><div class="glass-card stat-card"><div class="stat-label">Deposits</div><div class="stat-value" style="font-size:1.3rem">{{ summary.deposits_sum|floatformat:2 }}</div><small class="text-muted">{{ summary.deposits_count }} tx</small></div></div>
-  <div class="col-md-3"><div class="glass-card stat-card"><div class="stat-label">Withdrawals</div><div class="stat-value" style="font-size:1.3rem">{{ summary.withdrawals_sum|floatformat:2 }}</div><small class="text-muted">{{ summary.withdrawals_count }} tx</small></div></div>
-  <div class="col-md-3"><div class="glass-card stat-card"><div class="stat-label">Investments</div><div class="stat-value" style="font-size:1.3rem">{{ summary.investments_sum|floatformat:2 }}</div><small class="text-muted">{{ summary.investments_count }}</small></div></div>
+  <div class="col-md-3"><div class="glass-card stat-card"><div class="stat-label">Deposits</div><div class="stat-value" style="font-size:1.3rem">{{ summary.deposits_sum|money }}</div><small class="text-muted">{{ summary.deposits_count }} tx</small></div></div>
+  <div class="col-md-3"><div class="glass-card stat-card"><div class="stat-label">Withdrawals</div><div class="stat-value" style="font-size:1.3rem">{{ summary.withdrawals_sum|money }}</div><small class="text-muted">{{ summary.withdrawals_count }} tx</small></div></div>
+  <div class="col-md-3"><div class="glass-card stat-card"><div class="stat-label">Investments</div><div class="stat-value" style="font-size:1.3rem">{{ summary.investments_sum|money }}</div><small class="text-muted">{{ summary.investments_count }}</small></div></div>
   <div class="col-md-3"><div class="glass-card stat-card"><div class="stat-label">Registrations</div><div class="stat-value">{{ summary.registrations }}</div></div></div>
 </div>
 <div class="glass-card p-4">

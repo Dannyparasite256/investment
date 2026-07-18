@@ -5,9 +5,9 @@
 {% block content %}
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-label">Referrals</div><div class="stat-value" data-count-up data-count-to="{{ stats.total_referrals }}" data-count-decimals="0">0</div></div></div>
-  <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-label">Total earned</div><div class="stat-value text-profit" style="font-size:1.35rem" data-count-up data-count-to="{{ stats.total_earned }}" data-count-decimals="2">0</div></div></div>
+  <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-label">Total earned</div><div class="stat-value text-profit" style="font-size:1.35rem" data-count-up data-count-to="{{ stats.total_earned|money:2 }}" data-count-decimals="2">0</div></div></div>
   <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-label">Commission rate</div><div class="stat-value" style="font-size:1.35rem">{{ stats.rate }}%</div></div></div>
-  <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-label">Paid</div><div class="stat-value" style="font-size:1.35rem" data-count-up data-count-to="{{ stats.paid }}" data-count-decimals="2">0</div></div></div>
+  <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-label">Paid</div><div class="stat-value" style="font-size:1.35rem" data-count-up data-count-to="{{ stats.paid|money:2 }}" data-count-decimals="2">0</div></div></div>
 </div>
 <div class="row g-4">
   <div class="col-lg-5">
@@ -58,7 +58,7 @@
         <tr>
           <td class="small text-muted">{{ c.created_at|date:"M d" }}</td>
           <td class="small">{{ c.referred_user.email|truncatechars:20 }}</td>
-          <td class="font-mono text-profit">{{ c.amount }}</td>
+          <td class="font-mono text-profit">{{ c.amount|money_trim:8 }}</td>
           <td class="small">{{ c.source }}</td>
         </tr>
         {% empty %}

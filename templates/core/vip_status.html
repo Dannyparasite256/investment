@@ -11,7 +11,7 @@
       <div class="display-6 fw-bold" style="color:{% if tier %}{{ tier.badge_color }}{% else %}var(--ci-primary-bright){% endif %}">
         {% if tier %}{{ tier.name }}{% else %}Starter{% endif %}
       </div>
-      <p class="text-muted mb-0">Total invested (lifetime): <strong class="font-mono">{{ total_invested }}</strong></p>
+      <p class="text-muted mb-0">Total invested (lifetime): <strong class="font-mono">{{ total_invested|money:2 }}</strong></p>
     </div>
     <div class="col-md-5">
       {% if next_tier %}
@@ -19,7 +19,7 @@
       <div class="progress-ci mb-2" style="height:10px">
         <div class="bar" style="width:{{ progress_pct }}%"></div>
       </div>
-      <div class="small">Deposit/invest <strong class="font-mono">{{ remaining }}</strong> more to unlock {{ next_tier.name }}</div>
+      <div class="small">Deposit/invest <strong class="font-mono">{{ remaining|money:2 }}</strong> more to unlock {{ next_tier.name }}</div>
       {% else %}
       <div class="badge badge-featured">Top tier reached</div>
       {% endif %}

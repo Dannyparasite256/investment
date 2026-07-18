@@ -31,7 +31,7 @@
         <tr>
           <td class="fw-semibold">{{ plan.name }}{% if plan.is_featured %} <span class="badge badge-featured">Featured</span>{% endif %}</td>
           <td class="font-mono">{{ plan.expected_return_display }}</td>
-          <td class="font-mono">{{ plan.min_deposit }}</td>
+          <td class="font-mono">{{ plan.min_deposit|money:2 }}</td>
           <td>{{ plan.duration_days }}d</td>
           <td class="small">{{ plan.get_payout_frequency_display }}</td>
           <td><span class="risk-{{ plan.risk_level }}">{{ plan.get_risk_level_display }}</span></td>
@@ -64,7 +64,7 @@
         <div class="plan-return">{{ plan.expected_return_display }}</div>
         <div class="text-muted small mb-3">Expected return range</div>
         <div class="row g-2 small mb-3">
-          <div class="col-6"><span class="text-muted">Min</span><br><strong class="font-mono">{{ plan.min_deposit }}</strong></div>
+          <div class="col-6"><span class="text-muted">Min</span><br><strong class="font-mono">{{ plan.min_deposit|money:2 }}</strong></div>
           <div class="col-6"><span class="text-muted">Duration</span><br><strong>{{ plan.duration_days }} days</strong></div>
           <div class="col-6"><span class="text-muted">Payout</span><br><strong>{{ plan.get_payout_frequency_display }}</strong></div>
           <div class="col-6"><span class="text-muted">Risk</span><br><strong class="risk-{{ plan.risk_level }}">{{ plan.get_risk_level_display }}</strong></div>

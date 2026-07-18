@@ -7,38 +7,38 @@
   <div class="col-md-4">
     <div class="glass-card stat-card">
       <div class="stat-label">User balances (total)</div>
-      <div class="stat-value font-mono" style="font-size:1.35rem">{{ wallets.bal|floatformat:2|default:"0" }}</div>
+      <div class="stat-value font-mono" style="font-size:1.35rem">{{ wallets.bal|default:0|money }}</div>
     </div>
   </div>
   <div class="col-md-4">
     <div class="glass-card stat-card">
       <div class="stat-label">Locked</div>
-      <div class="stat-value font-mono" style="font-size:1.35rem">{{ wallets.locked|floatformat:2|default:"0" }}</div>
+      <div class="stat-value font-mono" style="font-size:1.35rem">{{ wallets.locked|default:0|money }}</div>
     </div>
   </div>
   <div class="col-md-4">
     <div class="glass-card stat-card">
       <div class="stat-label">Est. liability</div>
-      <div class="stat-value font-mono text-warning" style="font-size:1.35rem">{{ liability|floatformat:2 }}</div>
+      <div class="stat-value font-mono text-warning" style="font-size:1.35rem">{{ liability|money }}</div>
       <small class="text-muted">balances + pending withdrawals</small>
     </div>
   </div>
   <div class="col-md-4">
     <div class="glass-card stat-card">
       <div class="stat-label">Total deposited</div>
-      <div class="stat-value font-mono text-profit" style="font-size:1.25rem">{{ wallets.dep|floatformat:2|default:"0" }}</div>
+      <div class="stat-value font-mono text-profit" style="font-size:1.25rem">{{ wallets.dep|default:0|money }}</div>
     </div>
   </div>
   <div class="col-md-4">
     <div class="glass-card stat-card">
       <div class="stat-label">Total withdrawn</div>
-      <div class="stat-value font-mono" style="font-size:1.25rem">{{ wallets.wd|floatformat:2|default:"0" }}</div>
+      <div class="stat-value font-mono" style="font-size:1.25rem">{{ wallets.wd|default:0|money }}</div>
     </div>
   </div>
   <div class="col-md-4">
     <div class="glass-card stat-card">
       <div class="stat-label">Net inflow</div>
-      <div class="stat-value font-mono" style="font-size:1.25rem">{{ net_in|floatformat:2 }}</div>
+      <div class="stat-value font-mono" style="font-size:1.25rem">{{ net_in|money }}</div>
     </div>
   </div>
 </div>
