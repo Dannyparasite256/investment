@@ -2,7 +2,7 @@
 {% block page_title %}Deposits{% endblock %}
 {% block page_subtitle %}Review and approve user crypto deposits{% endblock %}
 {% block content %}
-<div class="d-flex flex-wrap gap-2 mb-3">
+<div class="filter-bar mb-3">
   <a href="?status=queue" class="btn btn-sm {% if status == 'queue' or status == 'pending' %}btn-ci{% else %}btn-ghost{% endif %}">
     Needs action <span class="badge bg-danger">{{ counts.queue }}</span>
   </a>
@@ -15,7 +15,7 @@
   <a href="?status=rejected" class="btn btn-sm {% if status == 'rejected' %}btn-ci{% else %}btn-ghost{% endif %}">
     Rejected ({{ counts.rejected }})
   </a>
-  <a href="{% url 'staffpanel:bulk_match' %}" class="btn btn-outline-ci btn-sm ms-auto">Bulk match</a>
+  <a href="{% url 'staffpanel:bulk_match' %}" class="btn btn-outline-ci btn-sm">Bulk match</a>
 </div>
 
 <form class="row g-2 mb-3" method="get">

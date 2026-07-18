@@ -53,11 +53,13 @@
           <div class="small text-muted" id="fee-note">Fees update as you type.</div>
         </div>
 
-        <button type="submit" class="btn btn-ci w-100" id="withdraw-submit"
-                onclick="return confirm('Confirm withdrawal request? Funds will be locked until approved or rejected.');">
-          Request withdrawal
-        </button>
-        <a href="{% url 'transactions:withdraw_list' %}" class="btn btn-ghost w-100 mt-2">My withdrawals</a>
+        <div class="form-sticky-actions">
+          <button type="submit" class="btn btn-ci w-100" id="withdraw-submit"
+                  onclick="return confirm('Confirm withdrawal request? Funds will be locked until approved or rejected.');">
+            Request withdrawal
+          </button>
+          <a href="{% url 'transactions:withdraw_list' %}" class="btn btn-ghost w-100">My withdrawals</a>
+        </div>
       </form>
     </div>
   </div>

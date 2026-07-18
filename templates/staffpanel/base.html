@@ -54,16 +54,16 @@
   </aside>
   <div class="main-content">
     <header class="topbar">
-      <div class="d-flex align-items-center gap-2">
-        <button class="sidebar-toggle" type="button" onclick="toggleSidebar()"><i class="bi bi-list fs-5"></i></button>
-        <div>
-          <div class="fw-semibold">{% block page_title %}Staff{% endblock %}</div>
-          <small class="text-muted d-none d-md-inline">{% block page_subtitle %}Administration{% endblock %}</small>
+      <div class="topbar-left">
+        <button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="Menu"><i class="bi bi-list fs-5"></i></button>
+        <div class="min-w-0">
+          <div class="page-heading text-truncate">{% block page_title %}Staff{% endblock %}</div>
+          <small class="text-muted d-none d-lg-inline text-truncate">{% block page_subtitle %}Administration{% endblock %}</small>
         </div>
       </div>
-      <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-ghost btn-sm" type="button" onclick="toggleTheme()"><i class="bi bi-moon-stars-fill" data-theme-icon></i></button>
-        <span class="small text-muted d-none d-md-inline">{{ user.email }}</span>
+      <div class="topbar-right">
+        <button class="btn btn-ghost btn-sm" type="button" onclick="toggleTheme()" aria-label="Toggle theme"><i class="bi bi-moon-stars-fill" data-theme-icon></i></button>
+        <span class="small text-muted d-none d-lg-inline text-truncate" style="max-width:12rem">{{ user.email }}</span>
       </div>
     </header>
     <main class="page-content">

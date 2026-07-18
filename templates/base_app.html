@@ -104,37 +104,37 @@
 
   <div class="main-content">
     <header class="topbar">
-      <div class="d-flex align-items-center gap-2 gap-md-3 flex-grow-1">
+      <div class="topbar-left">
         <button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="Menu">
           <i class="bi bi-list fs-5"></i>
         </button>
-        <div class="min-w-0">
+        <div class="min-w-0 flex-grow-1">
           <div class="page-heading text-truncate">{% block page_title %}Dashboard{% endblock %}</div>
-          <small class="text-muted d-none d-md-block text-truncate">
+          <small class="text-muted d-none d-lg-block text-truncate">
             {% block page_subtitle %}{% endblock %}
             {% if now_display %}<span class="ms-1 opacity-75">· {{ now_display }}</span>{% endif %}
           </small>
         </div>
-        <div class="search-pill ms-md-3 flex-grow-1" style="max-width:280px" data-tour="search">
+        <div class="search-pill ms-md-2 flex-grow-1 d-none d-lg-flex" style="max-width:260px" data-tour="search">
           <i class="bi bi-search"></i>
           <input type="search" id="global-search-input" placeholder="Search… ( / or Ctrl+K )"
                  aria-label="Search" autocomplete="off">
         </div>
       </div>
-      <div class="d-flex align-items-center gap-2 gap-md-3">
+      <div class="topbar-right">
         {% if user_vip_tier %}
-        <a href="{% url 'core:vip' %}" class="badge badge-featured d-none d-lg-inline-flex text-decoration-none" style="background:{{ user_vip_tier.badge_color }}33;color:{{ user_vip_tier.badge_color }}">
+        <a href="{% url 'core:vip' %}" class="badge badge-featured d-none d-xl-inline-flex text-decoration-none" style="background:{{ user_vip_tier.badge_color }}33;color:{{ user_vip_tier.badge_color }}">
           {{ user_vip_tier.name }}
         </a>
         {% endif %}
         {% if display_options %}
         <form method="post" action="{% url 'core:set_display_currency' %}"
-              class="d-none d-md-flex align-items-center gap-1" data-currency-form>
+              class="d-none d-lg-flex align-items-center gap-1" data-currency-form>
           {% csrf_token %}
           <input type="hidden" name="next" value="{{ request.get_full_path }}">
           <label class="small text-muted mb-0 me-1" for="top-display-currency">Show in</label>
           <select class="form-select form-select-sm" name="currency" id="top-display-currency"
-                  style="width:auto;min-width:110px" data-currency-select
+                  style="width:auto;min-width:96px;max-width:120px" data-currency-select
                   onchange="if(!window.setDisplayCurrency){this.form.submit()}">
             {% for o in display_options %}
             <option value="{{ o.code }}" {% if display_currency == o.code %}selected{% endif %}>{{ o.code }}</option>
@@ -142,10 +142,10 @@
           </select>
         </form>
         {% endif %}
-        <button class="btn btn-ghost btn-sm d-none d-md-inline-flex" type="button" onclick="toggleDensity()" title="Compact / comfortable">
+        <button class="btn btn-ghost btn-sm d-none d-xl-inline-flex" type="button" onclick="toggleDensity()" title="Compact / comfortable">
           <i class="bi bi-arrows-collapse"></i>
         </button>
-        <button class="btn btn-ghost btn-sm" type="button" onclick="toggleTheme()" title="Toggle theme">
+        <button class="btn btn-ghost btn-sm" type="button" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">
           <i data-theme-icon class="bi bi-{% if theme == 'light' %}sun{% else %}moon-stars{% endif %}-fill"></i>
         </button>
         <form id="theme-form" action="{% url 'core:set_theme' %}" method="post" class="d-none">
@@ -154,11 +154,11 @@
         </form>
 
         <div class="dropdown">
-          <button class="btn btn-ghost btn-sm position-relative" data-bs-toggle="dropdown" aria-expanded="false">
+          <button class="btn btn-ghost btn-sm position-relative" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications">
             <i class="bi bi-bell"></i>
             {% if unread_count %}<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" style="background:var(--ci-danger);font-size:0.55rem">{{ unread_count }}</span>{% endif %}
           </button>
-          <div class="dropdown-menu dropdown-menu-end" style="width:320px;max-height:380px;overflow:auto">
+          <div class="dropdown-menu dropdown-menu-end dropdown-menu-start-sm" style="width:min(320px,calc(100vw - 1.5rem));max-height:min(380px,70vh);overflow:auto">
             <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom border-ci">
               <strong class="small">Notifications</strong>
               <form method="post" action="{% url 'notifications:mark_all_read' %}">
@@ -187,7 +187,7 @@
               <i class="bi bi-person"></i>
             </span>
             {% endif %}
-            <span class="d-none d-md-inline small fw-semibold">{{ user.display_name|truncatechars:16 }}</span>
+            <span class="d-none d-xl-inline small fw-semibold text-truncate" style="max-width:7rem">{{ user.display_name|truncatechars:14 }}</span>
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
             <li><a class="dropdown-item" href="{% url 'accounts:profile' %}"><i class="bi bi-person me-2"></i>Profile</a></li>

@@ -5,10 +5,10 @@
 {% block page_subtitle %}Compare rates, duration, and risk side by side{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap gap-2 mb-3">
+<div class="filter-bar mb-3">
   <button type="button" class="btn btn-sm btn-ci" id="view-cards">Cards</button>
   <button type="button" class="btn btn-sm btn-ghost" id="view-table">Compare table</button>
-  <a href="{% url 'core:risk_quiz' %}" class="btn btn-ghost btn-sm ms-auto">Risk quiz</a>
+  <a href="{% url 'core:risk_quiz' %}" class="btn btn-ghost btn-sm">Risk quiz</a>
   <a href="{% url 'investments:calculator' %}" class="btn btn-outline-ci btn-sm">Calculator</a>
 </div>
 

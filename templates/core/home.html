@@ -4,16 +4,16 @@
 {% block title %}{{ SITE_NAME }} — Premium crypto investing{% endblock %}
 
 {% block body %}
-<nav class="navbar navbar-expand-lg px-3 px-md-4 py-3" style="position:relative;z-index:10">
-  <div class="container">
-    <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'core:home' %}">
-      <span class="logo-mark">C</span>
-      <span class="fw-bold text-gradient">{{ SITE_NAME }}</span>
+<nav class="navbar navbar-expand-lg px-2 px-sm-3 px-md-4 py-2 py-md-3" style="position:relative;z-index:10">
+  <div class="container d-flex align-items-center justify-content-between gap-2 flex-nowrap">
+    <a class="navbar-brand d-flex align-items-center gap-2 min-w-0 mb-0" href="{% url 'core:home' %}">
+      <span class="logo-mark flex-shrink-0">C</span>
+      <span class="fw-bold text-gradient text-truncate">{{ SITE_NAME }}</span>
     </a>
-    <div class="d-flex align-items-center gap-2">
+    <div class="d-flex align-items-center gap-1 gap-sm-2 flex-shrink-0">
       <button class="btn btn-ghost btn-sm" type="button" onclick="toggleTheme()" aria-label="Theme"><i class="bi bi-moon-stars-fill" data-theme-icon></i></button>
       <a href="{% url 'accounts:login' %}" class="btn btn-ghost btn-sm">Log in</a>
-      <a href="{% url 'accounts:register' %}" class="btn btn-ci btn-sm">Get Started</a>
+      <a href="{% url 'accounts:register' %}" class="btn btn-ci btn-sm"><span class="d-none d-sm-inline">Get Started</span><span class="d-sm-none">Join</span></a>
     </div>
   </div>
 </nav>
