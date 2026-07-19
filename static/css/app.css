@@ -3042,6 +3042,111 @@ body::after { opacity: 0.018; }
   border-radius: 22px;
 }
 
+/* Member profile photo in VIP Lounge */
+.vip-member-stack {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.35rem;
+}
+.vip-member-photo {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  z-index: 1;
+}
+.vip-member-img,
+.vip-member-fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  background: linear-gradient(145deg, rgba(99, 102, 241, 0.35), rgba(15, 23, 42, 0.9));
+  border: 3px solid color-mix(in srgb, var(--tier-color, #6366F1) 70%, #fff);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--tier-color, #6366F1) 28%, transparent),
+    0 14px 36px rgba(0, 0, 0, 0.35);
+}
+.vip-member-fallback {
+  display: grid;
+  place-items: center;
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+.vip-member-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px dashed color-mix(in srgb, var(--tier-color, #6366F1) 55%, transparent);
+  animation: vipMemberRing 8s linear infinite;
+  pointer-events: none;
+}
+@keyframes vipMemberRing {
+  to { transform: rotate(360deg); }
+}
+.vip-member-tier-chip {
+  position: absolute;
+  right: -2px;
+  bottom: 2px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.05rem;
+  background: rgba(15, 23, 42, 0.92);
+  border: 2px solid color-mix(in srgb, var(--tier-color, #6366F1) 65%, #fff);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  z-index: 2;
+}
+.vip-member-name {
+  font-weight: 750;
+  font-size: 0.98rem;
+  letter-spacing: -0.02em;
+  max-width: 160px;
+  margin-left: auto;
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vip-sticker--beside-photo .vip-sticker-img {
+  width: 72px !important;
+  height: 72px !important;
+}
+.vip-card-member-photo {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 0.35rem;
+  border-radius: 50%;
+  position: relative;
+  z-index: 1;
+}
+.vip-card-member-img,
+.vip-card-member-fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  border: 2px solid color-mix(in srgb, var(--tier-color, #6366F1) 70%, #fff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tier-color, #6366F1) 25%, transparent);
+  background: linear-gradient(145deg, rgba(99, 102, 241, 0.35), rgba(15, 23, 42, 0.9));
+}
+.vip-card-member-fallback {
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #fff;
+  font-size: 1.15rem;
+}
+
 .vip-hero-glow {
   position: absolute;
   inset: -40% -20% auto auto;
@@ -3077,6 +3182,10 @@ body::after { opacity: 0.018; }
 .vip-sticker--hero .vip-sticker-img {
   width: 132px;
   height: 132px;
+}
+.vip-sticker--hero.vip-sticker--beside-photo .vip-sticker-img {
+  width: 72px;
+  height: 72px;
 }
 
 .vip-sticker--card .vip-sticker-img {

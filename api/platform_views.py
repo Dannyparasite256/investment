@@ -223,6 +223,7 @@ class VIPView(APIView):
                 'sticker_tagline': getattr(t, 'sticker_tagline', ''),
             }
 
+        user = request.user
         return Response({
             'tier': tier_payload(ctx.get('tier')),
             'next_tier': tier_payload(ctx.get('next_tier')),
@@ -231,6 +232,17 @@ class VIPView(APIView):
             'remaining': str(ctx.get('vip_remaining') or 0),
             'sticker_emoji': ctx.get('sticker_emoji', '⭐'),
             'tiers': [tier_payload(t) for t in tiers],
+            'member': {
+                'name': user.display_name or user.email,
+                'email': user.email,
+                'avatar_url': user.avatar_display_url or '',
+                'initials': (
+                    ''.join(
+                        p[0] for p in (user.display_name or user.email or 'U').split()[:2] if p
+                    ).upper()
+                    or 'U'
+                )[:2],
+            },
         })
 
 

@@ -10,15 +10,38 @@
   <div class="vip-hero-glow" style="--tier-color:{% if tier %}{{ tier.badge_color }}{% else %}#6366F1{% endif %}"></div>
   <div class="row align-items-center g-4 position-relative">
     <div class="col-auto text-center">
-      <div class="vip-sticker vip-sticker--hero vip-sticker--{{ sticker_key|default:'starter' }}">
-        <img src="{% static sticker_path|default:'img/vip/starter.svg' %}"
-             alt="{% if tier %}{{ tier.name }}{% else %}Starter{% endif %} badge"
-             width="140" height="140" class="vip-sticker-img"
-             loading="eager">
-        <span class="vip-sticker-spark s1"></span>
-        <span class="vip-sticker-spark s2"></span>
-        <span class="vip-sticker-spark s3"></span>
+      <div class="vip-member-stack">
+        <div class="vip-member-photo"
+             style="--tier-color:{% if tier %}{{ tier.badge_color }}{% else %}#6366F1{% endif %}">
+          {% if user.avatar_display_url %}
+          <img src="{{ user.avatar_display_url }}"
+               alt="{{ user.display_name }}"
+               class="vip-member-img"
+               width="120" height="120"
+               loading="eager"
+               referrerpolicy="no-referrer">
+          {% else %}
+          <span class="vip-member-fallback" aria-hidden="true">
+            {{ user.display_name|default:user.email|slice:":1"|upper }}
+          </span>
+          {% endif %}
+          <span class="vip-member-ring" aria-hidden="true"></span>
+          <span class="vip-member-tier-chip" title="{% if tier %}{{ tier.name }}{% else %}Starter{% endif %}">
+            {% if tier %}{{ tier.sticker_emoji|default:"🏅" }}{% else %}⭐{% endif %}
+          </span>
+        </div>
+        <div class="vip-sticker vip-sticker--hero vip-sticker--{{ sticker_key|default:'starter' }} vip-sticker--beside-photo">
+          <img src="{% static sticker_path|default:'img/vip/starter.svg' %}"
+               alt="{% if tier %}{{ tier.name }}{% else %}Starter{% endif %} badge"
+               width="88" height="88" class="vip-sticker-img"
+               loading="eager">
+          <span class="vip-sticker-spark s1"></span>
+          <span class="vip-sticker-spark s2"></span>
+          <span class="vip-sticker-spark s3"></span>
+        </div>
       </div>
+      <div class="vip-member-name mt-2">{{ user.display_name|default:user.email }}</div>
+      <div class="small text-muted">VIP Lounge member</div>
     </div>
     <div class="col">
       <div class="stat-label mb-2">Your tier</div>
@@ -67,6 +90,21 @@
       <span class="vip-lock-badge"><i class="bi bi-lock-fill"></i></span>
       {% else %}
       <span class="vip-unlocked-badge"><i class="bi bi-check-lg"></i></span>
+      {% endif %}
+
+      {% if tier and t.pk == tier.pk %}
+      <div class="vip-card-member-photo" style="--tier-color:{{ t.badge_color }}">
+        {% if user.avatar_display_url %}
+        <img src="{{ user.avatar_display_url }}"
+             alt="{{ user.display_name }}"
+             class="vip-card-member-img"
+             width="56" height="56"
+             loading="lazy"
+             referrerpolicy="no-referrer">
+        {% else %}
+        <span class="vip-card-member-fallback">{{ user.display_name|default:user.email|slice:":1"|upper }}</span>
+        {% endif %}
+      </div>
       {% endif %}
 
       <div class="vip-sticker vip-sticker--card vip-sticker--{{ t.sticker_key }}">

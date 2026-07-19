@@ -9,6 +9,8 @@ from wallets.models import Cryptocurrency, UserWalletAddress, Wallet
 
 class UserSerializer(serializers.ModelSerializer):
     is_staff_panel = serializers.SerializerMethodField()
+    avatar_url = serializers.SerializerMethodField()
+    display_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -19,6 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
             'preferred_language', 'preferred_currency', 'preferred_timezone',
             'email_alerts', 'sms_alerts', 'risk_score', 'tour_completed',
             'is_staff', 'is_superuser', 'role', 'is_staff_panel',
+            'avatar_url', 'display_name',
         )
         read_only_fields = fields
 
@@ -26,6 +29,12 @@ class UserSerializer(serializers.ModelSerializer):
         if getattr(obj, 'is_superuser', False) or getattr(obj, 'is_staff', False):
             return True
         return getattr(obj, 'role', '') in ('support', 'manager', 'admin')
+
+    def get_avatar_url(self, obj):
+        return obj.avatar_display_url or ''
+
+    def get_display_name(self, obj):
+        return obj.display_name or obj.email
 
 
 class WalletSerializer(serializers.ModelSerializer):

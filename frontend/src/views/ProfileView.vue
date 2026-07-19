@@ -74,7 +74,16 @@ async function save() {
     <PageHeader title="Profile" subtitle="Account, preferences, and security" />
     <div class="grid">
       <div class="glass card">
-        <div class="avatar">{{ (auth.displayName || 'U').slice(0, 1).toUpperCase() }}</div>
+        <div class="avatar">
+          <img
+            v-if="auth.user?.avatar_url"
+            :src="auth.user.avatar_url"
+            :alt="auth.displayName"
+            class="avatar-img"
+            referrerpolicy="no-referrer"
+          />
+          <template v-else>{{ (auth.displayName || 'U').slice(0, 1).toUpperCase() }}</template>
+        </div>
         <h2>{{ auth.displayName }}</h2>
         <p class="muted">{{ auth.user?.email }}</p>
         <div class="tags">
@@ -143,6 +152,13 @@ async function save() {
   width: 64px; height: 64px; border-radius: 18px;
   display: grid; place-items: center; font-weight: 800; font-size: 1.4rem;
   background: linear-gradient(135deg, #3B82F6, #7C3AED); color: #fff; margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.75rem 0; }
 ul { list-style: none; padding: 0; margin: 0 0 1rem; }

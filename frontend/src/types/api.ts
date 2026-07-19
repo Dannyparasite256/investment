@@ -25,6 +25,8 @@ export interface User {
   is_superuser?: boolean
   role?: string
   is_staff_panel?: boolean
+  avatar_url?: string
+  display_name?: string
 }
 
 export interface BalanceMoney {
@@ -279,6 +281,13 @@ export interface VipTier {
   sticker_tagline?: string
 }
 
+export interface VipMember {
+  name: string
+  email: string
+  avatar_url: string
+  initials: string
+}
+
 export interface VipStatus {
   tier: VipTier | null
   next_tier: VipTier | null
@@ -287,6 +296,7 @@ export interface VipStatus {
   remaining: string
   sticker_emoji: string
   tiers: VipTier[]
+  member?: VipMember
 }
 
 export interface PortfolioData {
