@@ -3,7 +3,8 @@
 {% block page_title %}{{ ticket.subject }} — Support{% endblock %}
 {% block content %}
 <div class="wa-shell has-chat" id="wa-chat-root"
-     data-send-url="{% url 'staffpanel:ticket_detail' ticket.pk %}">
+     data-send-url="{% url 'staffpanel:ticket_detail' ticket.pk %}"
+     data-is-staff="1">
   <aside class="wa-sidebar d-none d-lg-flex">
     <header class="wa-side-head">
       <div class="wa-side-title">
@@ -62,49 +63,84 @@
       </form>
     </header>
 
-    <div class="wa-messages" id="wa-messages">
-      <div class="wa-day-pill">Conversation started · {{ ticket.created_at|when }}</div>
-      {% for m in messages_list %}
-      <div class="wa-bubble-row {% if m.is_staff_reply %}mine{% else %}theirs{% endif %}" data-msg-id="{{ m.id }}">
-        <div class="wa-bubble" {% if m.is_staff_reply %}style="background:linear-gradient(160deg,#1d4ed8,#1e40af);color:#eef2ff;border-top-right-radius:3px"{% endif %}>
-          <div class="wa-sender">{% if m.is_staff_reply %}You (support){% else %}{{ m.sender.get_full_name|default:m.sender.email }}{% endif %}</div>
-          {% if m.body %}<div class="wa-text">{{ m.body|chat_links }}</div>{% endif %}
-          {% if m.attachment %}
-          <a class="wa-attach" href="{{ m.attachment.url }}" target="_blank" rel="noopener noreferrer">
+    <div class="wa-messages-wrap">
+      <div class="wa-messages" id="wa-messages">
+        <div class="wa-day-pill muted-start">Conversation started · {{ ticket.created_at|when }}</div>
+        {% for m in messages_list %}
+        {% ifchanged m.created_at|date:"Y-m-d" %}
+        <div class="wa-day-pill" data-day-key="{{ m.created_at|date:'Y-m-d' }}">{{ m.created_at|wa_day }}</div>
+        {% endifchanged %}
+        <div class="wa-bubble-row {% if m.is_staff_reply %}mine{% else %}theirs{% endif %}"
+             data-msg-id="{{ m.id }}"
+             data-body="{{ m.body|escape }}"
+             data-staff="{% if m.is_staff_reply %}1{% else %}0{% endif %}"
+             data-sender="{% if m.is_staff_reply %}You (support){% else %}{{ m.sender.get_full_name|default:m.sender.email }}{% endif %}">
+          <div class="wa-bubble" {% if m.is_staff_reply %}style="background:linear-gradient(160deg,#1d4ed8,#1e40af);color:#eef2ff;border-top-right-radius:3px"{% endif %}>
+            <div class="wa-sender">{% if m.is_staff_reply %}You (support){% else %}{{ m.sender.get_full_name|default:m.sender.email }}{% endif %}</div>
+            {% if m.reply_to %}
+            <button type="button" class="wa-quote" data-jump="{{ m.reply_to_id }}">
+              <span class="wa-quote-bar" style="background:{% if m.is_staff_reply %}#93c5fd{% else %}#53bdeb{% endif %}"></span>
+              <span class="wa-quote-body">
+                <span class="wa-quote-author">{% if m.reply_to.is_staff_reply %}You (support){% else %}{{ m.reply_to.sender.get_full_name|default:m.reply_to.sender.email }}{% endif %}</span>
+                <span class="wa-quote-text">{% if m.reply_to.body == '(attachment)' %}📎 Attachment{% else %}{{ m.reply_to.body|truncatechars:100 }}{% endif %}</span>
+              </span>
+            </button>
+            {% endif %}
+            {% if m.body and m.body != '(attachment)' %}<div class="wa-text">{{ m.body|chat_links }}</div>{% endif %}
+            {% if m.attachment %}
             {% with name=m.attachment.name|lower %}
             {% if ".png" in name or ".jpg" in name or ".jpeg" in name or ".gif" in name or ".webp" in name %}
-            <img src="{{ m.attachment.url }}" alt="Attachment" class="wa-attach-img" />
+            <button type="button" class="wa-attach-btn" data-lightbox="{{ m.attachment.url }}">
+              <img src="{{ m.attachment.url }}" alt="Attachment" class="wa-attach-img" />
+            </button>
             {% else %}
-            <span class="wa-attach-file"><i class="bi bi-paperclip"></i> Open attachment</span>
+            <a class="wa-attach" href="{{ m.attachment.url }}" target="_blank" rel="noopener noreferrer">
+              <span class="wa-attach-file"><i class="bi bi-paperclip"></i> Open attachment</span>
+            </a>
             {% endif %}
             {% endwith %}
-          </a>
-          {% endif %}
-          <div class="wa-meta">
-            <span>{{ m.created_at|when }}</span>
-            {% if m.is_staff_reply %}
-            <span class="wa-ticks wa-ticks-{{ m.receipt_status }}" title="{{ m.receipt_status }}">
-              {% if m.receipt_status == 'read' or m.receipt_status == 'delivered' %}
-              <i class="bi bi-check2"></i><i class="bi bi-check2 wa-tick-2"></i>
-              {% else %}
-              <i class="bi bi-check2"></i>
-              {% endif %}
-            </span>
             {% endif %}
+            <div class="wa-meta">
+              <span>{{ m.created_at|when }}</span>
+              {% if m.is_staff_reply %}
+              <span class="wa-ticks wa-ticks-{{ m.receipt_status }}" title="{{ m.receipt_status }}">
+                {% if m.receipt_status == 'read' or m.receipt_status == 'delivered' %}
+                <i class="bi bi-check2"></i><i class="bi bi-check2 wa-tick-2"></i>
+                {% else %}
+                <i class="bi bi-check2"></i>
+                {% endif %}
+              </span>
+              {% endif %}
+            </div>
+            <div class="wa-bubble-actions">
+              <button type="button" class="wa-act wa-reply-btn" title="Reply"><i class="bi bi-reply"></i></button>
+              <button type="button" class="wa-act wa-copy-btn" title="Copy"><i class="bi bi-clipboard"></i></button>
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="wa-empty-msgs text-muted" id="wa-empty">No messages yet.</div>
+        {% endfor %}
+        <div class="wa-bubble-row theirs d-none" id="wa-typing-row">
+          <div class="wa-bubble wa-typing-bubble">
+            <span class="wa-dot"></span><span class="wa-dot"></span><span class="wa-dot"></span>
           </div>
         </div>
       </div>
-      {% empty %}
-      <div class="wa-empty-msgs text-muted" id="wa-empty">No messages yet.</div>
-      {% endfor %}
-      <div class="wa-bubble-row theirs d-none" id="wa-typing-row">
-        <div class="wa-bubble wa-typing-bubble">
-          <span class="wa-dot"></span><span class="wa-dot"></span><span class="wa-dot"></span>
-        </div>
-      </div>
+      <button type="button" class="wa-jump" id="wa-jump" title="Jump to latest" aria-label="Jump to latest">
+        <i class="bi bi-chevron-down"></i>
+      </button>
     </div>
 
     <footer class="wa-composer-wrap">
+      <div id="wa-reply-chip" class="wa-reply-chip d-none">
+        <span class="wa-reply-bar" style="background:#3B82F6"></span>
+        <span class="wa-reply-meta">
+          <strong id="wa-reply-label" style="color:#93c5fd">Replying</strong>
+          <span id="wa-reply-preview" class="wa-truncate"></span>
+        </span>
+        <button type="button" class="wa-chip-x" id="wa-reply-clear" aria-label="Cancel reply">×</button>
+      </div>
       <div id="wa-file-chip" class="wa-file-chip d-none">
         <i class="bi bi-paperclip"></i>
         <span id="wa-file-name" class="wa-truncate"></span>
@@ -112,6 +148,7 @@
       </div>
       <form class="wa-composer-form" id="wa-send-form" enctype="multipart/form-data">
         {% csrf_token %}
+        <input type="hidden" name="reply_to" id="wa-reply-to" value="" />
         <input type="file" name="attachment" id="wa-file" class="d-none" accept="image/*,.pdf,.doc,.docx,.txt" />
         <button type="button" class="btn btn-ghost btn-sm rounded-circle" id="wa-attach-btn" title="Attach" aria-label="Attach">
           <i class="bi bi-paperclip"></i>
@@ -123,6 +160,11 @@
       </form>
     </footer>
   </section>
+</div>
+
+<div class="wa-lightbox" id="wa-lightbox">
+  <button type="button" class="wa-lightbox-x" id="wa-lightbox-x" aria-label="Close">×</button>
+  <img id="wa-lightbox-img" src="" alt="Full size" />
 </div>
 
 <style>
@@ -174,11 +216,12 @@
   margin-bottom: 0.4rem; padding: 0.3rem 0.55rem; border-radius: 999px;
   background: rgba(59, 130, 246, 0.15); font-size: 0.78rem;
 }
-.wa-chip-x { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 1rem; }
+.wa-chip-x { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 1rem; padding: 0 0.45rem; }
 .wa-attach { display: block; margin-top: 0.4rem; text-decoration: none; color: #93c5fd; font-size: 0.85rem; font-weight: 600; }
 .wa-attach-img { max-width: min(220px, 70vw); max-height: 180px; border-radius: 8px; display: block; object-fit: cover; }
 .wa-attach-file { display: inline-flex; align-items: center; gap: 0.35rem; }
 .wa-composer-form { display: flex; align-items: flex-end; gap: 0.35rem; }
+.wa-jump:hover { background: #3B82F6 !important; color: #fff !important; }
 </style>
 <script>
 (function () {
@@ -196,17 +239,46 @@
   var fileChip = document.getElementById('wa-file-chip');
   var fileNameEl = document.getElementById('wa-file-name');
   var fileClear = document.getElementById('wa-file-clear');
+  var replyToInput = document.getElementById('wa-reply-to');
+  var replyChip = document.getElementById('wa-reply-chip');
+  var replyLabel = document.getElementById('wa-reply-label');
+  var replyPreview = document.getElementById('wa-reply-preview');
+  var replyClear = document.getElementById('wa-reply-clear');
+  var jumpBtn = document.getElementById('wa-jump');
+  var lightbox = document.getElementById('wa-lightbox');
+  var lightboxImg = document.getElementById('wa-lightbox-img');
+  var lightboxX = document.getElementById('wa-lightbox-x');
   var csrf = (document.querySelector('#wa-send-form [name=csrfmiddlewaretoken]') || {}).value || '';
   var seen = {};
   var typingTimer = null;
   var typingPulse = null;
   var sending = false;
+  var lastDayKey = '';
+  var replyTarget = null;
 
   document.querySelectorAll('[data-msg-id]').forEach(function (el) {
     seen[el.getAttribute('data-msg-id')] = true;
   });
-  function scrollBottom() { if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight; }
-  scrollBottom();
+  document.querySelectorAll('[data-day-key]').forEach(function (el) {
+    lastDayKey = el.getAttribute('data-day-key') || lastDayKey;
+  });
+
+  function scrollBottom(force) {
+    if (!messagesEl) return;
+    var near = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 120;
+    if (force || near) {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      if (jumpBtn) jumpBtn.classList.remove('show');
+    }
+  }
+  function onScroll() {
+    if (!messagesEl || !jumpBtn) return;
+    var dist = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
+    jumpBtn.classList.toggle('show', dist > 180);
+  }
+  if (messagesEl) messagesEl.addEventListener('scroll', onScroll);
+  if (jumpBtn) jumpBtn.addEventListener('click', function () { scrollBottom(true); });
+  scrollBottom(true);
 
   function escapeHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -233,38 +305,162 @@
     }
     return '<span class="wa-ticks"><i class="bi bi-check2"></i></span>';
   }
+  function dayKey(iso) {
+    if (!iso) return '';
+    try {
+      var d = new Date(iso);
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    } catch (e) { return ''; }
+  }
+  function dayLabel(iso) {
+    if (!iso) return '';
+    try {
+      var d = new Date(iso);
+      var now = new Date();
+      var a = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      var b = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      var diff = Math.round((a - b) / 86400000);
+      if (diff === 0) return 'Today';
+      if (diff === 1) return 'Yesterday';
+      if (diff > 1 && diff < 7) return d.toLocaleDateString(undefined, { weekday: 'long' });
+      return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    } catch (e) { return ''; }
+  }
   function attachHtml(url) {
     if (!url) return '';
     var lower = String(url).toLowerCase();
-    var isImg = /\.(png|jpe?g|gif|webp|bmp)(\?|$)/i.test(lower);
+    var isImg = /\.(png|jpe?g|gif|webp|bmp)(\?|$)/i.test(lower) || String(url).indexOf('blob:') === 0;
     if (isImg) {
-      return '<a class="wa-attach" href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer">' +
-        '<img class="wa-attach-img" src="' + escapeHtml(url) + '" alt="Attachment" /></a>';
+      return '<button type="button" class="wa-attach-btn" data-lightbox="' + escapeHtml(url) + '">' +
+        '<img class="wa-attach-img" src="' + escapeHtml(url) + '" alt="Attachment" /></button>';
     }
     return '<a class="wa-attach" href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer">' +
       '<span class="wa-attach-file"><i class="bi bi-paperclip"></i> Open attachment</span></a>';
+  }
+  function quoteHtml(rt) {
+    if (!rt) return '';
+    var author = rt.is_staff_reply ? 'You (support)' : (rt.sender_name || 'Customer');
+    var body = (rt.body || '').trim();
+    if (!body || body === '(attachment)') body = '📎 Attachment';
+    if (body.length > 100) body = body.slice(0, 100) + '…';
+    return '<button type="button" class="wa-quote" data-jump="' + escapeHtml(rt.id || '') + '">' +
+      '<span class="wa-quote-bar" style="background:#93c5fd"></span><span class="wa-quote-body">' +
+      '<span class="wa-quote-author">' + escapeHtml(author) + '</span>' +
+      '<span class="wa-quote-text">' + escapeHtml(body) + '</span></span></button>';
+  }
+  function actionsHtml() {
+    return '<div class="wa-bubble-actions">' +
+      '<button type="button" class="wa-act wa-reply-btn" title="Reply"><i class="bi bi-reply"></i></button>' +
+      '<button type="button" class="wa-act wa-copy-btn" title="Copy"><i class="bi bi-clipboard"></i></button></div>';
   }
   function appendMsg(m) {
     if (!m || !m.id || seen[m.id]) return;
     seen[m.id] = true;
     var empty = document.getElementById('wa-empty');
     if (empty) empty.remove();
+    var dk = dayKey(m.created_at);
+    if (dk && dk !== lastDayKey) {
+      lastDayKey = dk;
+      var pill = document.createElement('div');
+      pill.className = 'wa-day-pill';
+      pill.setAttribute('data-day-key', dk);
+      pill.textContent = dayLabel(m.created_at);
+      if (typingRow && typingRow.parentNode === messagesEl) messagesEl.insertBefore(pill, typingRow);
+      else messagesEl.appendChild(pill);
+    }
     var mine = !!m.is_staff_reply;
     var row = document.createElement('div');
     row.className = 'wa-bubble-row ' + (mine ? 'mine' : 'theirs');
     row.setAttribute('data-msg-id', m.id);
+    row.setAttribute('data-body', m.body || '');
+    row.setAttribute('data-staff', m.is_staff_reply ? '1' : '0');
+    row.setAttribute('data-sender', m.is_staff_reply ? 'You (support)' : (m.sender_name || 'Customer'));
     var style = mine ? ' style="background:linear-gradient(160deg,#1d4ed8,#1e40af);color:#eef2ff;border-top-right-radius:3px"' : '';
     var sender = mine ? 'You (support)' : (m.sender_name || 'Customer');
     var body = (m.body && m.body !== '(attachment)') ? linkify(m.body) : '';
     var att = attachHtml(m.attachment_url || m.attachment || '');
     var ticks = mine ? ticksHtml(m.receipt_status || 'sent') : '';
+    var time = 'now';
+    if (m.created_at) {
+      try { time = new Date(m.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }); } catch (e) {}
+    }
     row.innerHTML = '<div class="wa-bubble"' + style + '><div class="wa-sender">' + escapeHtml(sender) +
-      '</div>' + (body ? '<div class="wa-text">' + body + '</div>' : '') + att +
-      '<div class="wa-meta"><span>now</span>' + ticks + '</div></div>';
+      '</div>' + quoteHtml(m.reply_to) + (body ? '<div class="wa-text">' + body + '</div>' : '') + att +
+      '<div class="wa-meta"><span>' + time + '</span>' + ticks + '</div>' + actionsHtml() + '</div>';
     if (typingRow && typingRow.parentNode === messagesEl) messagesEl.insertBefore(row, typingRow);
     else messagesEl.appendChild(row);
     scrollBottom();
   }
+
+  function setReplyFromRow(row) {
+    if (!row || !replyToInput) return;
+    var id = row.getAttribute('data-msg-id');
+    if (!id || id.indexOf('tmp-') === 0) return;
+    replyTarget = {
+      id: id,
+      body: row.getAttribute('data-body') || '',
+      is_staff_reply: row.getAttribute('data-staff') === '1',
+      sender_name: row.getAttribute('data-sender') || ''
+    };
+    replyToInput.value = id;
+    if (replyChip) replyChip.classList.remove('d-none');
+    if (replyLabel) {
+      replyLabel.textContent = 'Replying to ' + (replyTarget.is_staff_reply ? 'yourself' : (replyTarget.sender_name || 'customer'));
+    }
+    if (replyPreview) {
+      var t = (replyTarget.body || '').trim();
+      if (!t || t === '(attachment)') t = '📎 Attachment';
+      replyPreview.textContent = t.length > 80 ? t.slice(0, 80) + '…' : t;
+    }
+    if (input) input.focus();
+  }
+  function clearReply() {
+    replyTarget = null;
+    if (replyToInput) replyToInput.value = '';
+    if (replyChip) replyChip.classList.add('d-none');
+  }
+  if (replyClear) replyClear.addEventListener('click', clearReply);
+
+  function openLightbox(url) {
+    if (!lightbox || !lightboxImg || !url) return;
+    lightboxImg.src = url;
+    lightbox.classList.add('show');
+  }
+  function closeLightbox() {
+    if (!lightbox) return;
+    lightbox.classList.remove('show');
+    if (lightboxImg) lightboxImg.src = '';
+  }
+  if (lightbox) lightbox.addEventListener('click', closeLightbox);
+  if (lightboxX) lightboxX.addEventListener('click', closeLightbox);
+  if (lightboxImg) lightboxImg.addEventListener('click', function (e) { e.stopPropagation(); });
+
+  if (messagesEl) {
+    messagesEl.addEventListener('click', function (e) {
+      var jump = e.target.closest('[data-jump]');
+      if (jump) {
+        var jid = jump.getAttribute('data-jump');
+        var el = document.querySelector('[data-msg-id="' + jid + '"]');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('wa-flash');
+          setTimeout(function () { el.classList.remove('wa-flash'); }, 1200);
+        }
+        return;
+      }
+      var lb = e.target.closest('[data-lightbox]');
+      if (lb) { openLightbox(lb.getAttribute('data-lightbox')); return; }
+      var replyBtn = e.target.closest('.wa-reply-btn');
+      if (replyBtn) { setReplyFromRow(replyBtn.closest('[data-msg-id]')); return; }
+      var copyBtn = e.target.closest('.wa-copy-btn');
+      if (copyBtn) {
+        var row = copyBtn.closest('[data-msg-id]');
+        var t = row && (row.getAttribute('data-body') || '').trim();
+        if (t && t !== '(attachment)' && navigator.clipboard) navigator.clipboard.writeText(t).catch(function () {});
+      }
+    });
+  }
+
   function clearFile() {
     if (fileInput) fileInput.value = '';
     if (fileChip) fileChip.classList.add('d-none');
@@ -352,18 +548,29 @@
       if (file && file.type && file.type.indexOf('image/') === 0) {
         try { localPreview = URL.createObjectURL(file); } catch (err) {}
       }
+      var rt = replyTarget ? {
+        id: replyTarget.id,
+        body: replyTarget.body,
+        is_staff_reply: replyTarget.is_staff_reply,
+        sender_name: replyTarget.sender_name
+      } : null;
       appendMsg({
         id: tempId,
         body: text || (file ? file.name : ''),
         is_staff_reply: true,
         receipt_status: 'sent',
-        attachment_url: localPreview || ''
+        attachment_url: localPreview || '',
+        reply_to: rt,
+        sender_name: 'You (support)'
       });
       clearFile();
+      var replyId = replyToInput ? replyToInput.value : '';
+      clearReply();
       var fd = new FormData();
       fd.append('csrfmiddlewaretoken', csrf);
       if (text) fd.append('body', text);
       if (file) fd.append('attachment', file);
+      if (replyId) fd.append('reply_to', replyId);
       fetch(sendUrl, {
         method: 'POST', body: fd, credentials: 'same-origin',
         headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
@@ -389,6 +596,10 @@
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      }
+      if (e.key === 'Escape') {
+        if (lightbox && lightbox.classList.contains('show')) closeLightbox();
+        else clearReply();
       }
     });
   }

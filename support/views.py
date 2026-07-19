@@ -57,6 +57,21 @@ def ticket_create(request):
     return render(request, 'support/create.html')
 
 
+def _reply_preview(m):
+    parent = getattr(m, 'reply_to', None)
+    if not parent:
+        return None
+    body = parent.body or ''
+    if body == '(attachment)':
+        body = '📎 Attachment'
+    return {
+        'id': str(parent.id),
+        'body': body[:200],
+        'is_staff_reply': parent.is_staff_reply,
+        'sender_name': parent.sender.get_full_name() or parent.sender.email,
+    }
+
+
 def _msg_json(m):
     att_url = ''
     if m.attachment:
@@ -74,7 +89,18 @@ def _msg_json(m):
         'receipt_status': m.receipt_status,
         'sender_name': m.sender.get_full_name() or m.sender.email,
         'attachment_url': att_url,
+        'reply_to_id': str(m.reply_to_id) if m.reply_to_id else None,
+        'reply_to': _reply_preview(m),
     }
+
+
+def _resolve_reply_to(ticket, reply_to_raw):
+    if not reply_to_raw:
+        return None
+    try:
+        return TicketMessage.objects.filter(ticket=ticket, pk=reply_to_raw).select_related('sender').first()
+    except (ValueError, TypeError):
+        return None
 
 
 @login_required
@@ -97,11 +123,13 @@ def ticket_detail(request, pk):
             if wants_json:
                 return JsonResponse({'detail': 'Conversation closed'}, status=400)
             return redirect('support:detail', pk=pk)
+        reply_parent = _resolve_reply_to(ticket, request.POST.get('reply_to') or request.POST.get('reply_to_id'))
         msg = TicketMessage.objects.create(
             ticket=ticket,
             sender=request.user,
             body=body or '(attachment)',
             attachment=attachment,
+            reply_to=reply_parent,
         )
         if ticket.status == SupportTicket.Status.WAITING:
             ticket.status = SupportTicket.Status.OPEN
@@ -117,11 +145,12 @@ def ticket_detail(request, pk):
     _mark_staff_messages_read(ticket, request.user)
     other_tickets = (
         SupportTicket.objects.filter(user=request.user)
+        .prefetch_related('messages')
         .order_by('-updated_at')[:40]
     )
     return render(request, 'support/detail.html', {
         'ticket': ticket,
-        'messages_list': ticket.messages.select_related('sender'),
+        'messages_list': ticket.messages.select_related('sender', 'reply_to', 'reply_to__sender'),
         'other_tickets': other_tickets,
         'presence': get_presence(ticket.id),
         'typing': get_typing(ticket.id, exclude_user_id=request.user.pk),
@@ -152,7 +181,7 @@ def ticket_poll(request, pk):
     set_presence(ticket.id, request.user, is_staff=False)
     _mark_staff_messages_read(ticket, request.user)
     since = request.GET.get('since')
-    qs = ticket.messages.select_related('sender').all()
+    qs = ticket.messages.select_related('sender', 'reply_to', 'reply_to__sender').all()
     if since:
         try:
             since_dt = datetime.fromisoformat(since.replace('Z', '+00:00'))

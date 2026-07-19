@@ -154,9 +154,15 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         attachment = ser.validated_data.get('attachment')
         if not body and not attachment:
             return Response({'detail': 'Message or attachment required'}, status=400)
+        reply_parent = None
+        reply_to_id = ser.validated_data.get('reply_to')
+        if reply_to_id:
+            reply_parent = TicketMessage.objects.filter(
+                ticket=ticket, pk=reply_to_id,
+            ).select_related('sender').first()
         msg = TicketMessage.objects.create(
             ticket=ticket, sender=request.user, body=body or '(attachment)',
-            attachment=attachment,
+            attachment=attachment, reply_to=reply_parent,
         )
         if ticket.status == SupportTicket.Status.WAITING:
             ticket.status = SupportTicket.Status.OPEN
@@ -176,7 +182,7 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         self._mark_peer_messages_read(ticket, is_staff=False)
 
         since = request.query_params.get('since')
-        qs = ticket.messages.select_related('sender').all()
+        qs = ticket.messages.select_related('sender', 'reply_to', 'reply_to__sender').all()
         if since:
             try:
                 since_dt = datetime.fromisoformat(since.replace('Z', '+00:00'))

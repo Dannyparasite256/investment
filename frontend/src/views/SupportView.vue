@@ -13,7 +13,8 @@ import { useUiStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
 import { receiptOf, useSupportChat } from '@/composables/useSupportChat'
 import { linkify } from '@/utils/linkify'
-import type { SupportTicket, TicketMessage } from '@/types/api'
+import { copyText, dayKey, dayLabel, isImageUrl, truncatePreview } from '@/utils/chat'
+import type { SupportTicket, TicketMessage, TicketReplyPreview } from '@/types/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -35,6 +36,10 @@ const messagesEl = ref<HTMLElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const pendingFile = ref<File | null>(null)
 const form = ref({ subject: '', body: '', category: 'general' })
+const replyTarget = ref<TicketMessage | null>(null)
+const showJump = ref(false)
+const lightboxUrl = ref('')
+const menuMsgId = ref<string | null>(null)
 
 const chat = useSupportChat({
   isStaff: false,
@@ -52,6 +57,24 @@ const categories = [
   { label: 'KYC', value: 'kyc' },
   { label: 'Technical', value: 'technical' },
 ]
+
+type TimelineItem =
+  | { kind: 'day'; key: string; label: string }
+  | { kind: 'msg'; key: string; msg: TicketMessage }
+
+const timeline = computed<TimelineItem[]>(() => {
+  const items: TimelineItem[] = []
+  let lastDay = ''
+  for (const m of chatMessages.value) {
+    const dk = dayKey(m.created_at)
+    if (dk && dk !== lastDay) {
+      lastDay = dk
+      items.push({ kind: 'day', key: `day-${dk}`, label: dayLabel(m.created_at) })
+    }
+    items.push({ kind: 'msg', key: m.id, msg: m })
+  }
+  return items
+})
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
@@ -100,13 +123,22 @@ const liveLabel = computed(() => {
   return 'Connecting…'
 })
 
+function unreadCount(t: SupportTicket): number {
+  if (typeof t.unread_count === 'number') return t.unread_count
+  const msgs = t.messages || []
+  return msgs.filter((m) => m.is_staff_reply && !m.read_at).length
+}
+
 function lastPreview(t: SupportTicket): string {
   const msgs = t.messages || []
   if (!msgs.length) return 'No messages yet'
   const last = msgs[msgs.length - 1]
   const who = last.is_staff_reply ? 'Support' : 'You'
-  const text = (last.body || '').replace(/\s+/g, ' ').trim()
-  return `${who}: ${text.slice(0, 72)}${text.length > 72 ? '…' : ''}`
+  const hasAtt = !!(last.attachment_url || last.attachment)
+  let text = (last.body || '').replace(/\s+/g, ' ').trim()
+  if (!text || text === '(attachment)') text = hasAtt ? 'Photo' : 'Message'
+  const clip = hasAtt ? '📎 ' : ''
+  return `${who}: ${clip}${truncatePreview(text, 64)}`
 }
 
 function initials(label: string): string {
@@ -151,12 +183,31 @@ function tickTitle(m: TicketMessage): string {
   return 'Sent'
 }
 
+function onMessagesScroll() {
+  const el = messagesEl.value
+  if (!el) return
+  const dist = el.scrollHeight - el.scrollTop - el.clientHeight
+  showJump.value = dist > 180
+}
+
 async function scrollToBottom(force = false) {
   await nextTick()
   const el = messagesEl.value
   if (!el) return
   const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120
-  if (force || nearBottom) el.scrollTop = el.scrollHeight
+  if (force || nearBottom) {
+    el.scrollTop = el.scrollHeight
+    showJump.value = false
+  } else {
+    onMessagesScroll()
+  }
+}
+
+function jumpToLatest() {
+  const el = messagesEl.value
+  if (!el) return
+  el.scrollTop = el.scrollHeight
+  showJump.value = false
 }
 
 async function loadTickets() {
@@ -172,6 +223,8 @@ async function loadTickets() {
 async function openTicket(id: string, replace = false) {
   if (!id) return
   activeId.value = id
+  replyTarget.value = null
+  menuMsgId.value = null
   if (replace) router.replace(`/support/${id}`)
   else if (route.params.id !== id) router.push(`/support/${id}`)
 
@@ -181,7 +234,7 @@ async function openTicket(id: string, replace = false) {
     activeTicket.value = data
     chatMessages.value = [...(data.messages || [])]
     const idx = tickets.value.findIndex((t) => t.id === id)
-    if (idx >= 0) tickets.value[idx] = { ...tickets.value[idx], ...data }
+    if (idx >= 0) tickets.value[idx] = { ...tickets.value[idx], ...data, unread_count: 0 }
     else tickets.value = [data, ...tickets.value]
     chat.join(id, chatMessages)
     chat.markRead()
@@ -202,6 +255,7 @@ function closeChat() {
   activeId.value = null
   activeTicket.value = null
   chatMessages.value = []
+  replyTarget.value = null
   router.push('/support')
 }
 
@@ -220,16 +274,75 @@ function attachmentHref(m: TicketMessage) {
 }
 
 function isImageAtt(m: TicketMessage) {
-  const u = attachmentHref(m).toLowerCase()
-  return /\.(png|jpe?g|gif|webp|bmp)(\?|$)/i.test(u) || (m._localPreview || '').startsWith('blob:')
+  return isImageUrl(attachmentHref(m))
+}
+
+function setReply(m: TicketMessage) {
+  replyTarget.value = m
+  menuMsgId.value = null
+  nextTick(() => {
+    const ta = document.querySelector('.wa-composer textarea') as HTMLTextAreaElement | null
+    ta?.focus()
+  })
+}
+
+function clearReply() {
+  replyTarget.value = null
+}
+
+function quotePreview(m: TicketMessage | TicketReplyPreview | null | undefined): string {
+  if (!m) return ''
+  const body = (m.body || '').trim()
+  if (!body || body === '(attachment)') return '📎 Attachment'
+  return truncatePreview(body, 100)
+}
+
+function quoteAuthor(m: TicketMessage | TicketReplyPreview): string {
+  if ('is_staff_reply' in m && m.is_staff_reply) return 'Support'
+  if ('sender_name' in m && m.sender_name) return m.sender_name
+  return 'You'
+}
+
+async function copyMessage(m: TicketMessage) {
+  menuMsgId.value = null
+  const text = (m.body || '').trim()
+  if (!text || text === '(attachment)') {
+    ui.toast('Nothing to copy', 'This message has no text', 'info')
+    return
+  }
+  const ok = await copyText(text)
+  ui.toast(ok ? 'Copied' : 'Copy failed', ok ? 'Message copied to clipboard' : 'Could not copy', ok ? 'success' : 'error')
+}
+
+function openLightbox(url: string) {
+  if (url) lightboxUrl.value = url
+}
+
+function closeLightbox() {
+  lightboxUrl.value = ''
+}
+
+function jumpToQuoted(id?: string | null) {
+  if (!id) return
+  const el = document.querySelector(`[data-msg-id="${id}"]`) as HTMLElement | null
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  el.classList.add('wa-flash')
+  setTimeout(() => el.classList.remove('wa-flash'), 1200)
+}
+
+function toggleMenu(id: string) {
+  menuMsgId.value = menuMsgId.value === id ? null : id
 }
 
 async function reply() {
   if ((!body.value.trim() && !pendingFile.value) || !activeTicket.value || !canReply.value || sending.value) return
   const text = body.value.trim()
   const file = pendingFile.value
+  const replyTo = replyTarget.value
   body.value = ''
   clearFile()
+  replyTarget.value = null
   chat.sendTyping(false)
   sending.value = true
 
@@ -244,12 +357,21 @@ async function reply() {
     receipt_status: 'pending',
     _pending: true,
     _localPreview: file && file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+    reply_to_id: replyTo?.id || null,
+    reply_to: replyTo
+      ? {
+          id: replyTo.id,
+          body: replyTo.body,
+          is_staff_reply: replyTo.is_staff_reply,
+          sender_name: replyTo.is_staff_reply ? 'Support' : replyTo.sender_name || 'You',
+        }
+      : null,
   }
   chatMessages.value.push(optimistic)
   await scrollToBottom(true)
 
   try {
-    const { data } = await api.replyTicket(activeTicket.value.id, text, file)
+    const { data } = await api.replyTicket(activeTicket.value.id, text, file, replyTo?.id || null)
     const msg = data as TicketMessage
     const i = chatMessages.value.findIndex((m) => m.id === tempId)
     if (i >= 0) chatMessages.value[i] = { ...msg, _pending: false }
@@ -261,6 +383,7 @@ async function reply() {
         ...tickets.value[idx],
         messages: chatMessages.value,
         updated_at: activeTicket.value.updated_at,
+        unread_count: 0,
       }
     }
     await scrollToBottom(true)
@@ -300,10 +423,14 @@ function onKeydown(e: KeyboardEvent) {
     e.preventDefault()
     reply()
   }
+  if (e.key === 'Escape') {
+    if (lightboxUrl.value) closeLightbox()
+    else if (replyTarget.value) clearReply()
+    else if (menuMsgId.value) menuMsgId.value = null
+  }
 }
 
 function onInput() {
-  // Only signal typing when there is actual text
   if (body.value.trim()) chat.onComposerInput()
   else chat.sendTyping(false)
 }
@@ -318,6 +445,7 @@ watch(
       activeId.value = null
       activeTicket.value = null
       chatMessages.value = []
+      replyTarget.value = null
     }
   },
 )
@@ -369,18 +497,23 @@ onUnmounted(() => chat.leave())
           :key="t.id"
           type="button"
           class="wa-chat-row"
-          :class="{ active: activeId === t.id }"
+          :class="{ active: activeId === t.id, unread: unreadCount(t) > 0 && activeId !== t.id }"
           @click="openTicket(t.id)"
         >
           <span class="wa-avatar support">{{ initials(t.subject) }}</span>
           <span class="wa-row-body">
             <span class="wa-row-top">
               <strong class="truncate">{{ t.subject }}</strong>
-              <span class="wa-time">{{ timeLabel(t.updated_at) }}</span>
+              <span class="wa-time" :class="{ unread: unreadCount(t) > 0 && activeId !== t.id }">
+                {{ timeLabel(t.updated_at) }}
+              </span>
             </span>
             <span class="wa-row-bot">
               <span class="wa-preview truncate">{{ lastPreview(t) }}</span>
-              <Tag :value="t.status" :severity="statusSeverity(t.status)" class="wa-status" />
+              <span v-if="unreadCount(t) > 0 && activeId !== t.id" class="wa-unread-badge">
+                {{ unreadCount(t) > 99 ? '99+' : unreadCount(t) }}
+              </span>
+              <Tag v-else :value="t.status" :severity="statusSeverity(t.status)" class="wa-status" />
             </span>
           </span>
         </button>
@@ -409,62 +542,136 @@ onUnmounted(() => chat.leave())
           <span class="live-pill" :class="{ on: chat.connected }">{{ liveLabel }}</span>
         </header>
 
-        <div ref="messagesEl" class="wa-messages" :class="{ loading: loadingChat }">
-          <div class="wa-day-pill">Conversation started · {{ timeLabel(activeTicket.created_at) }}</div>
+        <div class="wa-messages-wrap">
           <div
-            v-for="m in chatMessages"
-            :key="m.id"
-            class="wa-bubble-row"
-            :class="{ mine: !m.is_staff_reply, theirs: m.is_staff_reply, failed: m._failed }"
+            ref="messagesEl"
+            class="wa-messages"
+            :class="{ loading: loadingChat }"
+            @scroll="onMessagesScroll"
+            @click="menuMsgId = null"
           >
-            <div class="wa-bubble">
-              <div v-if="m.is_staff_reply" class="wa-sender">Support</div>
-              <div v-if="m.body" class="wa-text" v-html="linkify(m.body)" />
-              <a
-                v-if="attachmentHref(m)"
-                class="wa-attach"
-                :href="attachmentHref(m)"
-                target="_blank"
-                rel="noopener noreferrer"
+            <div class="wa-day-pill muted-start">Conversation started · {{ timeLabel(activeTicket.created_at) }}</div>
+
+            <template v-for="item in timeline" :key="item.key">
+              <div v-if="item.kind === 'day'" class="wa-day-pill">{{ item.label }}</div>
+              <div
+                v-else
+                class="wa-bubble-row"
+                :class="{ mine: !item.msg.is_staff_reply, theirs: item.msg.is_staff_reply, failed: item.msg._failed }"
+                :data-msg-id="item.msg.id"
               >
-                <img v-if="isImageAtt(m)" :src="attachmentHref(m)" alt="Attachment" class="wa-attach-img" />
-                <span v-else class="wa-attach-file"><i class="pi pi-paperclip" /> Open attachment</span>
-              </a>
-              <div class="wa-meta">
-                <span>{{ msgTime(m.created_at) }}</span>
-                <span
-                  v-if="!m.is_staff_reply"
-                  class="ticks"
-                  :class="receiptOf(m)"
-                  :title="tickTitle(m)"
-                >
-                  <template v-if="receiptOf(m) === 'pending'">
-                    <i class="pi pi-clock" />
-                  </template>
-                  <template v-else-if="receiptOf(m) === 'sent'">
-                    <i class="pi pi-check" />
-                  </template>
-                  <template v-else>
-                    <i class="pi pi-check" /><i class="pi pi-check second" />
-                  </template>
-                </span>
-                <span v-if="m._failed" class="fail-hint">Failed</span>
+                <div class="wa-bubble" @contextmenu.prevent="toggleMenu(item.msg.id)">
+                  <div v-if="item.msg.is_staff_reply" class="wa-sender">Support</div>
+
+                  <button
+                    v-if="item.msg.reply_to"
+                    type="button"
+                    class="wa-quote"
+                    @click.stop="jumpToQuoted(item.msg.reply_to.id)"
+                  >
+                    <span class="wa-quote-bar" />
+                    <span class="wa-quote-body">
+                      <span class="wa-quote-author">{{ quoteAuthor(item.msg.reply_to) }}</span>
+                      <span class="wa-quote-text">{{ quotePreview(item.msg.reply_to) }}</span>
+                    </span>
+                  </button>
+
+                  <div
+                    v-if="item.msg.body && item.msg.body !== '(attachment)'"
+                    class="wa-text"
+                    v-html="linkify(item.msg.body)"
+                  />
+
+                  <div v-if="attachmentHref(item.msg)" class="wa-attach-wrap">
+                    <button
+                      v-if="isImageAtt(item.msg)"
+                      type="button"
+                      class="wa-attach-btn"
+                      @click.stop="openLightbox(attachmentHref(item.msg))"
+                    >
+                      <img :src="attachmentHref(item.msg)" alt="Attachment" class="wa-attach-img" />
+                    </button>
+                    <a
+                      v-else
+                      class="wa-attach"
+                      :href="attachmentHref(item.msg)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <span class="wa-attach-file"><i class="pi pi-paperclip" /> Open attachment</span>
+                    </a>
+                  </div>
+
+                  <div class="wa-meta">
+                    <span>{{ msgTime(item.msg.created_at) }}</span>
+                    <span
+                      v-if="!item.msg.is_staff_reply"
+                      class="ticks"
+                      :class="receiptOf(item.msg)"
+                      :title="tickTitle(item.msg)"
+                    >
+                      <template v-if="receiptOf(item.msg) === 'pending'">
+                        <i class="pi pi-clock" />
+                      </template>
+                      <template v-else-if="receiptOf(item.msg) === 'sent'">
+                        <i class="pi pi-check" />
+                      </template>
+                      <template v-else>
+                        <i class="pi pi-check" /><i class="pi pi-check second" />
+                      </template>
+                    </span>
+                    <span v-if="item.msg._failed" class="fail-hint">Failed</span>
+                  </div>
+
+                  <div class="wa-bubble-actions">
+                    <button type="button" class="wa-act" title="Reply" @click.stop="setReply(item.msg)">
+                      <i class="pi pi-reply" />
+                    </button>
+                    <button type="button" class="wa-act" title="Copy" @click.stop="copyMessage(item.msg)">
+                      <i class="pi pi-copy" />
+                    </button>
+                  </div>
+
+                  <div v-if="menuMsgId === item.msg.id" class="wa-ctx-menu" @click.stop>
+                    <button type="button" @click="setReply(item.msg)"><i class="pi pi-reply" /> Reply</button>
+                    <button type="button" @click="copyMessage(item.msg)"><i class="pi pi-copy" /> Copy</button>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <div v-if="chat.peerTypingText" class="wa-bubble-row theirs typing-row">
+              <div class="wa-bubble typing-bubble">
+                <span class="dot" /><span class="dot" /><span class="dot" />
               </div>
             </div>
-          </div>
 
-          <div v-if="chat.peerTypingText" class="wa-bubble-row theirs typing-row">
-            <div class="wa-bubble typing-bubble">
-              <span class="dot" /><span class="dot" /><span class="dot" />
+            <div v-if="!chatMessages.length && !loadingChat" class="wa-empty-msgs muted">
+              Send a message to start the conversation.
             </div>
           </div>
 
-          <div v-if="!chatMessages.length && !loadingChat" class="wa-empty-msgs muted">
-            Send a message to start the conversation.
-          </div>
+          <button
+            v-if="showJump"
+            type="button"
+            class="wa-jump"
+            title="Jump to latest"
+            aria-label="Jump to latest"
+            @click="jumpToLatest"
+          >
+            <i class="pi pi-chevron-down" />
+          </button>
         </div>
 
         <footer v-if="canReply" class="wa-composer-wrap">
+          <div v-if="replyTarget" class="wa-reply-chip">
+            <span class="wa-reply-bar" />
+            <span class="wa-reply-meta">
+              <strong>Replying to {{ replyTarget.is_staff_reply ? 'Support' : 'yourself' }}</strong>
+              <span class="truncate">{{ quotePreview(replyTarget) }}</span>
+            </span>
+            <button type="button" class="chip-x" aria-label="Cancel reply" @click="clearReply">×</button>
+          </div>
           <div v-if="pendingFile" class="wa-file-chip">
             <i class="pi pi-paperclip" />
             <span class="truncate">{{ pendingFile.name }}</span>
@@ -504,7 +711,7 @@ onUnmounted(() => chat.leave())
           </div>
           <h2>CryptoInvest Support</h2>
           <p class="muted">
-            Realtime chat with typing indicators and read receipts — just like WhatsApp.
+            WhatsApp-style chat with day markers, replies, read receipts, and live typing.
           </p>
           <Button label="New conversation" icon="pi pi-plus" @click="showNew = true" />
           <p v-if="auth.displayName" class="wa-you muted">Signed in as {{ auth.displayName }}</p>
@@ -526,6 +733,13 @@ onUnmounted(() => chat.leave())
         <Button label="Start chat" icon="pi pi-send" :loading="saving" @click="create" />
       </div>
     </Dialog>
+
+    <Teleport to="body">
+      <div v-if="lightboxUrl" class="wa-lightbox" @click="closeLightbox">
+        <button type="button" class="wa-lightbox-x" aria-label="Close" @click="closeLightbox">×</button>
+        <img :src="lightboxUrl" alt="Full size" @click.stop />
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -625,6 +839,7 @@ onUnmounted(() => chat.leave())
 }
 .wa-chat-row:hover { background: rgba(255, 255, 255, 0.05); }
 .wa-chat-row.active { background: rgba(37, 211, 102, 0.12); }
+.wa-chat-row.unread strong { font-weight: 800; }
 .wa-avatar {
   width: 48px;
   height: 48px;
@@ -666,8 +881,23 @@ onUnmounted(() => chat.leave())
 }
 .wa-row-top strong { font-size: 0.95rem; }
 .wa-time { font-size: 0.72rem; color: var(--ci-muted); white-space: nowrap; }
+.wa-time.unread { color: #25D366; font-weight: 700; }
 .wa-preview { font-size: 0.8rem; color: var(--ci-muted); flex: 1; min-width: 0; }
 .wa-status { transform: scale(0.85); transform-origin: right center; }
+.wa-unread-badge {
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #25D366;
+  color: #052e16;
+  font-size: 0.68rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -679,9 +909,7 @@ onUnmounted(() => chat.leave())
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  background:
-    linear-gradient(180deg, rgba(11, 20, 26, 0.55), rgba(11, 20, 26, 0.75)),
-    radial-gradient(circle at 20% 10%, rgba(37, 211, 102, 0.06), transparent 40%);
+  background: #0b141a;
 }
 .wa-chat-head {
   display: flex;
@@ -690,6 +918,7 @@ onUnmounted(() => chat.leave())
   padding: 0.65rem 0.9rem;
   background: rgba(17, 27, 33, 0.95);
   border-bottom: 1px solid var(--ci-border);
+  z-index: 2;
 }
 .wa-chat-meta { min-width: 0; flex: 1; }
 .wa-chat-meta h2 {
@@ -728,6 +957,13 @@ onUnmounted(() => chat.leave())
 }
 .wa-back { display: none; }
 
+.wa-messages-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .wa-messages {
   flex: 1;
   overflow-y: auto;
@@ -736,28 +972,49 @@ onUnmounted(() => chat.leave())
   flex-direction: column;
   gap: 0.35rem;
   min-height: 0;
+  background-color: #0b141a;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(37, 211, 102, 0.04) 0, transparent 42%),
+    radial-gradient(circle at 88% 72%, rgba(83, 189, 235, 0.04) 0, transparent 38%),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.025'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
 .wa-messages.loading { opacity: 0.65; }
 .wa-day-pill {
   align-self: center;
-  margin: 0.35rem 0 0.75rem;
-  padding: 0.28rem 0.7rem;
+  margin: 0.45rem 0 0.55rem;
+  padding: 0.28rem 0.75rem;
   border-radius: 999px;
   font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--ci-muted);
-  background: rgba(0, 0, 0, 0.35);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #e9edef;
+  background: rgba(17, 27, 33, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+}
+.wa-day-pill.muted-start {
+  color: var(--ci-muted);
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.35);
 }
 .wa-bubble-row { display: flex; width: 100%; }
 .wa-bubble-row.mine { justify-content: flex-end; }
 .wa-bubble-row.theirs { justify-content: flex-start; }
+.wa-bubble-row.wa-flash .wa-bubble {
+  animation: waFlash 1.1s ease;
+}
+@keyframes waFlash {
+  0%, 100% { box-shadow: 0 1px 1px rgba(0, 0, 0, 0.18); }
+  40% { box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.45); }
+}
 .wa-bubble {
   max-width: min(78%, 520px);
   padding: 0.45rem 0.65rem 0.35rem;
   border-radius: 10px;
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
   word-break: break-word;
+  position: relative;
 }
 .wa-bubble-row.mine .wa-bubble {
   background: linear-gradient(160deg, #005c4b 0%, #025c4c 100%);
@@ -792,12 +1049,53 @@ onUnmounted(() => chat.leave())
   font-weight: 600;
   word-break: break-all;
 }
-.wa-bubble-row.mine .wa-text :deep(.chat-link) {
-  color: #a5f3fc;
+.wa-bubble-row.mine .wa-text :deep(.chat-link) { color: #a5f3fc; }
+.wa-text :deep(.chat-link:hover) { filter: brightness(1.15); }
+
+/* Quote / reply block */
+.wa-quote {
+  display: flex;
+  gap: 0;
+  width: 100%;
+  margin: 0 0 0.35rem;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
 }
-.wa-text :deep(.chat-link:hover) {
-  filter: brightness(1.15);
+.wa-quote:hover { filter: brightness(1.08); }
+.wa-quote-bar {
+  width: 4px;
+  flex-shrink: 0;
+  background: #25D366;
 }
+.wa-bubble-row.theirs .wa-quote-bar { background: #53bdeb; }
+.wa-quote-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.3rem 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+.wa-quote-author {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #25D366;
+}
+.wa-bubble-row.theirs .wa-quote-author { color: #53bdeb; }
+.wa-quote-text {
+  font-size: 0.78rem;
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .wa-meta {
   display: flex;
   align-items: center;
@@ -827,6 +1125,64 @@ onUnmounted(() => chat.leave())
 .ticks.read { color: #53bdeb; }
 .fail-hint { color: #fca5a5; font-weight: 700; }
 
+.wa-bubble-actions {
+  position: absolute;
+  top: -0.35rem;
+  display: none;
+  gap: 0.15rem;
+  background: rgba(17, 27, 33, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 0.1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  z-index: 3;
+}
+.wa-bubble-row.mine .wa-bubble-actions { left: -0.25rem; }
+.wa-bubble-row.theirs .wa-bubble-actions { right: -0.25rem; }
+.wa-bubble:hover .wa-bubble-actions,
+.wa-bubble:focus-within .wa-bubble-actions { display: inline-flex; }
+.wa-act {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #e9edef;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+}
+.wa-act:hover { background: rgba(255, 255, 255, 0.1); color: #25D366; }
+
+.wa-ctx-menu {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  background: rgba(17, 27, 33, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  z-index: 5;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.wa-ctx-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 0;
+  background: transparent;
+  color: #e9edef;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+}
+.wa-ctx-menu button:hover { background: rgba(37, 211, 102, 0.12); }
+
 .typing-bubble {
   display: flex;
   gap: 4px;
@@ -850,11 +1206,59 @@ onUnmounted(() => chat.leave())
 
 .wa-empty-msgs { text-align: center; margin: auto; padding: 2rem; }
 
+.wa-jump {
+  position: absolute;
+  right: 1rem;
+  bottom: 0.85rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(17, 27, 33, 0.95);
+  color: #e9edef;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  z-index: 4;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.wa-jump:hover {
+  background: #25D366;
+  color: #052e16;
+  transform: translateY(-2px);
+}
+
 .wa-composer-wrap {
   background: rgba(17, 27, 33, 0.96);
   border-top: 1px solid var(--ci-border);
   padding: 0.45rem 0.75rem 0.7rem;
 }
+.wa-reply-chip {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 0.4rem;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.wa-reply-bar {
+  width: 4px;
+  background: #25D366;
+  flex-shrink: 0;
+}
+.wa-reply-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.78rem;
+}
+.wa-reply-meta strong { color: #25D366; font-size: 0.72rem; }
 .wa-file-chip {
   display: inline-flex;
   align-items: center;
@@ -873,8 +1277,17 @@ onUnmounted(() => chat.leave())
   cursor: pointer;
   font-size: 1rem;
   line-height: 1;
+  padding: 0 0.45rem;
 }
 .hidden-file { display: none; }
+.wa-attach-wrap { margin-top: 0.35rem; }
+.wa-attach-btn {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: zoom-in;
+  display: block;
+}
 .wa-attach {
   display: block;
   margin-top: 0.4rem;
@@ -981,9 +1394,8 @@ onUnmounted(() => chat.leave())
   }
   .wa-chat-meta h2 { font-size: 0.95rem; }
   .wa-messages { padding: 0.65rem 0.55rem 0.85rem; }
-  .wa-bubble {
-    max-width: min(88%, 100%);
-  }
+  .wa-bubble { max-width: min(88%, 100%); }
+  .wa-bubble-actions { display: inline-flex; opacity: 0.85; }
   .wa-composer-wrap { padding: 0.4rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom, 0px)); }
   .wa-composer textarea {
     min-height: 40px;
@@ -999,5 +1411,41 @@ onUnmounted(() => chat.leave())
     border-left: 0;
     border-right: 0;
   }
+}
+</style>
+
+<style>
+/* Lightbox must be global (Teleport to body) */
+.wa-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  cursor: zoom-out;
+}
+.wa-lightbox img {
+  max-width: min(96vw, 1100px);
+  max-height: 90vh;
+  border-radius: 10px;
+  object-fit: contain;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+.wa-lightbox-x {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
 }
 </style>

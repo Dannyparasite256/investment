@@ -1,8 +1,10 @@
-"""Chat helpers: auto-linkify URLs in messages."""
+"""Chat helpers: auto-linkify URLs in messages + WhatsApp day labels."""
 import re
+from datetime import date, datetime
 from html import escape
 
 from django import template
+from django.utils import timezone
 from django.utils.safestring import mark_safe
 
 register = template.Library()
@@ -55,3 +57,41 @@ def chat_links(value: str) -> str:
         )
 
     return mark_safe(_URL_RE.sub(repl, text))
+
+
+@register.filter(name='wa_day')
+def wa_day(value) -> str:
+    """WhatsApp-style day label: Today / Yesterday / weekday / date."""
+    if not value:
+        return ''
+    if isinstance(value, datetime):
+        d = timezone.localtime(value).date() if timezone.is_aware(value) else value.date()
+    elif isinstance(value, date):
+        d = value
+    else:
+        return ''
+    today = timezone.localdate()
+    delta = (today - d).days
+    if delta == 0:
+        return 'Today'
+    if delta == 1:
+        return 'Yesterday'
+    if 1 < delta < 7:
+        return d.strftime('%A')
+    if d.year == today.year:
+        return d.strftime('%a, %b %d')
+    return d.strftime('%b %d, %Y')
+
+
+@register.filter(name='wa_day_key')
+def wa_day_key(value) -> str:
+    """Stable day key for grouping messages."""
+    if not value:
+        return ''
+    if isinstance(value, datetime):
+        d = timezone.localtime(value).date() if timezone.is_aware(value) else value.date()
+    elif isinstance(value, date):
+        d = value
+    else:
+        return ''
+    return d.isoformat()

@@ -427,7 +427,10 @@ class StaffTicketListView(APIView):
         )
         results = []
         for t in qs:
-            last = t.messages.order_by('-created_at').first()
+            msgs = list(t.messages.all())
+            last = msgs[-1] if msgs else None
+            unread = sum(1 for m in msgs if not m.is_staff_reply and not m.read_at)
+            has_att = bool(last and last.attachment)
             results.append({
                 'id': str(t.id),
                 'subject': t.subject,
@@ -438,13 +441,15 @@ class StaffTicketListView(APIView):
                 'user_name': t.user.get_full_name() or t.user.email,
                 'created_at': t.created_at,
                 'updated_at': t.updated_at,
-                'message_count': t.messages.count(),
+                'message_count': len(msgs),
+                'unread_count': unread,
                 'last_message': ({
                     'id': str(last.id),
                     'body': last.body,
                     'is_staff_reply': last.is_staff_reply,
                     'created_at': last.created_at,
                     'receipt_status': last.receipt_status,
+                    'has_attachment': has_att,
                 } if last else None),
             })
         return Response({'results': results})
@@ -460,6 +465,18 @@ class StaffTicketDetailView(APIView):
                 att_url = m.attachment.url
             except Exception:
                 att_url = ''
+        reply_to = None
+        parent = getattr(m, 'reply_to', None)
+        if parent:
+            body = parent.body or ''
+            if body == '(attachment)':
+                body = '📎 Attachment'
+            reply_to = {
+                'id': str(parent.id),
+                'body': body[:200],
+                'is_staff_reply': parent.is_staff_reply,
+                'sender_name': parent.sender.get_full_name() or parent.sender.email,
+            }
         return {
             'id': str(m.id),
             'body': m.body,
@@ -471,6 +488,8 @@ class StaffTicketDetailView(APIView):
             'receipt_status': m.receipt_status,
             'sender': m.sender_id,
             'attachment_url': att_url,
+            'reply_to_id': str(m.reply_to_id) if m.reply_to_id else None,
+            'reply_to': reply_to,
         }
 
     def _mark_user_messages_read(self, ticket):
@@ -490,7 +509,12 @@ class StaffTicketDetailView(APIView):
     def get(self, request, pk):
         from support.realtime import get_presence, set_presence
 
-        t = get_object_or_404(SupportTicket.objects.prefetch_related('messages__sender'), pk=pk)
+        t = get_object_or_404(
+            SupportTicket.objects.prefetch_related(
+                'messages__sender', 'messages__reply_to', 'messages__reply_to__sender',
+            ),
+            pk=pk,
+        )
         set_presence(t.id, request.user, is_staff=True)
         self._mark_user_messages_read(t)
         return Response({
@@ -537,7 +561,7 @@ class StaffTicketDetailView(APIView):
             set_presence(t.id, request.user, is_staff=True)
             self._mark_user_messages_read(t)
             since = request.data.get('since') or request.query_params.get('since')
-            qs = t.messages.select_related('sender').all()
+            qs = t.messages.select_related('sender', 'reply_to', 'reply_to__sender').all()
             if since:
                 try:
                     since_dt = datetime.fromisoformat(str(since).replace('Z', '+00:00'))
@@ -560,9 +584,15 @@ class StaffTicketDetailView(APIView):
         attachment = request.FILES.get('attachment')
         if not body and not attachment:
             return Response({'detail': 'Message or attachment required'}, status=400)
+        reply_parent = None
+        reply_to_raw = request.data.get('reply_to') or request.data.get('reply_to_id')
+        if reply_to_raw:
+            reply_parent = TicketMessage.objects.filter(
+                ticket=t, pk=reply_to_raw,
+            ).select_related('sender').first()
         msg = TicketMessage.objects.create(
             ticket=t, sender=request.user, body=body or '(attachment)',
-            is_staff_reply=True, attachment=attachment,
+            is_staff_reply=True, attachment=attachment, reply_to=reply_parent,
         )
         t.status = SupportTicket.Status.WAITING
         t.save(update_fields=['status', 'updated_at'])

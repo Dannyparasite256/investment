@@ -946,13 +946,24 @@ def ticket_detail(request, pk):
                 unread.update(delivered_at=now, read_at=now, updated_at=now)
                 notify_receipts(ticket.id, ids, 'read', now.isoformat())
             msgs = []
-            for m in ticket.messages.select_related('sender').all():
+            for m in ticket.messages.select_related('sender', 'reply_to', 'reply_to__sender').all():
                 att_url = ''
                 if m.attachment:
                     try:
                         att_url = m.attachment.url
                     except Exception:
                         att_url = ''
+                reply_to = None
+                if m.reply_to_id and m.reply_to:
+                    pbody = m.reply_to.body or ''
+                    if pbody == '(attachment)':
+                        pbody = '📎 Attachment'
+                    reply_to = {
+                        'id': str(m.reply_to_id),
+                        'body': pbody[:200],
+                        'is_staff_reply': m.reply_to.is_staff_reply,
+                        'sender_name': m.reply_to.sender.get_full_name() or m.reply_to.sender.email,
+                    }
                 msgs.append({
                     'id': str(m.id),
                     'body': m.body,
@@ -963,6 +974,8 @@ def ticket_detail(request, pk):
                     'receipt_status': m.receipt_status,
                     'sender_name': m.sender.get_full_name() or m.sender.email,
                     'attachment_url': att_url,
+                    'reply_to_id': str(m.reply_to_id) if m.reply_to_id else None,
+                    'reply_to': reply_to,
                 })
             own = [x for x in msgs if x['is_staff_reply']]
             return JsonResponse({
@@ -975,12 +988,19 @@ def ticket_detail(request, pk):
         body = request.POST.get('body', '').strip()
         attachment = request.FILES.get('attachment')
         if body or attachment:
+            reply_parent = None
+            reply_raw = request.POST.get('reply_to') or request.POST.get('reply_to_id')
+            if reply_raw:
+                reply_parent = TicketMessage.objects.filter(
+                    ticket=ticket, pk=reply_raw,
+                ).select_related('sender').first()
             msg = TicketMessage.objects.create(
                 ticket=ticket,
                 sender=request.user,
                 body=body or '(attachment)',
                 is_staff_reply=True,
                 attachment=attachment,
+                reply_to=reply_parent,
             )
             ticket.status = SupportTicket.Status.WAITING
             ticket.assigned_to = request.user
@@ -991,23 +1011,10 @@ def ticket_detail(request, pk):
                 category=Notification.Category.SYSTEM, link=f'/app/support/{ticket.id}',
             )
             if wants_json:
-                att_url = ''
-                if msg.attachment:
-                    try:
-                        att_url = msg.attachment.url
-                    except Exception:
-                        att_url = ''
+                from support.views import _msg_json
                 return JsonResponse({
                     'ok': True,
-                    'message': {
-                        'id': str(msg.id),
-                        'body': msg.body,
-                        'is_staff_reply': True,
-                        'created_at': msg.created_at.isoformat() if msg.created_at else None,
-                        'receipt_status': msg.receipt_status,
-                        'sender_name': request.user.get_full_name() or request.user.email,
-                        'attachment_url': att_url,
-                    },
+                    'message': _msg_json(msg),
                 })
             messages.success(request, 'Reply sent.')
             return redirect('staffpanel:ticket_detail', pk=pk)
@@ -1035,7 +1042,7 @@ def ticket_detail(request, pk):
     )
     return render(request, 'staffpanel/ticket_detail.html', {
         'ticket': ticket,
-        'messages_list': ticket.messages.select_related('sender'),
+        'messages_list': ticket.messages.select_related('sender', 'reply_to', 'reply_to__sender'),
         'statuses': SupportTicket.Status.choices,
         'other_tickets': other_tickets,
         'presence': get_presence(ticket.id),

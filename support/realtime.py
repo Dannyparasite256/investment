@@ -246,6 +246,23 @@ def broadcast_staff(payload: dict) -> None:
         pass
 
 
+def _reply_preview(msg) -> dict | None:
+    parent = getattr(msg, 'reply_to', None)
+    if not parent:
+        return None
+    sender = parent.sender
+    name = f'{sender.first_name} {sender.last_name}'.strip() or sender.email
+    body = parent.body or ''
+    if body == '(attachment)':
+        body = '📎 Attachment'
+    return {
+        'id': str(parent.id),
+        'body': body[:200],
+        'is_staff_reply': parent.is_staff_reply,
+        'sender_name': name,
+    }
+
+
 def message_payload(msg) -> dict:
     sender = msg.sender
     name = f'{sender.first_name} {sender.last_name}'.strip() or sender.email
@@ -267,6 +284,8 @@ def message_payload(msg) -> dict:
         'sender': sender.pk,
         'sender_name': name,
         'attachment_url': att_url,
+        'reply_to_id': str(msg.reply_to_id) if getattr(msg, 'reply_to_id', None) else None,
+        'reply_to': _reply_preview(msg),
     }
 
 

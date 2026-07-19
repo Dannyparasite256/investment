@@ -221,10 +221,18 @@ export interface SupportTicket {
   created_at: string
   updated_at: string
   message_count?: number
+  unread_count?: number
   messages?: TicketMessage[]
 }
 
 export type ReceiptStatus = 'pending' | 'sent' | 'delivered' | 'read'
+
+export interface TicketReplyPreview {
+  id: string
+  body: string
+  is_staff_reply: boolean
+  sender_name: string
+}
 
 export interface TicketMessage {
   id: string
@@ -238,6 +246,8 @@ export interface TicketMessage {
   sender_name: string
   attachment?: string | null
   attachment_url?: string | null
+  reply_to_id?: string | null
+  reply_to?: TicketReplyPreview | null
   /** Local optimistic flag before server ack */
   _pending?: boolean
   _failed?: boolean

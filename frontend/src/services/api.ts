@@ -133,11 +133,12 @@ export const api = {
   staffTicket(id: string) {
     return http.get(`/api/v1/staff/tickets/${id}/`)
   },
-  staffTicketReply(id: string, body: string, file?: File | null) {
-    if (file) {
+  staffTicketReply(id: string, body: string, file?: File | null, replyToId?: string | null) {
+    if (file || replyToId) {
       const fd = new FormData()
       if (body) fd.append('body', body)
-      fd.append('attachment', file)
+      if (file) fd.append('attachment', file)
+      if (replyToId) fd.append('reply_to', replyToId)
       return http.post(`/api/v1/staff/tickets/${id}/`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
@@ -364,11 +365,12 @@ export const api = {
   createTicket(payload: { subject: string; body: string; category?: string }) {
     return http.post<SupportTicket>('/api/v1/support/', payload)
   },
-  replyTicket(id: string, body: string, file?: File | null) {
-    if (file) {
+  replyTicket(id: string, body: string, file?: File | null, replyToId?: string | null) {
+    if (file || replyToId) {
       const fd = new FormData()
       if (body) fd.append('body', body)
-      fd.append('attachment', file)
+      if (file) fd.append('attachment', file)
+      if (replyToId) fd.append('reply_to', replyToId)
       return http.post<TicketMessage>(`/api/v1/support/${id}/reply/`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })

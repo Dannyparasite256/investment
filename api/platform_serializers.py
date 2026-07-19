@@ -42,12 +42,15 @@ class TicketMessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.SerializerMethodField()
     receipt_status = serializers.CharField(read_only=True)
     attachment_url = serializers.SerializerMethodField()
+    reply_to_id = serializers.SerializerMethodField()
+    reply_to = serializers.SerializerMethodField()
 
     class Meta:
         model = TicketMessage
         fields = (
             'id', 'body', 'is_staff_reply', 'created_at', 'sender', 'sender_name',
             'delivered_at', 'read_at', 'receipt_status', 'attachment', 'attachment_url',
+            'reply_to_id', 'reply_to',
         )
         read_only_fields = fields
 
@@ -64,18 +67,48 @@ class TicketMessageSerializer(serializers.ModelSerializer):
         name = f'{u.first_name} {u.last_name}'.strip()
         return name or u.email
 
+    def get_reply_to_id(self, obj):
+        return str(obj.reply_to_id) if obj.reply_to_id else None
+
+    def get_reply_to(self, obj):
+        parent = obj.reply_to
+        if not parent:
+            return None
+        u = parent.sender
+        name = f'{u.first_name} {u.last_name}'.strip() or u.email
+        body = parent.body or ''
+        if body == '(attachment)':
+            body = '📎 Attachment'
+        return {
+            'id': str(parent.id),
+            'body': body[:200],
+            'is_staff_reply': parent.is_staff_reply,
+            'sender_name': name,
+        }
+
 
 class SupportTicketSerializer(serializers.ModelSerializer):
     messages = TicketMessageSerializer(many=True, read_only=True)
     message_count = serializers.IntegerField(source='messages.count', read_only=True)
+    unread_count = serializers.SerializerMethodField()
 
     class Meta:
         model = SupportTicket
         fields = (
             'id', 'subject', 'category', 'status', 'priority', 'created_at', 'updated_at',
-            'messages', 'message_count',
+            'messages', 'message_count', 'unread_count',
         )
-        read_only_fields = ('status', 'priority', 'created_at', 'updated_at', 'messages', 'message_count')
+        read_only_fields = (
+            'status', 'priority', 'created_at', 'updated_at',
+            'messages', 'message_count', 'unread_count',
+        )
+
+    def get_unread_count(self, obj):
+        # Customer view: unread staff replies
+        msgs = getattr(obj, '_prefetched_objects_cache', {}).get('messages')
+        if msgs is not None:
+            return sum(1 for m in msgs if m.is_staff_reply and not m.read_at)
+        return obj.messages.filter(is_staff_reply=True, read_at__isnull=True).count()
 
 
 class SupportTicketCreateSerializer(serializers.Serializer):
@@ -87,6 +120,7 @@ class SupportTicketCreateSerializer(serializers.Serializer):
 class TicketReplySerializer(serializers.Serializer):
     body = serializers.CharField(required=False, allow_blank=True)
     attachment = serializers.FileField(required=False, allow_null=True)
+    reply_to = serializers.UUIDField(required=False, allow_null=True)
 
 
 class ReferralCommissionSerializer(serializers.ModelSerializer):

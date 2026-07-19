@@ -53,12 +53,17 @@ class TicketMessage(UUIDModel, TimeStampedModel):
     - created_at  → sent (single grey tick)
     - delivered_at → delivered to recipient device (double grey ticks)
     - read_at     → viewed by recipient (double blue ticks)
+    - reply_to    → quoted message (WhatsApp-style reply)
     """
     ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     body = models.TextField()
     is_staff_reply = models.BooleanField(default=False)
     attachment = models.FileField(upload_to='tickets/%Y/%m/', blank=True, null=True)
+    reply_to = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='replies',
+    )
     delivered_at = models.DateTimeField(null=True, blank=True, db_index=True)
     read_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
