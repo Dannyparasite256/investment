@@ -43,7 +43,9 @@
 
   window.setTheme = function (theme) {
     if (theme !== 'dark' && theme !== 'light') theme = 'dark';
+    // Always set on <html> (source of truth for CSS)
     document.documentElement.setAttribute('data-theme', theme);
+    if (document.body) document.body.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
     writeCookie('theme', theme);
     var form = document.getElementById('theme-form');
@@ -51,12 +53,16 @@
       var input = form.querySelector('[name=theme]');
       if (input) input.value = theme;
     }
+    var formSel = document.getElementById('id_preferred_theme');
+    if (formSel) formSel.value = theme;
     document.querySelectorAll('[data-theme-icon]').forEach(function (el) {
       el.className = theme === 'dark' ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill';
     });
     document.querySelectorAll('[data-color-mode]').forEach(function (el) {
       el.classList.toggle('is-active', el.getAttribute('data-color-mode') === theme);
     });
+    // Force a reflow so CSS variables recompute immediately
+    void document.documentElement.offsetHeight;
     var url = (document.body && document.body.getAttribute('data-theme-url')) || '/theme/';
     if (form && window.htmx) {
       htmx.ajax('POST', form.action || url, { source: form, values: { theme: theme }, swap: 'none' });
@@ -117,13 +123,21 @@
   };
 
   (function initTheme() {
+    // Prefer cookie, then localStorage; do not force 'dark' over a server-rendered light attr
     var match = document.cookie.match(/(?:^|;\s*)theme=([^;]+)/);
-    var stored = (match && match[1]) || localStorage.getItem('theme') || 'dark';
+    var fromCookie = match && match[1];
+    var fromLs = localStorage.getItem('theme');
+    var fromServer = document.documentElement.getAttribute('data-theme');
+    var stored = fromCookie || fromLs || fromServer || 'dark';
     if (stored === 'dark' || stored === 'light') {
       document.documentElement.setAttribute('data-theme', stored);
+      if (document.body) document.body.setAttribute('data-theme', stored);
     }
     var uiMatch = document.cookie.match(/(?:^|;\s*)ui_theme=([^;]+)/);
-    var uiStored = (uiMatch && uiMatch[1]) || localStorage.getItem('ui_theme') || '';
+    var uiFromCookie = uiMatch && uiMatch[1];
+    var uiFromLs = localStorage.getItem('ui_theme');
+    var uiFromServer = document.documentElement.getAttribute('data-ui-theme');
+    var uiStored = uiFromCookie || uiFromLs || uiFromServer || 'classic';
     if (uiStored === 'premium' || uiStored === 'classic') {
       document.documentElement.setAttribute('data-ui-theme', uiStored);
     }
