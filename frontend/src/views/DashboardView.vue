@@ -24,6 +24,8 @@ const plans = ref<InvestmentPlan[]>([])
 const transactions = ref<Transaction[]>([])
 const earnings = ref<Earning[]>([])
 const prices = ref<Record<string, string | number>>({})
+const social = ref<any[]>([])
+const watch = ref<any[]>([])
 
 const available = computed(() => formatDisplay(currency.balances?.available) || formatMoney(auth.wallet?.available_balance ?? 0))
 const profit = computed(() => formatDisplay(currency.balances?.profit) || formatMoney(auth.wallet?.total_profit ?? 0))
@@ -57,16 +59,20 @@ onMounted(async () => {
     await auth.refreshWallet()
     if (!currency.balances) await currency.init()
     else await currency.refreshBalances()
-    const [p, t, e, pr] = await Promise.allSettled([
+    const [p, t, e, pr, sp, wl] = await Promise.allSettled([
       api.plans(),
       api.transactions({ page: 1 }),
       api.earnings(),
       api.prices(),
+      api.socialProof(),
+      api.watchlist(),
     ])
     if (p.status === 'fulfilled') plans.value = unwrapList(p.value.data).slice(0, 3)
     if (t.status === 'fulfilled') transactions.value = unwrapList(t.value.data).slice(0, 8)
     if (e.status === 'fulfilled') earnings.value = unwrapList(e.value.data).slice(0, 20)
     if (pr.status === 'fulfilled') prices.value = pr.value.data?.prices || {}
+    if (sp.status === 'fulfilled') social.value = sp.value.data?.results || []
+    if (wl.status === 'fulfilled') watch.value = unwrapList(wl.value.data).slice(0, 6)
   } finally {
     loading.value = false
   }
@@ -112,6 +118,27 @@ onMounted(async () => {
         {{ k }} <strong class="mono">${{ v }}</strong>
       </span>
       <Button label="Markets" size="small" text class="ms" @click="router.push('/markets')" />
+    </div>
+
+    <div v-if="watch.length" class="watch glass">
+      <div class="row-head">
+        <strong>Your markets</strong>
+        <Button label="Watchlist" size="small" text @click="router.push('/watchlist')" />
+      </div>
+      <div class="chips">
+        <button v-for="w in watch" :key="w.id" type="button" class="wchip" @click="router.push('/markets')">
+          {{ w.label || w.symbol }}
+        </button>
+      </div>
+    </div>
+
+    <div v-if="social.length" class="proof glass">
+      <strong>Recent investor activity</strong>
+      <div class="proof-row">
+        <span v-for="(s, i) in social.slice(0, 6)" :key="i" class="proof-chip">
+          {{ s.label }} · +{{ formatMoney(s.amount) }}
+        </span>
+      </div>
     </div>
 
     <div class="two">
@@ -199,6 +226,18 @@ onMounted(async () => {
 }
 .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .small { font-size: 0.82rem; }
+.watch, .proof { margin-top: 0.75rem; padding: 0.85rem 1rem; border-radius: 16px; }
+.row-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem; }
+.chips, .proof-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.wchip, .proof-chip {
+  border: 1px solid var(--ci-border);
+  background: rgba(255,255,255,0.04);
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
 .ticker {
   margin-top: 0.85rem;
   padding: 0.75rem 1rem;

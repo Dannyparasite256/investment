@@ -111,6 +111,13 @@ class SiteConfiguration(TimeStampedModel):
     )
     captcha_site_key = models.CharField(max_length=200, blank=True)
     captcha_secret_key = models.CharField(max_length=200, blank=True)
+    large_withdraw_threshold = models.DecimalField(
+        max_digits=18, decimal_places=8, default=Decimal('1000'),
+        help_text='Withdrawals at or above this amount require 2FA when enabled',
+    )
+    support_sla_hours = models.PositiveIntegerField(default=24)
+    push_enabled = models.BooleanField(default=False)
+    feature_flags = models.JSONField(default=dict, blank=True)
 
     class Meta:
         verbose_name = 'Site Configuration'

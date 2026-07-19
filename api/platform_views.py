@@ -150,8 +150,13 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'This conversation is closed.'}, status=400)
         ser = TicketReplySerializer(data=request.data)
         ser.is_valid(raise_exception=True)
+        body = (ser.validated_data.get('body') or '').strip()
+        attachment = ser.validated_data.get('attachment')
+        if not body and not attachment:
+            return Response({'detail': 'Message or attachment required'}, status=400)
         msg = TicketMessage.objects.create(
-            ticket=ticket, sender=request.user, body=ser.validated_data['body'],
+            ticket=ticket, sender=request.user, body=body or '(attachment)',
+            attachment=attachment,
         )
         if ticket.status == SupportTicket.Status.WAITING:
             ticket.status = SupportTicket.Status.OPEN
@@ -284,11 +289,35 @@ class ReferralsView(APIView):
 
 class LeaderboardView(APIView):
     def get(self, request):
-        leaders = (
-            User.objects.filter(referral_earnings__gt=0)
-            .annotate(ref_count=Count('referrals'))
-            .order_by('-referral_earnings')[:50]
-        )
+        season = (request.query_params.get('season') or 'all').lower()
+        leaders = User.objects.filter(referral_earnings__gt=0).annotate(ref_count=Count('referrals'))
+        if season in ('week', 'month'):
+            from referrals.models import ReferralCommission
+            days = 7 if season == 'week' else 30
+            since = timezone.now() - __import__('datetime').timedelta(days=days)
+            # rank by commission earned in season
+            from django.db.models import Sum as DjSum
+            top = (
+                ReferralCommission.objects.filter(created_at__gte=since)
+                .values('referrer')
+                .annotate(season_total=DjSum('amount'), ref_count=Count('id'))
+                .order_by('-season_total')[:50]
+            )
+            out = []
+            for i, row in enumerate(top):
+                u = User.objects.filter(pk=row['referrer']).first()
+                if not u:
+                    continue
+                out.append({
+                    'rank': i + 1,
+                    'email': u.email[:3] + '***@' + (u.email.split('@')[-1] if '@' in u.email else '***'),
+                    'referral_earnings': str(row['season_total'] or 0),
+                    'ref_count': row['ref_count'],
+                    'is_you': u.pk == request.user.pk,
+                    'season': season,
+                })
+            return Response(out)
+        leaders = leaders.order_by('-referral_earnings')[:50]
         return Response([
             {
                 'rank': i + 1,
@@ -296,6 +325,7 @@ class LeaderboardView(APIView):
                 'referral_earnings': str(u.referral_earnings),
                 'ref_count': u.ref_count,
                 'is_you': u.pk == request.user.pk,
+                'season': 'all',
             }
             for i, u in enumerate(leaders)
         ])
@@ -486,9 +516,40 @@ class CalculatorView(APIView):
 
 class StatementsView(APIView):
     def get(self, request):
-        txs = Transaction.objects.filter(user=request.user)[:500]
-        deposits = Deposit.objects.filter(user=request.user).select_related('cryptocurrency')[:200]
-        withdrawals = Withdrawal.objects.filter(user=request.user).select_related('cryptocurrency')[:200]
+        from django.http import HttpResponse
+        import csv
+        from io import StringIO
+
+        date_from = request.query_params.get('from')
+        date_to = request.query_params.get('to')
+        fmt = (request.query_params.get('format') or 'json').lower()
+        txs = Transaction.objects.filter(user=request.user)
+        deposits = Deposit.objects.filter(user=request.user).select_related('cryptocurrency')
+        withdrawals = Withdrawal.objects.filter(user=request.user).select_related('cryptocurrency')
+        if date_from:
+            txs = txs.filter(created_at__date__gte=date_from)
+            deposits = deposits.filter(created_at__date__gte=date_from)
+            withdrawals = withdrawals.filter(created_at__date__gte=date_from)
+        if date_to:
+            txs = txs.filter(created_at__date__lte=date_to)
+            deposits = deposits.filter(created_at__date__lte=date_to)
+            withdrawals = withdrawals.filter(created_at__date__lte=date_to)
+        txs = txs[:500]
+        deposits = deposits[:200]
+        withdrawals = withdrawals[:200]
+        if fmt == 'csv':
+            buf = StringIO()
+            w = csv.writer(buf)
+            w.writerow(['kind', 'id', 'type', 'amount', 'status', 'created_at', 'description'])
+            for t in txs:
+                w.writerow(['transaction', t.id, t.tx_type, t.amount, t.status, t.created_at.isoformat(), t.description])
+            for d in deposits:
+                w.writerow(['deposit', d.id, d.cryptocurrency.symbol, d.amount, d.status, d.created_at.isoformat(), ''])
+            for x in withdrawals:
+                w.writerow(['withdrawal', x.id, x.cryptocurrency.symbol, x.amount, x.status, x.created_at.isoformat(), ''])
+            resp = HttpResponse(buf.getvalue(), content_type='text/csv')
+            resp['Content-Disposition'] = 'attachment; filename="statement.csv"'
+            return resp
         return Response({
             'generated_at': timezone.now().isoformat(),
             'transactions': [

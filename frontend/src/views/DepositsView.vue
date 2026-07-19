@@ -26,6 +26,8 @@ const open = ref(false)
 const cryptoId = ref<number | null>(null)
 const amount = ref<number | null>(null)
 const txHash = ref('')
+const promo = ref('')
+const promoHint = ref('')
 const submitting = ref(false)
 const error = ref('')
 
@@ -40,6 +42,18 @@ async function load() {
   }
 }
 
+async function checkPromo() {
+  promoHint.value = ''
+  if (!promo.value.trim() || !amount.value) return
+  try {
+    const { data } = await api.validatePromo(promo.value.trim(), amount.value)
+    if (data.ok) promoHint.value = `Bonus ≈ ${data.bonus_amount}`
+    else promoHint.value = data.detail || 'Invalid code'
+  } catch (e: any) {
+    promoHint.value = e?.response?.data?.detail || 'Invalid code'
+  }
+}
+
 async function submit() {
   if (!cryptoId.value || !amount.value) return
   submitting.value = true
@@ -49,11 +63,14 @@ async function submit() {
     fd.append('cryptocurrency', String(cryptoId.value))
     fd.append('amount', String(amount.value))
     if (txHash.value) fd.append('transaction_hash', txHash.value)
+    if (promo.value.trim()) fd.append('promo_code', promo.value.trim().toUpperCase())
     await api.createDeposit(fd)
     ui.toast('Deposit submitted', 'Awaiting admin approval.', 'success')
     open.value = false
     amount.value = null
     txHash.value = ''
+    promo.value = ''
+    promoHint.value = ''
     await load()
   } catch (e: any) {
     error.value = e?.response?.data?.detail || 'Could not submit deposit'
@@ -117,6 +134,11 @@ onMounted(load)
           <span>Transaction hash (optional)</span>
           <InputText v-model="txHash" class="w-full" placeholder="0x… / on-chain hash" />
         </label>
+        <label>
+          <span>Promo code (optional)</span>
+          <InputText v-model="promo" class="w-full" placeholder="WELCOME10" @blur="checkPromo" />
+          <small v-if="promoHint" class="hint">{{ promoHint }}</small>
+        </label>
         <Button label="Submit deposit" icon="pi pi-check" class="w-full" :loading="submitting" @click="submit" />
       </div>
     </Dialog>
@@ -131,4 +153,5 @@ onMounted(load)
 .w-full { width: 100%; }
 .mb { margin-bottom: 0.75rem; }
 .small { font-size: 0.78rem; }
+.hint { color: var(--ci-success); font-size: 0.8rem; }
 </style>

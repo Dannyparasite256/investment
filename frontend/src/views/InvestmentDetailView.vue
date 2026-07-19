@@ -5,15 +5,33 @@ import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
 import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
+import ToggleSwitch from 'primevue/toggleswitch'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import { api } from '@/services/api'
 import { formatMoney, shortDate, statusSeverity } from '@/utils/money'
+import { useUiStore } from '@/stores/ui'
 import type { Investment } from '@/types/api'
 
 const route = useRoute()
 const router = useRouter()
+const ui = useUiStore()
 const inv = ref<Investment | null>(null)
 const loading = ref(true)
+const saving = ref(false)
+
+async function toggleReinvest(v: boolean) {
+  if (!inv.value) return
+  saving.value = true
+  try {
+    const { data } = await api.patchInvestment(inv.value.id, { auto_reinvest: v })
+    inv.value = data as Investment
+    ui.toast('Updated', v ? 'Auto-reinvest on' : 'Auto-reinvest off', 'success')
+  } catch (e: any) {
+    ui.toast('Failed', e?.response?.data?.detail || 'Could not update', 'error')
+  } finally {
+    saving.value = false
+  }
+}
 
 onMounted(async () => {
   try {
@@ -57,6 +75,20 @@ onMounted(async () => {
         <span>Started {{ shortDate(inv.started_at) }}</span>
         <span>Matures {{ shortDate(inv.matures_at) }}</span>
         <span v-if="inv.next_payout_at">Next payout {{ shortDate(inv.next_payout_at) }}</span>
+        <span v-if="(inv as any).early_exit_fee_percent && Number((inv as any).early_exit_fee_percent)">
+          Early exit fee {{ (inv as any).early_exit_fee_percent }}%
+        </span>
+      </div>
+      <div class="reinvest">
+        <div>
+          <strong>Auto-reinvest</strong>
+          <p class="muted small">Compound payouts back into this product when the plan allows.</p>
+        </div>
+        <ToggleSwitch
+          :model-value="!!inv.auto_reinvest"
+          :disabled="saving || inv.status !== 'active'"
+          @update:model-value="toggleReinvest"
+        />
       </div>
     </div>
   </div>
@@ -76,4 +108,13 @@ onMounted(async () => {
 .success { color: var(--ci-success); }
 .meta { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.85rem; }
 .small { font-size: 0.85rem; }
+.reinvest {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--ci-border);
+}
 </style>

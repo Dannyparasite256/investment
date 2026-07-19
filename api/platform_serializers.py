@@ -41,14 +41,23 @@ class ChangePasswordSerializer(serializers.Serializer):
 class TicketMessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.SerializerMethodField()
     receipt_status = serializers.CharField(read_only=True)
+    attachment_url = serializers.SerializerMethodField()
 
     class Meta:
         model = TicketMessage
         fields = (
             'id', 'body', 'is_staff_reply', 'created_at', 'sender', 'sender_name',
-            'delivered_at', 'read_at', 'receipt_status',
+            'delivered_at', 'read_at', 'receipt_status', 'attachment', 'attachment_url',
         )
         read_only_fields = fields
+
+    def get_attachment_url(self, obj):
+        if obj.attachment:
+            try:
+                return obj.attachment.url
+            except Exception:
+                return ''
+        return ''
 
     def get_sender_name(self, obj):
         u = obj.sender
@@ -76,7 +85,8 @@ class SupportTicketCreateSerializer(serializers.Serializer):
 
 
 class TicketReplySerializer(serializers.Serializer):
-    body = serializers.CharField()
+    body = serializers.CharField(required=False, allow_blank=True)
+    attachment = serializers.FileField(required=False, allow_null=True)
 
 
 class ReferralCommissionSerializer(serializers.ModelSerializer):

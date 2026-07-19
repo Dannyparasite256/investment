@@ -1,16 +1,32 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppTopbar from '@/components/layout/AppTopbar.vue'
 import AppBottomNav from '@/components/layout/AppBottomNav.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
+import { api } from '@/services/api'
 
 const auth = useAuthStore()
 const ui = useUiStore()
+const router = useRouter()
+const banner = ref('')
+const showOnboarding = ref(false)
 
-onMounted(() => {
-  if (auth.token && !auth.user) auth.fetchMe()
+onMounted(async () => {
+  if (auth.token && !auth.user) await auth.fetchMe()
+  try {
+    const { data } = await api.bootstrap()
+    banner.value = data.announcement || ''
+    const o = data.onboarding
+    if (o && !o.tour_completed && !(o.has_deposit && o.has_investment && o.kyc_done && o.two_fa_done)) {
+      showOnboarding.value = true
+    }
+    try {
+      localStorage.setItem('ci_bootstrap', JSON.stringify(data))
+    } catch { /* */ }
+  } catch { /* */ }
 })
 </script>
 
@@ -24,6 +40,13 @@ onMounted(() => {
     <AppSidebar />
     <div class="main">
       <AppTopbar />
+      <div v-if="banner" class="site-banner" @click="router.push('/announcements')">
+        <i class="pi pi-megaphone" />
+        <span>{{ banner }}</span>
+      </div>
+      <div v-if="showOnboarding" class="onboard-hint" @click="router.push('/onboarding')">
+        Finish setup checklist →
+      </div>
       <main class="content">
         <router-view v-slot="{ Component }">
           <transition name="page" mode="out-in">
@@ -62,6 +85,29 @@ onMounted(() => {
   padding: 0.35rem 0.25rem 5.5rem;
   max-width: 1400px;
   width: 100%;
+}
+.site-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.onboard-hint {
+  margin-bottom: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(37, 211, 102, 0.12);
+  color: #25D366;
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+  width: fit-content;
 }
 @media (min-width: 992px) {
   .content { padding-bottom: 2rem; }

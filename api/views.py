@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -77,11 +79,22 @@ class InvestmentPlanViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.AllowAny]
 
 
-class InvestmentViewSet(viewsets.ReadOnlyModelViewSet):
+class InvestmentViewSet(viewsets.ModelViewSet):
     serializer_class = InvestmentSerializer
+    http_method_names = ['get', 'patch', 'post', 'head', 'options']
 
     def get_queryset(self):
         return Investment.objects.filter(user=self.request.user).select_related('plan')
+
+    def partial_update(self, request, *args, **kwargs):
+        inv = self.get_object()
+        if 'auto_reinvest' in request.data:
+            want = bool(request.data.get('auto_reinvest'))
+            if want and not inv.plan.allow_auto_reinvest:
+                return Response({'detail': 'This plan does not allow auto-reinvest.'}, status=400)
+            inv.auto_reinvest = want
+            inv.save(update_fields=['auto_reinvest', 'updated_at'])
+        return Response(InvestmentSerializer(inv).data)
 
     @action(detail=False, methods=['post'], serializer_class=InvestCreateSerializer)
     def create_investment(self, request):
@@ -102,6 +115,15 @@ class InvestmentViewSet(viewsets.ReadOnlyModelViewSet):
                 duration_days=ser.validated_data.get('duration_days'),
                 request=request,
             )
+            try:
+                from accounts.models import ActivityEvent
+                ActivityEvent.objects.create(
+                    user=request.user, event_type='invest', title='Investment created',
+                    description=f'{plan.name} · {inv.amount}',
+                    metadata={'investment_id': str(inv.id)},
+                )
+            except Exception:
+                pass
         except ValueError as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(InvestmentSerializer(inv).data, status=status.HTTP_201_CREATED)
@@ -116,11 +138,13 @@ class DepositViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         crypto = serializer.validated_data['cryptocurrency']
+        promo = (serializer.validated_data.get('promo_code') or '').strip().upper()
         deposit = serializer.save(
             user=self.request.user,
             network=crypto.network,
             deposit_address=crypto.deposit_address,
             status=Deposit.Status.PENDING,
+            promo_code=promo,
         )
         Transaction.objects.create(
             user=self.request.user,
@@ -131,6 +155,15 @@ class DepositViewSet(viewsets.ModelViewSet):
             reference_type='deposit',
             reference_id=str(deposit.id),
         )
+        try:
+            from accounts.models import ActivityEvent
+            ActivityEvent.objects.create(
+                user=self.request.user, event_type='deposit', title='Deposit submitted',
+                description=f'{deposit.amount} {crypto.symbol}',
+                metadata={'deposit_id': str(deposit.id)},
+            )
+        except Exception:
+            pass
 
 
 class WithdrawalViewSet(viewsets.ModelViewSet):
@@ -154,6 +187,23 @@ class WithdrawalViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Insufficient available balance'}, status=400)
         from django.db import transaction as db_tx
 
+        # Large withdrawal: require 2FA when enabled and amount >= threshold
+        from core.models import SiteConfiguration
+        cfg = SiteConfiguration.get_solo()
+        threshold = cfg.large_withdraw_threshold or Decimal('1000')
+        if amount >= threshold and not request.user.two_factor_enabled:
+            return Response({
+                'detail': f'Withdrawals of {threshold}+ require 2FA. Enable it under Security.',
+                'code': 'two_fa_required',
+            }, status=403)
+        # VIP priority for staff queue
+        try:
+            from core.vip import get_user_tier
+            tier = get_user_tier(request.user)
+            priority = int(getattr(tier, 'sort_order', 0) or 0) * 10 if tier else 0
+        except Exception:
+            priority = 0
+
         with db_tx.atomic():
             w = Wallet.objects.select_for_update().get(user=request.user)
             w.lock_funds(amount)
@@ -166,6 +216,7 @@ class WithdrawalViewSet(viewsets.ModelViewSet):
                 wallet_address=ser.validated_data['wallet_address'],
                 network=crypto.network,
                 funds_locked=True,
+                priority=priority,
             )
             Transaction.objects.create(
                 user=request.user,
@@ -176,6 +227,14 @@ class WithdrawalViewSet(viewsets.ModelViewSet):
                 reference_type='withdrawal',
                 reference_id=str(withdrawal.id),
             )
+        try:
+            from accounts.models import ActivityEvent
+            ActivityEvent.objects.create(
+                user=request.user, event_type='withdraw', title='Withdrawal requested',
+                description=str(amount), metadata={'withdrawal_id': str(withdrawal.id)},
+            )
+        except Exception:
+            pass
         return Response(WithdrawalSerializer(withdrawal).data, status=201)
 
 
@@ -184,7 +243,17 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_fields = ['tx_type', 'status']
 
     def get_queryset(self):
-        return Transaction.objects.filter(user=self.request.user)
+        qs = Transaction.objects.filter(user=self.request.user)
+        q = self.request.query_params.get('q')
+        if q:
+            qs = qs.filter(description__icontains=q)
+        date_from = self.request.query_params.get('from')
+        date_to = self.request.query_params.get('to')
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+        return qs
 
 
 class EarningViewSet(viewsets.ReadOnlyModelViewSet):

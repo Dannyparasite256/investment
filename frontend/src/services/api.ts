@@ -236,8 +236,8 @@ export const api = {
   referrals() {
     return http.get<ReferralData>('/api/v1/referrals/')
   },
-  leaderboard() {
-    return http.get('/api/v1/referrals/leaderboard/')
+  leaderboard(params?: { season?: string }) {
+    return http.get('/api/v1/referrals/leaderboard/', { params })
   },
 
   // VIP / portfolio
@@ -246,6 +246,68 @@ export const api = {
   },
   portfolio(days = 30) {
     return http.get<PortfolioData>('/api/v1/portfolio/', { params: { days } })
+  },
+  patchInvestment(id: string, payload: { auto_reinvest?: boolean }) {
+    return http.patch(`/api/v1/investments/${id}/`, payload)
+  },
+
+  // Feature pack
+  bootstrap() {
+    return http.get('/api/v1/bootstrap/')
+  },
+  announcements() {
+    return http.get<{ results: any[] }>('/api/v1/announcements/')
+  },
+  completeTour() {
+    return http.post('/api/v1/tour/complete/')
+  },
+  socialProof() {
+    return http.get<{ results: any[] }>('/api/v1/social-proof/')
+  },
+  validatePromo(code: string, amount?: string | number) {
+    return http.post('/api/v1/promos/validate/', { code, amount })
+  },
+  goals() {
+    return http.get<{ results: any[] }>('/api/v1/goals/')
+  },
+  createGoal(payload: { title: string; target_amount: string | number; deadline?: string; notes?: string }) {
+    return http.post('/api/v1/goals/', payload)
+  },
+  deleteGoal(id: string) {
+    return http.delete(`/api/v1/goals/${id}/`)
+  },
+  calcScenarios() {
+    return http.get<{ results: any[] }>('/api/v1/calculator/scenarios/')
+  },
+  saveCalcScenario(payload: { label: string; amount: string | number; rate_percent: string | number; duration_days: number }) {
+    return http.post('/api/v1/calculator/scenarios/', payload)
+  },
+  pushSubscribe(payload: { endpoint: string; keys?: { p256dh?: string; auth?: string } }) {
+    return http.post('/api/v1/push/subscribe/', payload)
+  },
+  trust() {
+    return http.get('/api/v1/trust/')
+  },
+  supportTriage(q?: string) {
+    return http.get('/api/v1/support/triage/', { params: q ? { q } : undefined })
+  },
+  ticketCsat(id: string, score: number, comment?: string) {
+    return http.post(`/api/v1/support/${id}/csat/`, { score, comment })
+  },
+  staffCannedReplies() {
+    return http.get('/api/v1/staff/canned-replies/')
+  },
+  staffFraud() {
+    return http.get('/api/v1/staff/fraud/')
+  },
+  staffBroadcast(payload: { title: string; message: string; vip_slug?: string }) {
+    return http.post('/api/v1/staff/broadcast/', payload)
+  },
+  staffExport(kind: string) {
+    return http.get('/api/v1/staff/export/', { params: { kind }, responseType: 'blob' as any })
+  },
+  leaderboardSeason(season?: string) {
+    return http.get('/api/v1/referrals/leaderboard/', { params: season ? { season } : undefined })
   },
 
   // Watchlist / alerts / signals / activity

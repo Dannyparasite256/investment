@@ -73,6 +73,7 @@ class InvestmentPlanSerializer(serializers.ModelSerializer):
 class InvestmentSerializer(serializers.ModelSerializer):
     plan_name = serializers.CharField(source='plan.name', read_only=True)
     progress_percent = serializers.FloatField(read_only=True)
+    early_exit_fee_percent = serializers.SerializerMethodField()
 
     class Meta:
         model = Investment
@@ -81,8 +82,18 @@ class InvestmentSerializer(serializers.ModelSerializer):
             'payout_frequency', 'duration_days', 'total_earned', 'auto_reinvest',
             'payouts_count', 'expected_payouts', 'started_at', 'matures_at',
             'completed_at', 'progress_percent', 'next_payout_at',
+            'early_exit_fee_percent',
         )
-        read_only_fields = fields
+        read_only_fields = (
+            'id', 'plan', 'plan_name', 'amount', 'status', 'profit_rate_percent',
+            'payout_frequency', 'duration_days', 'total_earned',
+            'payouts_count', 'expected_payouts', 'started_at', 'matures_at',
+            'completed_at', 'progress_percent', 'next_payout_at',
+            'early_exit_fee_percent',
+        )
+
+    def get_early_exit_fee_percent(self, obj):
+        return str(getattr(obj.plan, 'early_exit_fee_percent', 0) or 0)
 
 
 class InvestCreateSerializer(serializers.Serializer):
@@ -100,6 +111,7 @@ class DepositSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'cryptocurrency', 'crypto_symbol', 'amount', 'transaction_hash',
             'screenshot', 'network', 'status', 'created_at', 'reviewed_at', 'rejection_reason',
+            'promo_code',
         )
         read_only_fields = ('status', 'network', 'reviewed_at', 'rejection_reason')
 

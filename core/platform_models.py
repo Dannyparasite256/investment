@@ -241,3 +241,99 @@ class PlatformBackup(UUIDModel, TimeStampedModel):
 
     class Meta:
         ordering = ['-created_at']
+
+
+class SavingsGoal(UUIDModel, TimeStampedModel):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='savings_goals')
+    title = models.CharField(max_length=120)
+    target_amount = models.DecimalField(max_digits=18, decimal_places=8)
+    deadline = models.DateField(null=True, blank=True)
+    is_completed = models.BooleanField(default=False)
+    notes = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    @property
+    def current_amount(self):
+        from wallets.models import Wallet
+        w, _ = Wallet.objects.get_or_create(user=self.user)
+        return w.total_invested or Decimal('0')
+
+    @property
+    def progress_pct(self):
+        if not self.target_amount or self.target_amount <= 0:
+            return 0
+        pct = float(self.current_amount / self.target_amount * 100)
+        return min(100.0, max(0.0, round(pct, 1)))
+
+
+class CalculatorScenario(UUIDModel, TimeStampedModel):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='calc_scenarios')
+    label = models.CharField(max_length=100)
+    amount = models.DecimalField(max_digits=18, decimal_places=8, default=0)
+    rate_percent = models.DecimalField(max_digits=8, decimal_places=4, default=0)
+    duration_days = models.PositiveIntegerField(default=30)
+    estimated_profit = models.DecimalField(max_digits=18, decimal_places=8, default=0)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class PushSubscription(UUIDModel, TimeStampedModel):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='push_subscriptions')
+    endpoint = models.URLField(max_length=500)
+    p256dh = models.CharField(max_length=255, blank=True)
+    auth = models.CharField(max_length=255, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = [('user', 'endpoint')]
+        ordering = ['-created_at']
+
+
+class CannedReply(UUIDModel, TimeStampedModel):
+    title = models.CharField(max_length=100)
+    body = models.TextField()
+    category = models.CharField(max_length=50, blank=True, default='general')
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'title']
+        verbose_name_plural = 'Canned replies'
+
+
+class TicketCSAT(UUIDModel, TimeStampedModel):
+    ticket = models.OneToOneField('support.SupportTicket', on_delete=models.CASCADE, related_name='csat')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ticket_csats')
+    score = models.PositiveSmallIntegerField()
+    comment = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class BroadcastCampaign(UUIDModel, TimeStampedModel):
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    vip_slug = models.CharField(max_length=50, blank=True)
+    sent_count = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class UserFraudScore(UUIDModel, TimeStampedModel):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='fraud_score')
+    score = models.PositiveIntegerField(default=0)
+    flags = models.JSONField(default=list, blank=True)
+    notes = models.TextField(blank=True)
+    computed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-score']

@@ -31,6 +31,18 @@ app.conf.beat_schedule = {
         'task': 'core.tasks.daily_admin_digest',
         'schedule': crontab(minute=15, hour=8),
     },
+    'update-market-prices': {
+        'task': 'core.tasks.update_market_prices',
+        'schedule': crontab(minute='*/15'),
+    },
+    'check-price-alerts': {
+        'task': 'core.tasks.check_price_alerts_task',
+        'schedule': crontab(minute='*/10'),
+    },
+    'weekly-user-digests': {
+        'task': 'core.tasks.send_weekly_digests',
+        'schedule': crontab(minute=0, hour=8, day_of_week=1),
+    },
 }
 
 

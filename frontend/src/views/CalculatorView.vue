@@ -7,8 +7,10 @@ import PageHeader from '@/components/ui/PageHeader.vue'
 import { api } from '@/services/api'
 import { formatMoney } from '@/utils/money'
 import { useRouter } from 'vue-router'
+import { useUiStore } from '@/stores/ui'
 
 const router = useRouter()
+const ui = useUiStore()
 const plans = ref<any[]>([])
 const planId = ref<string | null>(null)
 const amount = ref(100)
@@ -38,6 +40,21 @@ async function calc() {
   }
 }
 
+async function saveScenario() {
+  if (!selected.value || !result.value) return
+  try {
+    await api.saveCalcScenario({
+      label: selected.value.name,
+      amount: amount.value,
+      rate_percent: selected.value.profit_rate_percent,
+      duration_days: selected.value.duration_days,
+    })
+    ui.toast('Saved', 'Scenario stored to your account', 'success')
+  } catch {
+    ui.toast('Failed', 'Could not save scenario', 'error')
+  }
+}
+
 watch([planId, amount], () => { if (selected.value) calc() })
 onMounted(async () => { await load(); await calc() })
 </script>
@@ -64,6 +81,7 @@ onMounted(async () => { await load(); await calc() })
           <div>Range {{ selected.min_deposit }} – {{ selected.max_deposit }}</div>
         </div>
         <Button label="Recalculate" icon="pi pi-refresh" class="mt" :loading="loading" @click="calc" />
+        <Button label="Save scenario" icon="pi pi-bookmark" class="mt" outlined @click="saveScenario" />
         <Button
           v-if="selected"
           label="Invest in this plan"

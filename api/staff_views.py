@@ -179,6 +179,13 @@ class StaffDepositActionView(APIView):
             try:
                 dep.approve(request.user, notes=notes)
                 try:
+                    if dep.promo_code:
+                        from core.promo import apply_promo_on_deposit, validate_promo
+                        promo = validate_promo(dep.promo_code, dep.user, dep.amount)
+                        apply_promo_on_deposit(dep.user, promo, dep.amount, deposit_id=str(dep.id))
+                except Exception:
+                    pass
+                try:
                     from core.vip import apply_deposit_fee
                     from wallets.models import WalletLedger
                     credit = dep.credit_amount or dep.amount

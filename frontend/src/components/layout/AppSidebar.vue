@@ -46,14 +46,18 @@ const nav = computed(() => {
       items: [
         { to: '/referrals', icon: 'pi pi-users', label: 'Referrals' },
         { to: '/vip', icon: 'pi pi-crown', label: 'VIP' },
+        { to: '/goals', icon: 'pi pi-flag', label: 'Goals' },
+        { to: '/onboarding', icon: 'pi pi-compass', label: 'Get started' },
       ],
     },
     {
       label: 'Account',
       items: [
         { to: '/notifications', icon: 'pi pi-inbox', label: 'Notifications' },
+        { to: '/announcements', icon: 'pi pi-megaphone', label: 'Announcements' },
         { to: '/activity', icon: 'pi pi-clock', label: 'Activity' },
         { to: '/support', icon: 'pi pi-comments', label: 'Support chat' },
+        { to: '/trust', icon: 'pi pi-verified', label: 'Trust center' },
         { to: '/kyc', icon: 'pi pi-id-card', label: 'KYC' },
         { to: '/security', icon: 'pi pi-shield', label: 'Security' },
         { to: '/profile', icon: 'pi pi-user', label: 'Profile' },
@@ -72,6 +76,8 @@ const nav = computed(() => {
         { to: '/admin/kyc', icon: 'pi pi-id-card', label: 'KYC review' },
         { to: '/admin/users', icon: 'pi pi-users', label: 'Users' },
         { to: '/admin/tickets', icon: 'pi pi-headphones', label: 'Support chat' },
+        { to: '/admin/fraud', icon: 'pi pi-exclamation-triangle', label: 'Fraud signals' },
+        { to: '/admin/broadcast', icon: 'pi pi-megaphone', label: 'Bulk notify' },
       ],
     })
   }

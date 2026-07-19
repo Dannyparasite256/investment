@@ -42,3 +42,53 @@ def daily_admin_digest():
     mail_admins('Daily platform digest', body, fail_silently=True)
     logger.info('Admin digest sent')
     return body
+
+
+@shared_task
+def check_price_alerts_task():
+    from django.core.management import call_command
+    call_command('check_price_alerts')
+    return 'ok'
+
+
+@shared_task
+def send_weekly_digests():
+    """Email weekly portfolio summary to users with weekly_digest_emails=True."""
+    from django.contrib.auth import get_user_model
+    from django.core.mail import send_mail
+    from django.conf import settings
+    from wallets.models import Wallet
+    from investments.models import Earning
+    from datetime import timedelta
+
+    User = get_user_model()
+    since = timezone.now() - timedelta(days=7)
+    sent = 0
+    for u in User.objects.filter(is_active=True, weekly_digest_emails=True).iterator():
+        if not u.email:
+            continue
+        wallet, _ = Wallet.objects.get_or_create(user=u)
+        earned = Earning.objects.filter(user=u, created_at__gte=since).aggregate(
+            t=__import__('django.db.models', fromlist=['Sum']).Sum('amount')
+        )['t'] or 0
+        body = (
+            f"Hi {u.get_full_name() or u.email},\n\n"
+            f"Your weekly CryptoInvest summary:\n"
+            f"- Available: {wallet.available_balance}\n"
+            f"- Invested: {wallet.total_invested}\n"
+            f"- Profit this week: {earned}\n\n"
+            f"Log in to view details.\n"
+        )
+        try:
+            send_mail(
+                'Your weekly investment digest',
+                body,
+                getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@localhost'),
+                [u.email],
+                fail_silently=True,
+            )
+            sent += 1
+        except Exception:
+            pass
+    logger.info('Weekly digests sent: %s', sent)
+    return sent

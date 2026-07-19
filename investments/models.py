@@ -57,6 +57,10 @@ class InvestmentPlan(UUIDModel, TimeStampedModel):
     )
     min_duration_days = models.PositiveIntegerField(null=True, blank=True)
     max_duration_days = models.PositiveIntegerField(null=True, blank=True)
+    early_exit_fee_percent = models.DecimalField(
+        max_digits=6, decimal_places=2, default=Decimal('0'),
+        help_text='Fee % if user exits before maturity',
+    )
 
     profit_method = models.CharField(
         max_length=20,

@@ -16,6 +16,18 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true, title: 'Register' },
   },
   {
+    path: '/join',
+    name: 'join',
+    component: () => import('@/views/JoinView.vue'),
+    meta: { public: true, title: 'Join' },
+  },
+  {
+    path: '/join/:code',
+    name: 'join-code',
+    component: () => import('@/views/JoinView.vue'),
+    meta: { public: true, title: 'Join' },
+  },
+  {
     path: '/',
     component: () => import('@/layouts/AppLayout.vue'),
     meta: { requiresAuth: true },
@@ -166,6 +178,30 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'VIP' },
       },
       {
+        path: 'goals',
+        name: 'goals',
+        component: () => import('@/views/GoalsView.vue'),
+        meta: { title: 'Goals' },
+      },
+      {
+        path: 'trust',
+        name: 'trust',
+        component: () => import('@/views/TrustView.vue'),
+        meta: { title: 'Trust center' },
+      },
+      {
+        path: 'announcements',
+        name: 'announcements',
+        component: () => import('@/views/AnnouncementsView.vue'),
+        meta: { title: 'Announcements' },
+      },
+      {
+        path: 'onboarding',
+        name: 'onboarding',
+        component: () => import('@/views/OnboardingView.vue'),
+        meta: { title: 'Get started' },
+      },
+      {
         path: 'support',
         name: 'support',
         component: () => import('@/views/SupportView.vue'),
@@ -243,6 +279,18 @@ const routes: RouteRecordRaw[] = [
         name: 'admin-ticket-detail',
         component: () => import('@/views/staff/StaffTicketsView.vue'),
         meta: { title: 'Support chat', staff: true },
+      },
+      {
+        path: 'admin/fraud',
+        name: 'admin-fraud',
+        component: () => import('@/views/staff/StaffFraudView.vue'),
+        meta: { title: 'Fraud signals', staff: true },
+      },
+      {
+        path: 'admin/broadcast',
+        name: 'admin-broadcast',
+        component: () => import('@/views/staff/StaffBroadcastView.vue'),
+        meta: { title: 'Bulk notify', staff: true },
       },
     ],
   },

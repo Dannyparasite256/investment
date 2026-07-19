@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from api import currency_views, platform_views, receipt_views, staff_views, views
+from api import currency_views, features_views, platform_views, receipt_views, staff_views, views
 
 router = DefaultRouter()
 router.register('cryptocurrencies', views.CryptocurrencyViewSet, basename='crypto')
@@ -53,6 +53,23 @@ urlpatterns = [
     path('dashboard-stats/', platform_views.DashboardStatsView.as_view(), name='api-dashboard-stats'),
     path('search/', platform_views.SearchView.as_view(), name='api-search'),
     path('fee-preview/', platform_views.FeePreviewView.as_view(), name='api-fee-preview'),
+    # Feature pack
+    path('bootstrap/', features_views.BootstrapView.as_view(), name='api-bootstrap'),
+    path('announcements/', features_views.AnnouncementsListView.as_view(), name='api-announcements'),
+    path('tour/complete/', features_views.CompleteTourView.as_view(), name='api-tour-complete'),
+    path('social-proof/', features_views.SocialProofView.as_view(), name='api-social-proof'),
+    path('promos/validate/', features_views.PromoValidateView.as_view(), name='api-promo-validate'),
+    path('goals/', features_views.GoalsView.as_view(), name='api-goals'),
+    path('goals/<uuid:pk>/', features_views.GoalDetailView.as_view(), name='api-goal-detail'),
+    path('calculator/scenarios/', features_views.CalculatorScenariosView.as_view(), name='api-calc-scenarios'),
+    path('push/subscribe/', features_views.PushSubscribeView.as_view(), name='api-push-subscribe'),
+    path('trust/', features_views.TrustCenterView.as_view(), name='api-trust'),
+    path('support/triage/', features_views.SupportTriageView.as_view(), name='api-support-triage'),
+    path('support/<uuid:pk>/csat/', features_views.TicketCSATView.as_view(), name='api-ticket-csat'),
+    path('staff/canned-replies/', features_views.CannedRepliesView.as_view(), name='api-staff-canned'),
+    path('staff/fraud/', features_views.StaffFraudView.as_view(), name='api-staff-fraud'),
+    path('staff/broadcast/', features_views.StaffBroadcastView.as_view(), name='api-staff-broadcast'),
+    path('staff/export/', features_views.StaffExportView.as_view(), name='api-staff-export'),
     # Staff admin
     path('staff/dashboard/', staff_views.StaffDashboardView.as_view(), name='api-staff-dashboard'),
     path('staff/deposits/', staff_views.StaffDepositListView.as_view(), name='api-staff-deposits'),
