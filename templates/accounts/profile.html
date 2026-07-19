@@ -7,21 +7,62 @@
 <div class="row g-4">
   <div class="col-lg-4">
     <div class="glass-card p-4 text-center mb-4">
-      {% if user.profile_picture %}
-      <img src="{{ user.profile_picture.url }}" class="avatar avatar-lg mb-3" alt="">
-      {% else %}
-      <div class="avatar avatar-lg mx-auto mb-3 d-flex align-items-center justify-content-center bg-elevated" style="font-size:2rem">
-        <i class="bi bi-person"></i>
+      <div class="profile-avatar-wrap mb-3">
+        {% if avatar_url %}
+        <img src="{{ avatar_url }}" class="avatar avatar-lg profile-avatar-img" alt="{{ user.display_name }}">
+        {% else %}
+        <div class="avatar avatar-lg mx-auto d-flex align-items-center justify-content-center bg-elevated" style="font-size:2rem">
+          <i class="bi bi-person"></i>
+        </div>
+        {% endif %}
       </div>
-      {% endif %}
       <h5 class="mb-1">{{ user.display_name }}</h5>
       <p class="text-muted small mb-3">{{ user.email }}</p>
-      <div class="d-flex justify-content-center gap-2 flex-wrap">
+      <div class="d-flex justify-content-center gap-2 flex-wrap mb-3">
         {% if user.email_verified %}<span class="badge badge-status badge-success">Email verified</span>
         {% else %}<span class="badge badge-status badge-pending">Email pending</span>{% endif %}
         {% if user.is_kyc_verified %}<span class="badge badge-status badge-success">KYC verified</span>
         {% else %}<span class="badge badge-status badge-pending">KYC incomplete</span>{% endif %}
         {% if user.two_factor_enabled %}<span class="badge badge-status badge-info">2FA on</span>{% endif %}
+      </div>
+
+      <div class="avatar-actions text-start">
+        <div class="stat-label mb-2">Profile photo</div>
+        {% if social_links.google %}
+        <form method="post" class="mb-2">
+          {% csrf_token %}
+          <input type="hidden" name="avatar_action" value="import_google">
+          <button type="submit" class="btn btn-outline-ci btn-sm w-100">
+            <i class="bi bi-google me-1"></i> Use Google photo
+          </button>
+        </form>
+        {% else %}
+        <a href="{% url 'accounts:oauth_start' 'google' %}" class="btn btn-ghost btn-sm w-100 mb-2">
+          <i class="bi bi-google me-1"></i> Link Google to import photo
+        </a>
+        {% endif %}
+        {% if social_links.x %}
+        <form method="post" class="mb-2">
+          {% csrf_token %}
+          <input type="hidden" name="avatar_action" value="import_x">
+          <button type="submit" class="btn btn-outline-ci btn-sm w-100">
+            <i class="bi bi-twitter-x me-1"></i> Use X photo
+          </button>
+        </form>
+        {% else %}
+        <a href="{% url 'accounts:oauth_start' 'x' %}" class="btn btn-ghost btn-sm w-100 mb-2">
+          <i class="bi bi-twitter-x me-1"></i> Link X to import photo
+        </a>
+        {% endif %}
+        {% if avatar_url %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="avatar_action" value="remove">
+          <button type="submit" class="btn btn-ghost btn-sm w-100 text-danger">
+            <i class="bi bi-trash me-1"></i> Remove photo
+          </button>
+        </form>
+        {% endif %}
       </div>
     </div>
     <div class="glass-card p-4 mb-4">
@@ -134,8 +175,13 @@
             </div>
           </div>
           <div class="col-12">
-            <label class="form-label">Profile picture</label>
-            {{ form.profile_picture }}
+            <label class="form-label">Upload profile picture</label>
+            <div class="profile-upload-box">
+              {{ form.profile_picture }}
+              <div class="form-text text-muted small mt-1">
+                JPG, PNG, GIF or WebP · max ~5MB. Or use Google / X photo from the left panel.
+              </div>
+            </div>
           </div>
         </div>
         <button type="submit" class="btn btn-ci mt-4">

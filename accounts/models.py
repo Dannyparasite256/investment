@@ -54,6 +54,11 @@ class User(AbstractUser):
     last_name = models.CharField(max_length=150, blank=True)
     phone = models.CharField(max_length=32, blank=True)
     profile_picture = models.ImageField(upload_to='profiles/%Y/%m/', blank=True, null=True)
+    avatar_url = models.URLField(
+        blank=True,
+        max_length=500,
+        help_text='Remote avatar from Google/X when no uploaded picture is set',
+    )
     email_verified = models.BooleanField(default=False)
     email_verification_token = models.CharField(max_length=64, blank=True)
     two_factor_enabled = models.BooleanField(default=False)
@@ -141,6 +146,16 @@ class User(AbstractUser):
     @property
     def display_name(self):
         return self.get_full_name()
+
+    @property
+    def avatar_display_url(self):
+        """Prefer uploaded file, then remote Google/X URL."""
+        if self.profile_picture:
+            try:
+                return self.profile_picture.url
+            except Exception:
+                pass
+        return (self.avatar_url or '').strip()
 
     @property
     def is_platform_staff(self):

@@ -4289,6 +4289,27 @@ html[data-theme="light"][data-ui-theme="premium"] body::before {
   filter: none !important;
 }
 
+/* Profile avatar editor */
+.profile-avatar-wrap {
+  display: flex;
+  justify-content: center;
+}
+.profile-avatar-img {
+  object-fit: cover;
+  border: 2px solid var(--ci-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.avatar-actions .btn { justify-content: center; }
+.profile-upload-box {
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px dashed var(--ci-border);
+  background: rgba(255, 255, 255, 0.03);
+}
+.profile-upload-box input[type="file"] {
+  max-width: 100%;
+}
+
 /* ==========================================================================
    Social OAuth buttons (login / register)
    ========================================================================== */

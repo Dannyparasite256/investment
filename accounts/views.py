@@ -218,9 +218,32 @@ def password_reset_confirm_view(request, token):
 @login_required
 @require_http_methods(['GET', 'POST'])
 def profile_view(request):
+    # Avatar actions (import from Google/X, remove)
+    if request.method == 'POST' and request.POST.get('avatar_action'):
+        action = request.POST.get('avatar_action')
+        try:
+            from accounts.avatars import clear_profile_picture, import_avatar_from_social
+            if action == 'import_google':
+                import_avatar_from_social(request.user, 'google', force=True)
+                messages.success(request, 'Profile photo updated from Google.')
+            elif action == 'import_x':
+                import_avatar_from_social(request.user, 'x', force=True)
+                messages.success(request, 'Profile photo updated from X.')
+            elif action == 'remove':
+                clear_profile_picture(request.user)
+                messages.info(request, 'Profile photo removed.')
+            else:
+                messages.error(request, 'Unknown photo action.')
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        except Exception:
+            messages.error(request, 'Could not update profile photo. Try again.')
+        return redirect('accounts:profile')
+
     form = ProfileForm(request.POST or None, request.FILES or None, instance=request.user)
     if request.method == 'POST' and form.is_valid():
         user = form.save()
+        # If user uploaded a new picture, keep avatar_url as fallback only
         create_audit_log(request=request, user=request.user, action=AuditLog.Action.PROFILE_UPDATE, message='Profile updated')
         messages.success(request, 'Profile updated.')
         if request.headers.get('HX-Request'):
@@ -235,10 +258,15 @@ def profile_view(request):
             response.set_cookie('ui_theme', ui_theme, max_age=365 * 24 * 3600, samesite='Lax', path='/')
         return response
     kyc_latest = request.user.kyc_documents.order_by('-created_at').first()
+    social_links = {
+        s.provider: s for s in request.user.social_accounts.all()
+    }
     return render(request, 'accounts/profile.html', {
         'form': form,
         'kyc_latest': kyc_latest,
         'referral_link': request.build_absolute_uri(reverse('accounts:register') + f'?ref={request.user.referral_code}'),
+        'social_links': social_links,
+        'avatar_url': request.user.avatar_display_url,
     })
 
 

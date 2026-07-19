@@ -80,13 +80,14 @@ def oauth_start(request, provider: str):
         messages.error(request, 'This social login is not configured yet.')
         return redirect('accounts:login')
 
-    if request.user.is_authenticated:
-        return redirect('core:dashboard')
-
+    # Logged-in users may start OAuth to link Google/X for avatar import
     state = make_state()
     request.session['oauth_state'] = state
     request.session['oauth_provider'] = provider
-    request.session['oauth_next'] = request.GET.get('next') or ''
+    request.session['oauth_next'] = request.GET.get('next') or (
+        reverse('accounts:profile') if request.user.is_authenticated else ''
+    )
+    request.session['oauth_link_mode'] = bool(request.user.is_authenticated)
     # Preserve referral for new social signups
     ref = (request.GET.get('ref') or request.session.get('pending_referral') or '').strip().upper()
     if ref:
@@ -184,6 +185,7 @@ def oauth_callback(request, provider: str):
     # Clear one-time state
     request.session.pop('oauth_state', None)
     request.session.pop('oauth_provider', None)
+    link_mode = request.session.pop('oauth_link_mode', False)
     next_url = request.session.pop('oauth_next', '') or reverse('core:dashboard')
 
     try:
@@ -195,11 +197,23 @@ def oauth_callback(request, provider: str):
         )
     except ValueError as exc:
         messages.error(request, str(exc))
-        return redirect('accounts:login')
+        return redirect('accounts:profile' if request.user.is_authenticated else 'accounts:login')
 
     if not profile.provider_user_id:
         messages.error(request, 'Could not read your social profile.')
-        return redirect('accounts:login')
+        return redirect('accounts:profile' if request.user.is_authenticated else 'accounts:login')
+
+    # Link social account + avatar to the already-logged-in user
+    if request.user.is_authenticated and link_mode:
+        try:
+            _link_social_to_user(request.user, profile)
+            messages.success(
+                request,
+                f'{provider.title()} linked. You can use their photo on your profile.',
+            )
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        return redirect('accounts:profile')
 
     try:
         user, created = _login_or_register_from_profile(request, profile)
@@ -231,6 +245,38 @@ def oauth_callback(request, provider: str):
     return redirect(next_url)
 
 
+def _link_social_to_user(user, profile):
+    """Attach Google/X identity to an existing logged-in account and import avatar."""
+    from accounts.avatars import apply_remote_avatar
+
+    provider = PROVIDER_ALIASES[profile.provider]
+    by_uid = SocialAccount.objects.filter(
+        provider=provider, provider_user_id=profile.provider_user_id,
+    ).select_related('user').first()
+    if by_uid and by_uid.user_id != user.pk:
+        raise ValueError(f'This {profile.provider.title()} account is already linked to another user.')
+
+    fields = {
+        'email': profile.email or '',
+        'username': profile.username or '',
+        'display_name': profile.display_name or '',
+        'avatar_url': profile.avatar_url or '',
+        'extra_data': profile.raw or {},
+        'provider_user_id': profile.provider_user_id,
+    }
+    social = by_uid or SocialAccount.objects.filter(user=user, provider=provider).first()
+    if social:
+        for k, v in fields.items():
+            setattr(social, k, v)
+        social.user = user
+        social.save()
+    else:
+        SocialAccount.objects.create(user=user, provider=provider, **fields)
+
+    if profile.avatar_url:
+        apply_remote_avatar(user, profile.avatar_url, force=True, source=profile.provider)
+
+
 @transaction.atomic
 def _login_or_register_from_profile(request, profile):
     """
@@ -254,6 +300,13 @@ def _login_or_register_from_profile(request, profile):
         user = social.user
         if not user.is_active:
             raise ValueError('This account is suspended. Contact support.')
+        if profile.avatar_url:
+            try:
+                from accounts.avatars import apply_remote_avatar
+                # Refresh remote URL; only download file if user has no picture yet
+                apply_remote_avatar(user, profile.avatar_url, force=False, source=profile.provider)
+            except Exception:
+                pass
         return user, False
 
     user = None
@@ -329,4 +382,14 @@ def _login_or_register_from_profile(request, profile):
         avatar_url=profile.avatar_url or '',
         extra_data=profile.raw or {},
     )
+    if profile.avatar_url:
+        try:
+            from accounts.avatars import apply_remote_avatar
+            apply_remote_avatar(
+                user, profile.avatar_url,
+                force=created or not bool(user.profile_picture),
+                source=profile.provider,
+            )
+        except Exception:
+            logger.info('Could not import social avatar for %s', user.email)
     return user, created

@@ -188,8 +188,8 @@
 
         <div class="dropdown">
           <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
-            {% if user.profile_picture %}
-            <img src="{{ user.profile_picture.url }}" class="avatar" alt="">
+            {% if user.avatar_display_url %}
+            <img src="{{ user.avatar_display_url }}" class="avatar" alt="">
             {% else %}
             <span class="avatar d-inline-flex align-items-center justify-content-center" style="background:var(--ci-gradient-subtle)">
               <i class="bi bi-person"></i>
