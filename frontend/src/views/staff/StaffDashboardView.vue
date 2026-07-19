@@ -8,6 +8,7 @@ import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatCard from '@/components/ui/StatCard.vue'
+import CryptoLabel from '@/components/ui/CryptoLabel.vue'
 import { api } from '@/services/api'
 import { shortDate, statusSeverity } from '@/utils/money'
 
@@ -61,6 +62,9 @@ onMounted(async () => {
         <DataTable :value="data?.recent_deposits || []" size="small" class="p-datatable-sm">
           <Column field="user_email" header="User" />
           <Column field="display_label" header="Amount" />
+          <Column field="crypto_symbol" header="Asset">
+            <template #body="{ data: r }"><CryptoLabel :symbol="r.crypto_symbol" size="sm" /></template>
+          </Column>
           <Column header="Status">
             <template #body="{ data: r }"><Tag :value="r.status" :severity="statusSeverity(r.status)" /></template>
           </Column>
@@ -77,6 +81,9 @@ onMounted(async () => {
         <DataTable :value="data?.recent_withdrawals || []" size="small" class="p-datatable-sm">
           <Column field="user_email" header="User" />
           <Column field="display_label" header="Amount" />
+          <Column field="crypto_symbol" header="Asset">
+            <template #body="{ data: r }"><CryptoLabel :symbol="r.crypto_symbol" size="sm" /></template>
+          </Column>
           <Column header="Status">
             <template #body="{ data: r }"><Tag :value="r.status" :severity="statusSeverity(r.status)" /></template>
           </Column>

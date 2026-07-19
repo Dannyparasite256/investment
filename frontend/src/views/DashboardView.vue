@@ -10,6 +10,7 @@ import VueApexCharts from 'vue3-apexcharts'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatCard from '@/components/ui/StatCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import CryptoIcon from '@/components/ui/CryptoIcon.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCurrencyStore } from '@/stores/currency'
 import { api, unwrapList } from '@/services/api'
@@ -115,6 +116,7 @@ onMounted(async () => {
     <div class="ticker glass" v-if="Object.keys(prices).length">
       <span class="muted live"><i class="pi pi-circle-fill" /> Live</span>
       <span v-for="(v, k) in prices" :key="k" class="chip">
+        <CryptoIcon :symbol="String(k)" size="xs" />
         {{ k }} <strong class="mono">${{ v }}</strong>
       </span>
       <Button label="Markets" size="small" text class="ms" @click="router.push('/markets')" />
@@ -127,6 +129,7 @@ onMounted(async () => {
       </div>
       <div class="chips">
         <button v-for="w in watch" :key="w.id" type="button" class="wchip" @click="router.push('/markets')">
+          <CryptoIcon :symbol="w.symbol" size="xs" />
           {{ w.label || w.symbol }}
         </button>
       </div>
@@ -249,11 +252,19 @@ onMounted(async () => {
 .live { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; }
 .live i { font-size: 0.45rem; color: #22C55E; }
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   padding: 0.35rem 0.65rem;
   border-radius: 10px;
   background: rgba(255,255,255,0.04);
   border: 1px solid var(--ci-border);
   font-size: 0.82rem;
+}
+.wchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 .ms { margin-left: auto; }
 .two {

@@ -7,6 +7,7 @@ import Tag from 'primevue/tag'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import CryptoLabel from '@/components/ui/CryptoLabel.vue'
 import { api } from '@/services/api'
 import { shortDate, statusSeverity } from '@/utils/money'
 import { useUiStore } from '@/stores/ui'
@@ -69,6 +70,11 @@ onMounted(load)
       <DataTable :value="rows" :loading="loading" paginator :rows="15" class="p-datatable-sm">
         <Column field="user_email" header="User" />
         <Column field="display_label" header="Amount" />
+        <Column field="crypto_symbol" header="Asset" style="width:9rem">
+          <template #body="{ data }">
+            <CryptoLabel :symbol="data.crypto_symbol" size="sm" />
+          </template>
+        </Column>
         <Column field="wallet_address" header="Address">
           <template #body="{ data }"><span class="mono small">{{ data.wallet_address?.slice(0, 18) }}…</span></template>
         </Column>

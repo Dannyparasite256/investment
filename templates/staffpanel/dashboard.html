@@ -1,4 +1,5 @@
 {% extends "staffpanel/base.html" %}
+{% load crypto_icons %}
 {% block title %}Staff Dashboard — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}Operations dashboard{% endblock %}
 
@@ -47,7 +48,9 @@
             <tr>
               <td class="small">{{ d.user.email|truncatechars:22 }}</td>
               <td class="font-mono small">
-                {% if d.amount_display %}{{ d.amount_display.label }}{% else %}{{ d.amount|money_trim:8 }} {{ d.cryptocurrency.symbol }}{% endif %}
+                <div class="d-flex align-items-center gap-2 mb-1">{% crypto_icon d.cryptocurrency.symbol size="xs" %}
+                  {% if d.amount_display %}{{ d.amount_display.label }}{% else %}{{ d.amount|money_trim:8 }} {{ d.cryptocurrency.symbol }}{% endif %}
+                </div>
                 {% if d.crypto_label %}<div class="text-muted" style="font-size:0.7rem">{{ d.crypto_label }}</div>{% endif %}
               </td>
               <td><span class="badge badge-status badge-{{ d.status }}">{{ d.get_status_display }}</span></td>
@@ -69,7 +72,10 @@
             <tr>
               <td class="small">{{ w.user.email|truncatechars:22 }}</td>
               <td class="font-mono small">
-                {% if w.amount_display %}{{ w.amount_display.label }}{% else %}{{ w.amount|money:2 }}{% endif %}
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  {% crypto_icon w.cryptocurrency.symbol size="xs" %}
+                  {% if w.amount_display %}{{ w.amount_display.label }}{% else %}{{ w.amount|money:2 }}{% endif %}
+                </div>
                 {% if w.platform_label %}<div class="text-muted" style="font-size:0.7rem">{{ w.platform_label }}</div>{% endif %}
               </td>
               <td><span class="badge badge-status badge-{{ w.status }}">{{ w.get_status_display }}</span></td>

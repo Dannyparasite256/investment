@@ -1,4 +1,5 @@
 {% extends "staffpanel/base.html" %}
+{% load crypto_icons %}
 {% block page_title %}Deposits{% endblock %}
 {% block page_subtitle %}Review and approve user crypto deposits{% endblock %}
 {% block content %}
@@ -57,7 +58,7 @@
         <tr>
           <td class="small text-muted">{{ d.created_at|when:"full" }}</td>
           <td class="small"><a href="{% url 'staffpanel:user_detail' d.user_id %}">{{ d.user.email }}</a></td>
-          <td><span class="badge badge-status badge-info">{{ d.cryptocurrency.symbol }}</span></td>
+          <td>{% crypto_label d.cryptocurrency.symbol size="sm" %}</td>
           <td class="font-mono">
             {% if d.amount_display %}{{ d.amount_display.label }}{% else %}{{ d.amount|money_trim:8 }}{% endif %}
             {% if d.platform_label %}<div class="small text-muted">{{ d.platform_label }}</div>{% endif %}

@@ -5435,3 +5435,45 @@ html[data-theme="light"][data-ui-theme="premium"] body::before {
     display: inline-flex !important;
   }
 }
+
+/* Offline crypto brand badges (user + staff classic UI) */
+.ci-crypto-icon {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+}
+.ci-crypto-icon.ci-crypto-xs { width: 1.1rem; height: 1.1rem; font-size: 0.62rem; }
+.ci-crypto-icon.ci-crypto-sm { width: 1.4rem; height: 1.4rem; font-size: 0.75rem; }
+.ci-crypto-icon.ci-crypto-md { width: 1.85rem; height: 1.85rem; font-size: 0.95rem; }
+.ci-crypto-icon.ci-crypto-lg { width: 2.5rem; height: 2.5rem; font-size: 1.15rem; }
+.ci-crypto-letter { display: block; transform: translateY(0.5px); }
+.ci-crypto-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  vertical-align: middle;
+  max-width: 100%;
+}
+.ci-crypto-meta {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+}
+.ci-crypto-sym {
+  font-weight: 700;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+.ci-crypto-net {
+  font-size: 0.72em;
+  color: var(--ci-text-muted, #9CA3AF);
+  white-space: nowrap;
+}

@@ -1,4 +1,5 @@
 {% extends "staffpanel/base.html" %}
+{% load crypto_icons %}
 {% block page_title %}Withdrawals{% endblock %}
 {% block page_subtitle %}Pending → Approved → Paid{% endblock %}
 {% block content %}
@@ -27,9 +28,9 @@
           </td>
           <td class="font-mono small text-muted">
             {% if w.platform_label %}{{ w.platform_label }}{% else %}{{ w.amount|money:2 }} USD{% endif %}
-            {% if w.crypto_label %}<div>{{ w.crypto_label }}</div>{% else %}<div>{{ w.cryptocurrency.symbol }}</div>{% endif %}
+            {% if w.crypto_label %}<div>{{ w.crypto_label }}</div>{% else %}<div>{% crypto_label w.cryptocurrency.symbol size="xs" %}</div>{% endif %}
           </td>
-          <td class="small">{{ w.network }}</td>
+          <td class="small">{% crypto_label w.cryptocurrency.symbol size="sm" %}<div class="small text-muted">{{ w.network }}</div></td>
           <td class="font-mono small">{{ w.wallet_address|truncatechars:16 }}</td>
           <td><span class="badge badge-status badge-{{ w.status }}">{{ w.get_status_display }}</span></td>
           <td class="text-nowrap">

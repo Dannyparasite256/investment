@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { cryptoColor, cryptoGlyph, cryptoIconUrl } from '@/utils/cryptoIcons'
 
 const props = withDefaults(
@@ -8,49 +8,31 @@ const props = withDefaults(
     /** Emoji / glyph from API `icon` field */
     icon?: string | null
     name?: string | null
-    size?: 'sm' | 'md' | 'lg'
-    /** Prefer CDN image; falls back to glyph badge if load fails */
-    image?: boolean
+    size?: 'xs' | 'sm' | 'md' | 'lg'
   }>(),
   {
     size: 'md',
-    image: true,
   },
 )
 
-const imgFailed = ref(false)
-const src = computed(() => cryptoIconUrl(props.symbol))
+const src = computed(() => cryptoIconUrl(props.symbol, props.icon))
 const glyph = computed(() => cryptoGlyph(props.symbol, props.icon))
 const color = computed(() => cryptoColor(props.symbol))
 const title = computed(() => props.name || props.symbol || 'Crypto')
-const showImg = computed(() => props.image && !imgFailed.value)
-
-watch(
-  () => props.symbol,
-  () => {
-    imgFailed.value = false
-  },
-)
 </script>
 
 <template>
   <span
     class="crypto-icon"
-    :class="[`sz-${size}`, { glyph: !showImg }]"
-    :style="!showImg ? { background: color } : undefined"
+    :class="`sz-${size}`"
+    :style="{ background: color }"
     :title="title"
     role="img"
     :aria-label="title"
   >
-    <img
-      v-if="showImg"
-      :src="src"
-      :alt="title"
-      class="crypto-img"
-      loading="lazy"
-      @error="imgFailed = true"
-    />
-    <span v-else class="crypto-glyph">{{ glyph }}</span>
+    <!-- Always use offline data-URI SVG; img is preferred for crisp glyphs -->
+    <img :src="src" :alt="title" class="crypto-img" draggable="false" />
+    <span class="crypto-glyph sr-only">{{ glyph }}</span>
   </span>
 </template>
 
@@ -61,28 +43,30 @@ watch(
   flex-shrink: 0;
   border-radius: 50%;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
   vertical-align: middle;
   line-height: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
 }
-.crypto-icon.glyph {
-  color: #fff;
-  font-weight: 800;
-  border-color: transparent;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-}
-.sz-sm { width: 1.35rem; height: 1.35rem; font-size: 0.72rem; }
-.sz-md { width: 1.75rem; height: 1.75rem; font-size: 0.9rem; }
-.sz-lg { width: 2.4rem; height: 2.4rem; font-size: 1.15rem; }
+.sz-xs { width: 1.1rem; height: 1.1rem; }
+.sz-sm { width: 1.4rem; height: 1.4rem; }
+.sz-md { width: 1.85rem; height: 1.85rem; }
+.sz-lg { width: 2.5rem; height: 2.5rem; }
 .crypto-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-.crypto-glyph {
-  display: block;
-  transform: translateY(0.5px);
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 </style>

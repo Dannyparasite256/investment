@@ -7,7 +7,7 @@ import Tag from 'primevue/tag'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import PageHeader from '@/components/ui/PageHeader.vue'
-import CryptoIcon from '@/components/ui/CryptoIcon.vue'
+import CryptoLabel from '@/components/ui/CryptoLabel.vue'
 import { api } from '@/services/api'
 import { shortDate, statusSeverity } from '@/utils/money'
 import { useUiStore } from '@/stores/ui'
@@ -68,12 +68,9 @@ onMounted(load)
       <DataTable :value="rows" :loading="loading" paginator :rows="15" class="p-datatable-sm">
         <Column field="user_email" header="User" />
         <Column field="display_label" header="Amount" />
-        <Column field="crypto_symbol" header="Asset" style="width:8rem">
+        <Column field="crypto_symbol" header="Asset" style="width:9rem">
           <template #body="{ data }">
-            <span class="asset-cell">
-              <CryptoIcon :symbol="data.crypto_symbol" size="sm" />
-              <span>{{ data.crypto_symbol }}</span>
-            </span>
+            <CryptoLabel :symbol="data.crypto_symbol" size="sm" />
           </template>
         </Column>
         <Column header="Status" style="width:7rem">
@@ -99,5 +96,4 @@ onMounted(load)
 <style scoped>
 .card { padding: 0.5rem; }
 .acts { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-.asset-cell { display: inline-flex; align-items: center; gap: 0.4rem; }
 </style>

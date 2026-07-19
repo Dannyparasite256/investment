@@ -5,6 +5,7 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import CryptoIcon from '@/components/ui/CryptoIcon.vue'
 import { api } from '@/services/api'
 import { statusSeverity } from '@/utils/money'
 import type { ReceiptData } from '@/types/api'
@@ -68,13 +69,28 @@ watch(() => [route.params.kind, route.params.id], load)
         </div>
         <Tag :value="receipt.status_label" :severity="statusSeverity(receipt.status)" />
       </div>
-      <div class="amount mono">{{ receipt.amount?.label }}</div>
+      <div class="amount mono">
+        <CryptoIcon
+          v-if="receipt.currency_symbol || receipt.display_currency"
+          :symbol="receipt.currency_symbol || receipt.display_currency"
+          size="lg"
+          class="amt-icon"
+        />
+        {{ receipt.amount?.label }}
+      </div>
       <div class="muted center">{{ receipt.kind }} · {{ receipt.id }}</div>
       <table>
         <tbody>
           <tr v-for="(r, i) in receipt.rows" :key="i">
             <th>{{ r.label }}</th>
-            <td>{{ r.value }}</td>
+            <td class="row-val">
+              <CryptoIcon
+                v-if="/asset|crypto|network|currency/i.test(r.label) && r.value"
+                :symbol="r.value"
+                size="xs"
+              />
+              {{ r.value }}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -96,6 +112,18 @@ watch(() => [route.params.kind, route.params.id], load)
   font-weight: 800;
   text-align: center;
   margin: 0.5rem 0 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+.amt-icon { flex-shrink: 0; }
+.row-val {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
 }
 .center { text-align: center; margin-bottom: 1.25rem; font-size: 0.85rem; word-break: break-all; }
 table { width: 100%; border-collapse: collapse; }

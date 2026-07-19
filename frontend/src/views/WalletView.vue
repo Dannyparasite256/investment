@@ -6,6 +6,7 @@ import Select from 'primevue/select'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatCard from '@/components/ui/StatCard.vue'
 import CryptoIcon from '@/components/ui/CryptoIcon.vue'
+import CryptoLabel from '@/components/ui/CryptoLabel.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCurrencyStore } from '@/stores/currency'
 import { formatDisplay, formatMoney } from '@/utils/money'
@@ -119,22 +120,22 @@ async function copyAddress() {
           :loading="loadingCrypto"
         >
           <template #value="{ value }">
-            <span v-if="value" class="opt-row">
-              <CryptoIcon
-                :symbol="depositAssets.find((c) => c.id === value)?.symbol"
-                :icon="depositAssets.find((c) => c.id === value)?.icon"
-                size="sm"
-              />
-              <span>{{ depositAssets.find((c) => c.id === value)?.symbol || value }}</span>
-            </span>
+            <CryptoLabel
+              v-if="value"
+              :symbol="depositAssets.find((c) => c.id === value)?.symbol"
+              :icon="depositAssets.find((c) => c.id === value)?.icon"
+              size="sm"
+            />
             <span v-else class="muted">Asset</span>
           </template>
           <template #option="{ option }">
-            <span class="opt-row">
-              <CryptoIcon :symbol="option.symbol" :icon="option.icon" size="sm" />
-              <span>{{ option.symbol }}</span>
-              <span class="muted tiny-opt">{{ option.network }}</span>
-            </span>
+            <CryptoLabel
+              :symbol="option.symbol"
+              :icon="option.icon"
+              :network="option.network"
+              size="sm"
+              show-network
+            />
           </template>
         </Select>
       </div>

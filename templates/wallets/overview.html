@@ -1,4 +1,5 @@
 {% extends "base_app.html" %}
+{% load crypto_icons %}
 {% block title %}Wallet — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}Wallet{% endblock %}
 
@@ -92,7 +93,7 @@
       {% for a in addresses %}
       <div class="d-flex justify-content-between align-items-start border-bottom border-ci py-2">
         <div>
-          <span class="badge badge-status badge-info">{{ a.cryptocurrency.symbol }}</span>
+          {% crypto_label a.cryptocurrency.symbol size="sm" %}
           {% if a.label %}<span class="small ms-1">{{ a.label }}</span>{% endif %}
           <div class="font-mono small text-muted mt-1">{{ a.address|truncatechars:24 }}</div>
         </div>

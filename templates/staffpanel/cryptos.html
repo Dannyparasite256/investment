@@ -1,4 +1,5 @@
 {% extends "staffpanel/base.html" %}
+{% load crypto_icons %}
 {% block page_title %}Crypto deposit wallets{% endblock %}
 {% block page_subtitle %}Set the platform receiving address for each network{% endblock %}
 {% block content %}
@@ -14,9 +15,12 @@
       {% csrf_token %}
       <input type="hidden" name="pk" value="{{ c.pk }}">
       <div class="d-flex justify-content-between mb-3">
-        <div>
-          <strong class="fs-5">{{ c.symbol }}</strong>
-          <div class="small text-muted">{{ c.name }} · {{ c.get_network_display }}</div>
+        <div class="d-flex align-items-start gap-2">
+          {% crypto_icon c.symbol size="lg" %}
+          <div>
+            <strong class="fs-5">{{ c.symbol }}</strong>
+            <div class="small text-muted">{{ c.name }} · {{ c.get_network_display }}</div>
+          </div>
         </div>
         <span class="badge badge-status {% if c.is_active %}badge-active{% else %}badge-pending{% endif %}">
           {% if c.is_active %}Active{% else %}Off{% endif %}

@@ -13,6 +13,7 @@ import Message from 'primevue/message'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import CryptoIcon from '@/components/ui/CryptoIcon.vue'
+import CryptoLabel from '@/components/ui/CryptoLabel.vue'
 import { api, unwrapList } from '@/services/api'
 import { formatMoney, shortDate, statusSeverity } from '@/utils/money'
 import type { Cryptocurrency, Deposit } from '@/types/api'
@@ -113,10 +114,7 @@ onMounted(load)
         </Column>
         <Column field="crypto_symbol" header="Asset">
           <template #body="{ data }">
-            <span class="asset-cell">
-              <CryptoIcon :symbol="data.crypto_symbol" size="sm" />
-              <span>{{ data.crypto_symbol }}</span>
-            </span>
+            <CryptoLabel :symbol="data.crypto_symbol" size="sm" />
           </template>
         </Column>
         <Column field="amount" header="Amount">

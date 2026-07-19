@@ -1,5 +1,5 @@
 {% extends "base_app.html" %}
-{% load humanize static %}
+{% load humanize static crypto_icons %}
 
 {% block title %}Dashboard — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
@@ -347,7 +347,7 @@
       <h6 class="mb-3">Wallet addresses</h6>
       {% for addr in addresses %}
       <div class="d-flex justify-content-between align-items-center mb-2 small">
-        <span class="badge badge-status badge-info">{{ addr.cryptocurrency.symbol }}</span>
+        {% crypto_label addr.cryptocurrency.symbol size="sm" %}
         <span class="font-mono text-muted">{{ addr.address|truncatechars:18 }}</span>
       </div>
       {% empty %}

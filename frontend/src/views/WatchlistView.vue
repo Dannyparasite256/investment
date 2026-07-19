@@ -4,6 +4,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import CryptoIcon from '@/components/ui/CryptoIcon.vue'
 import { api } from '@/services/api'
 import { useUiStore } from '@/stores/ui'
 import type { WatchlistItem } from '@/types/api'
@@ -58,7 +59,10 @@ onMounted(load)
       <ul v-else class="list">
         <li v-for="i in items" :key="i.id">
           <div>
-            <strong class="mono">{{ i.symbol }}</strong>
+            <strong class="mono sym-row">
+              <CryptoIcon :symbol="i.symbol" size="sm" />
+              {{ i.symbol }}
+            </strong>
             <div class="muted small">{{ i.label || '—' }}</div>
           </div>
           <Button icon="pi pi-trash" text severity="danger" @click="remove(i.id)" />
@@ -78,5 +82,6 @@ onMounted(load)
   padding: 0.75rem 0; border-bottom: 1px solid var(--ci-border);
 }
 .list li:last-child { border-bottom: 0; }
+.sym-row { display: inline-flex; align-items: center; gap: 0.45rem; }
 .small { font-size: 0.8rem; }
 </style>
