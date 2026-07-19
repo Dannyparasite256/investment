@@ -131,6 +131,13 @@
           {{ user_vip_tier.name }}
         </a>
         {% endif %}
+        {% if available_display %}
+        <a href="{% url 'wallets:overview' %}" class="topbar-balance-chip d-none d-xl-inline-flex" title="Available balance">
+          <i class="bi bi-wallet2"></i>
+          <span data-balance="available.formatted">{{ available_display.formatted }}</span>
+          <span data-balance="available.symbol">{{ available_display.symbol }}</span>
+        </a>
+        {% endif %}
         {% if display_options %}
         <form method="post" action="{% url 'core:set_display_currency' %}"
               class="d-none d-lg-flex align-items-center gap-1" data-currency-form>

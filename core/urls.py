@@ -10,6 +10,7 @@ urlpatterns = [
     path('dashboard/stats/', views.dashboard_stats_api, name='dashboard_stats'),
     path('api/balances/', views.balances_api, name='balances_api'),
     path('theme/', views.set_theme, name='set_theme'),
+    path('ui-theme/', views.set_ui_theme, name='set_ui_theme'),
     path('display-currency/', views.set_display_currency, name='set_display_currency'),
     path('portfolio/', features_views.portfolio_performance, name='portfolio'),
     path('vip/', features_views.vip_status, name='vip'),

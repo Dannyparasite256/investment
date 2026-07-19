@@ -207,12 +207,20 @@ def password_reset_confirm_view(request, token):
 def profile_view(request):
     form = ProfileForm(request.POST or None, request.FILES or None, instance=request.user)
     if request.method == 'POST' and form.is_valid():
-        form.save()
+        user = form.save()
         create_audit_log(request=request, user=request.user, action=AuditLog.Action.PROFILE_UPDATE, message='Profile updated')
         messages.success(request, 'Profile updated.')
         if request.headers.get('HX-Request'):
             return render(request, 'accounts/partials/profile_form.html', {'form': form})
-        return redirect('accounts:profile')
+        response = redirect('accounts:profile')
+        # Persist appearance cookies so guests/next request stay in sync
+        theme = getattr(user, 'preferred_theme', None) or 'dark'
+        ui_theme = getattr(user, 'preferred_ui_theme', None) or 'classic'
+        if theme in ('dark', 'light'):
+            response.set_cookie('theme', theme, max_age=365 * 24 * 3600, samesite='Lax', path='/')
+        if ui_theme in ('classic', 'premium'):
+            response.set_cookie('ui_theme', ui_theme, max_age=365 * 24 * 3600, samesite='Lax', path='/')
+        return response
     kyc_latest = request.user.kyc_documents.order_by('-created_at').first()
     return render(request, 'accounts/profile.html', {
         'form': form,

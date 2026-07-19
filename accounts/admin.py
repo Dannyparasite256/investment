@@ -14,7 +14,7 @@ class UserAdmin(BaseUserAdmin):
     actions = ['verify_emails', 'unverify_emails']
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Personal', {'fields': ('first_name', 'last_name', 'phone', 'country', 'date_of_birth', 'profile_picture', 'preferred_theme')}),
+        ('Personal', {'fields': ('first_name', 'last_name', 'phone', 'country', 'date_of_birth', 'profile_picture', 'preferred_theme', 'preferred_ui_theme')}),
         ('Verification', {'fields': ('email_verified', 'is_kyc_verified', 'two_factor_enabled')}),
         ('Referral', {'fields': ('referral_code', 'referred_by', 'referral_earnings')}),
         ('Role & notes', {'fields': ('role', 'preferred_language', 'preferred_currency', 'last_login_ip', 'notes_internal')}),

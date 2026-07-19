@@ -169,15 +169,48 @@ def set_theme(request):
     theme = request.POST.get('theme', 'dark')
     if theme not in ('dark', 'light'):
         theme = 'dark'
-    response = HttpResponse(status=204)
-    if request.headers.get('HX-Request'):
-        response = HttpResponse(status=204)
+    if request.headers.get('HX-Request') or _wants_json(request):
+        response = HttpResponse(status=204) if not _wants_json(request) else JsonResponse({
+            'ok': True, 'theme': theme,
+        })
     else:
         response = redirect(request.META.get('HTTP_REFERER', '/'))
-    response.set_cookie('theme', theme, max_age=365 * 24 * 3600, samesite='Lax')
+    response.set_cookie('theme', theme, max_age=365 * 24 * 3600, samesite='Lax', path='/')
     if request.user.is_authenticated:
         request.user.preferred_theme = theme
         request.user.save(update_fields=['preferred_theme'])
+    return response
+
+
+@require_POST
+def set_ui_theme(request):
+    """
+    Switch design system: classic (default) or premium investment UI.
+    Persists cookie for guests; DB preferred_ui_theme for authenticated users.
+    """
+    ui_theme = (request.POST.get('ui_theme') or request.POST.get('theme') or 'classic').strip().lower()
+    if ui_theme not in ('classic', 'premium'):
+        ui_theme = 'classic'
+
+    wants_json = _wants_json(request)
+    if wants_json or request.headers.get('HX-Request'):
+        response = JsonResponse({
+            'ok': True,
+            'ui_theme': ui_theme,
+            'label': 'Premium Investment Theme' if ui_theme == 'premium' else 'Default Theme',
+        })
+    else:
+        from django.contrib import messages as dj_messages
+        response = redirect(request.META.get('HTTP_REFERER', '/'))
+        dj_messages.success(
+            request,
+            'Premium Investment Theme applied.' if ui_theme == 'premium' else 'Default Theme applied.',
+        )
+
+    response.set_cookie('ui_theme', ui_theme, max_age=365 * 24 * 3600, samesite='Lax', path='/')
+    if request.user.is_authenticated:
+        request.user.preferred_ui_theme = ui_theme
+        request.user.save(update_fields=['preferred_ui_theme'])
     return response
 
 

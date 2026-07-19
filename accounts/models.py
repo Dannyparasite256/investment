@@ -66,6 +66,15 @@ class User(AbstractUser):
     preferred_theme = models.CharField(
         max_length=10, choices=[('dark', 'Dark'), ('light', 'Light')], default='dark',
     )
+    preferred_ui_theme = models.CharField(
+        max_length=16,
+        choices=[
+            ('classic', 'Default Theme'),
+            ('premium', 'Premium Investment Theme'),
+        ],
+        default='classic',
+        help_text='Visual design system: classic glass or premium investment UI',
+    )
     preferred_language = models.CharField(max_length=10, default='en')
     preferred_timezone = models.CharField(
         max_length=64,

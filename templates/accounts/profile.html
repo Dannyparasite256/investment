@@ -1,6 +1,7 @@
 {% extends "base_app.html" %}
-{% block title %}Profile — {{ SITE_NAME }}{% endblock %}
-{% block page_title %}Profile{% endblock %}
+{% block title %}Profile & Settings — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Profile & Settings{% endblock %}
+{% block page_subtitle %}Account, appearance, and preferences{% endblock %}
 
 {% block content %}
 <div class="row g-4">
@@ -41,9 +42,59 @@
     </div>
   </div>
   <div class="col-lg-8">
+    {# ---------- Appearance / Theme ---------- #}
+    <div class="glass-card p-4 mb-4 animate-in" id="appearance-settings">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+        <div>
+          <h5 class="mb-1">Appearance</h5>
+          <p class="small text-muted mb-0">Choose your interface design. Applied instantly and saved for next visits.</p>
+        </div>
+        <span class="badge badge-status badge-info" id="theme-status-badge">
+          {% if ui_theme == 'premium' %}Premium Investment{% else %}Default{% endif %}
+        </span>
+      </div>
+
+      <div class="stat-label mb-2">Theme</div>
+      <div class="theme-picker mb-4" role="radiogroup" aria-label="UI theme">
+        <label class="theme-option {% if ui_theme != 'premium' %}is-active{% endif %}" data-ui-theme-option="classic">
+          <input type="radio" name="ui_theme_pick" value="classic"
+                 {% if ui_theme != 'premium' %}checked{% endif %}
+                 onchange="if(window.setUiTheme){setUiTheme('classic')}">
+          <span class="check-pill" aria-hidden="true"><i class="bi bi-check2"></i></span>
+          <div class="theme-option-preview classic" aria-hidden="true"><div class="mini-card"></div></div>
+          <div class="theme-option-title">Default Theme</div>
+          <p class="theme-option-desc">Classic glass interface — clean indigo glassmorphism.</p>
+        </label>
+        <label class="theme-option {% if ui_theme == 'premium' %}is-active{% endif %}" data-ui-theme-option="premium">
+          <input type="radio" name="ui_theme_pick" value="premium"
+                 {% if ui_theme == 'premium' %}checked{% endif %}
+                 onchange="if(window.setUiTheme){setUiTheme('premium')}">
+          <span class="check-pill" aria-hidden="true"><i class="bi bi-check2"></i></span>
+          <div class="theme-option-preview premium" aria-hidden="true"><div class="mini-card"></div></div>
+          <div class="theme-option-title">Premium Investment Theme</div>
+          <p class="theme-option-desc">Binance / Coinbase inspired — blue, emerald & gold luxury UI.</p>
+        </label>
+      </div>
+
+      <div class="stat-label mb-2">Color mode</div>
+      <div class="theme-mode-row mb-2" role="group" aria-label="Color mode">
+        <button type="button" class="theme-mode-chip {% if theme != 'light' %}is-active{% endif %}"
+                data-color-mode="dark" onclick="if(window.setTheme){setTheme('dark')}">
+          <i class="bi bi-moon-stars-fill me-1"></i> Dark
+        </button>
+        <button type="button" class="theme-mode-chip {% if theme == 'light' %}is-active{% endif %}"
+                data-color-mode="light" onclick="if(window.setTheme){setTheme('light')}">
+          <i class="bi bi-sun-fill me-1"></i> Light
+        </button>
+      </div>
+      <p class="small text-muted mb-0">
+        Premium theme is optimized for dark surfaces. Light mode still works on Default Theme.
+      </p>
+    </div>
+
     <div class="glass-card p-4">
       <h5 class="mb-4">Edit profile</h5>
-      <form method="post" enctype="multipart/form-data">
+      <form method="post" enctype="multipart/form-data" id="profile-settings-form">
         {% csrf_token %}
         <div class="row g-3">
           <div class="col-md-6">
@@ -67,8 +118,13 @@
             {{ form.date_of_birth }}
           </div>
           <div class="col-md-6">
-            <label class="form-label">Theme preference</label>
+            <label class="form-label">Color mode preference</label>
             {{ form.preferred_theme }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">UI theme preference</label>
+            {{ form.preferred_ui_theme }}
+            <div class="form-text text-muted small">Also controlled by the theme cards above.</div>
           </div>
           <div class="col-md-6">
             <label class="form-label">Display currency</label>
@@ -82,7 +138,9 @@
             {{ form.profile_picture }}
           </div>
         </div>
-        <button type="submit" class="btn btn-ci mt-4">Save changes</button>
+        <button type="submit" class="btn btn-ci mt-4">
+          <i class="bi bi-check2-circle me-1"></i> Save settings
+        </button>
       </form>
     </div>
     {% if kyc_latest %}
@@ -93,4 +151,25 @@
     {% endif %}
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  // Keep profile form select in sync with live theme cards
+  document.querySelectorAll('[data-ui-theme-option]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      var val = el.getAttribute('data-ui-theme-option');
+      var sel = document.getElementById('id_preferred_ui_theme');
+      if (sel && val) sel.value = val;
+    });
+  });
+  var formSel = document.getElementById('id_preferred_ui_theme');
+  if (formSel) {
+    formSel.addEventListener('change', function () {
+      if (window.setUiTheme) setUiTheme(formSel.value);
+    });
+  }
+})();
+</script>
 {% endblock %}

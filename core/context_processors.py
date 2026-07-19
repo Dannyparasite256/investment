@@ -10,6 +10,7 @@ def site_settings(request):
         'SITE_NAME': getattr(settings, 'SITE_NAME', 'CryptoInvest'),
         'SITE_URL': getattr(settings, 'SITE_URL', ''),
         'theme': getattr(request, 'theme', 'dark'),
+        'ui_theme': getattr(request, 'ui_theme', 'classic'),
         'DEFAULT_CURRENCY': getattr(settings, 'DEFAULT_CURRENCY', 'USD'),
         'LANGUAGES': getattr(settings, 'LANGUAGES', [('en', 'English')]),
         'user_language': getattr(request, 'user_language', 'en'),

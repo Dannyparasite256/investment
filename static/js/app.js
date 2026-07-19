@@ -10,20 +10,59 @@
       .find(function (c) { return c.startsWith('csrftoken='); });
     if (cookie) event.detail.headers['X-CSRFToken'] = cookie.split('=')[1];
   });
+  function csrfTokenValue() {
+    var el = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (el && el.value) return el.value;
+    var cookie = document.cookie.split(';').map(function (c) { return c.trim(); })
+      .find(function (c) { return c.startsWith('csrftoken='); });
+    return cookie ? decodeURIComponent(cookie.split('=')[1]) : '';
+  }
+
+  function writeCookie(name, value, days) {
+    days = days == null ? 365 : days;
+    document.cookie = name + '=' + encodeURIComponent(value)
+      + ';path=/;max-age=' + (days * 24 * 3600) + ';samesite=lax';
+  }
+
+  function postForm(url, data) {
+    if (!url) return Promise.resolve(null);
+    var body = new URLSearchParams();
+    Object.keys(data || {}).forEach(function (k) { body.set(k, data[k]); });
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': csrfTokenValue(),
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json',
+      },
+      credentials: 'same-origin',
+      body: body.toString(),
+    }).catch(function () { return null; });
+  }
+
   window.setTheme = function (theme) {
+    if (theme !== 'dark' && theme !== 'light') theme = 'dark';
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
+    writeCookie('theme', theme);
     var form = document.getElementById('theme-form');
     if (form) {
       var input = form.querySelector('[name=theme]');
       if (input) input.value = theme;
-      if (window.htmx) {
-        htmx.ajax('POST', form.action, { source: form, values: { theme: theme }, swap: 'none' });
-      }
     }
     document.querySelectorAll('[data-theme-icon]').forEach(function (el) {
       el.className = theme === 'dark' ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill';
     });
+    document.querySelectorAll('[data-color-mode]').forEach(function (el) {
+      el.classList.toggle('is-active', el.getAttribute('data-color-mode') === theme);
+    });
+    var url = (document.body && document.body.getAttribute('data-theme-url')) || '/theme/';
+    if (form && window.htmx) {
+      htmx.ajax('POST', form.action || url, { source: form, values: { theme: theme }, swap: 'none' });
+    } else {
+      postForm(url, { theme: theme, format: 'json' });
+    }
   };
 
   window.toggleTheme = function () {
@@ -31,10 +70,63 @@
     setTheme(current === 'dark' ? 'light' : 'dark');
   };
 
+  /**
+   * Design system: classic | premium
+   * Instant apply, localStorage + cookie for guests, server persist for auth users.
+   */
+  window.setUiTheme = function (uiTheme, opts) {
+    opts = opts || {};
+    if (uiTheme !== 'classic' && uiTheme !== 'premium') uiTheme = 'classic';
+    var root = document.documentElement;
+    root.classList.add('ui-theme-switching');
+    root.setAttribute('data-ui-theme', uiTheme);
+    localStorage.setItem('ui_theme', uiTheme);
+    writeCookie('ui_theme', uiTheme);
+
+    document.querySelectorAll('[data-ui-theme-option]').forEach(function (el) {
+      var on = el.getAttribute('data-ui-theme-option') === uiTheme;
+      el.classList.toggle('is-active', on);
+      var radio = el.querySelector('input[type=radio]');
+      if (radio) radio.checked = on;
+    });
+    var formSel = document.getElementById('id_preferred_ui_theme');
+    if (formSel) formSel.value = uiTheme;
+    var badge = document.getElementById('theme-status-badge');
+    if (badge) {
+      badge.textContent = uiTheme === 'premium' ? 'Premium Investment' : 'Default';
+    }
+
+    if (!opts.skipServer) {
+      var url = (document.body && document.body.getAttribute('data-ui-theme-url')) || '/ui-theme/';
+      postForm(url, { ui_theme: uiTheme, format: 'json' }).then(function (res) {
+        if (res && res.ok && window.showToast && !opts.silent) {
+          showToast(
+            'Appearance',
+            uiTheme === 'premium' ? 'Premium Investment Theme applied' : 'Default Theme applied',
+            'success'
+          );
+        }
+      });
+    }
+    setTimeout(function () { root.classList.remove('ui-theme-switching'); }, 400);
+  };
+
+  window.toggleUiTheme = function () {
+    var current = document.documentElement.getAttribute('data-ui-theme') || 'classic';
+    setUiTheme(current === 'premium' ? 'classic' : 'premium');
+  };
+
   (function initTheme() {
     var match = document.cookie.match(/(?:^|;\s*)theme=([^;]+)/);
     var stored = (match && match[1]) || localStorage.getItem('theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', stored);
+    if (stored === 'dark' || stored === 'light') {
+      document.documentElement.setAttribute('data-theme', stored);
+    }
+    var uiMatch = document.cookie.match(/(?:^|;\s*)ui_theme=([^;]+)/);
+    var uiStored = (uiMatch && uiMatch[1]) || localStorage.getItem('ui_theme') || '';
+    if (uiStored === 'premium' || uiStored === 'classic') {
+      document.documentElement.setAttribute('data-ui-theme', uiStored);
+    }
   })();
 
   window.toggleSidebar = function () {

@@ -23,7 +23,18 @@ class AuditLogMiddleware(MiddlewareMixin):
 
 class ThemeMiddleware(MiddlewareMixin):
     def process_request(self, request):
-        request.theme = request.COOKIES.get('theme', 'dark')
+        # Color mode: dark / light
+        theme = request.COOKIES.get('theme')
+        user = getattr(request, 'user', None)
+        if user is not None and getattr(user, 'is_authenticated', False):
+            theme = theme or getattr(user, 'preferred_theme', None) or 'dark'
+        request.theme = theme if theme in ('dark', 'light') else 'dark'
+
+        # Design system: classic / premium
+        ui_theme = request.COOKIES.get('ui_theme')
+        if user is not None and getattr(user, 'is_authenticated', False):
+            ui_theme = ui_theme or getattr(user, 'preferred_ui_theme', None) or 'classic'
+        request.ui_theme = ui_theme if ui_theme in ('classic', 'premium') else 'classic'
         return None
 
 

@@ -109,7 +109,7 @@ class ProfileForm(forms.ModelForm):
         model = User
         fields = (
             'first_name', 'last_name', 'phone', 'country', 'date_of_birth',
-            'profile_picture', 'preferred_theme', 'preferred_currency',
+            'profile_picture', 'preferred_theme', 'preferred_ui_theme', 'preferred_currency',
         )
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -119,6 +119,7 @@ class ProfileForm(forms.ModelForm):
             'date_of_birth': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'profile_picture': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
             'preferred_theme': forms.Select(attrs={'class': 'form-select'}),
+            'preferred_ui_theme': forms.Select(attrs={'class': 'form-select', 'id': 'id_preferred_ui_theme'}),
         }
 
     def __init__(self, *args, **kwargs):
