@@ -33,12 +33,14 @@ def _htmx_response(html, unread_count, *, refresh=False, redirect_url=None):
 
 @login_required
 def notification_list(request):
+    """List notifications and mark them as viewed when the page is opened."""
     qs = Notification.objects.filter(user=request.user)
-    unread_only = request.GET.get('unread') == '1'
-    if unread_only:
-        qs = qs.filter(is_read=False)
+    # Opening the notifications page classifies all as viewed
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    # After auto-view, "unread only" would be empty — show full inbox
+    unread_only = False
     page = Paginator(qs, 20).get_page(request.GET.get('page'))
-    unread_count = _unread_count(request.user)
+    unread_count = 0
     return render(request, 'notifications/list.html', {
         'page': page,
         'unread_only': unread_only,
@@ -85,12 +87,21 @@ def mark_read(request, pk):
 @require_POST
 def mark_all_read(request):
     Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
-    if request.headers.get('HX-Request'):
+    if request.headers.get('HX-Request') or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         partial = request.headers.get('X-Notif-Partial', '')
         # List page: refresh so cards lose unread state
         if partial == 'list-all':
             return _htmx_response(_badges_oob(0), 0, refresh=True)
-        # Dropdown: OOB badges + clear head/body without full reload
+        # Dropdown open / mark-all: clear badges (keep items visible as read)
+        if partial in ('dropdown-open', 'dropdown-all'):
+            empty_ui = (
+                '<div id="notif-dropdown-head" class="notif-dropdown-head" hx-swap-oob="true">'
+                '<div class="notif-dropdown-head-left">'
+                '<span class="notif-dropdown-title">Notifications</span>'
+                '</div></div>'
+            )
+            return _htmx_response(_badges_oob(0) + empty_ui, 0)
+        # Legacy full clear of dropdown body
         empty_ui = (
             '<div id="notif-dropdown-head" class="notif-dropdown-head" hx-swap-oob="true">'
             '<div class="notif-dropdown-head-left">'

@@ -30,31 +30,51 @@ const catIcon: Record<string, string> = {
   system: 'pi-bell',
 }
 
-async function load() {
-  loading.value = true
+/** Opening the notifications page marks all as viewed. */
+async function markAllViewed() {
   try {
-    const { data } = await api.notifications()
-    rows.value = unwrapList(data)
-  } finally {
-    loading.value = false
-  }
-}
-
-async function markRead(n: AppNotification) {
-  if (n.is_read) return
-  try {
-    await api.markNotificationRead(n.id)
-    n.is_read = true
+    await api.markAllNotificationsRead()
+    rows.value.forEach((n) => {
+      n.is_read = true
+    })
   } catch {
     /* ignore */
   }
 }
 
+async function load() {
+  loading.value = true
+  try {
+    const { data } = await api.notifications()
+    rows.value = unwrapList(data)
+    // Classify as viewed when the user opens this page
+    if (rows.value.some((n) => !n.is_read)) {
+      await markAllViewed()
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+async function openItem(n: AppNotification) {
+  if (!n.is_read) {
+    try {
+      await api.markNotificationRead(n.id)
+      n.is_read = true
+    } catch {
+      /* ignore */
+    }
+  }
+  if (n.link) {
+    if (n.link.startsWith('http')) window.location.href = n.link
+    else window.location.assign(n.link.startsWith('/') ? n.link : `/${n.link}`)
+  }
+}
+
 async function markAll() {
   try {
-    await api.markAllNotificationsRead()
-    rows.value.forEach((n) => { n.is_read = true })
-    ui.toast('Done', 'All notifications marked read', 'success')
+    await markAllViewed()
+    ui.toast('Done', 'All notifications marked as viewed', 'success')
   } catch {
     ui.toast('Failed', 'Could not mark all read', 'error')
   }
@@ -79,7 +99,7 @@ onMounted(load)
       <Button label="All" size="small" :outlined="filter !== 'all'" @click="filter = 'all'" />
       <Button
         v-if="unreadCount"
-        label="Mark all read"
+        label="Mark all viewed"
         icon="pi pi-check"
         size="small"
         outlined
@@ -94,7 +114,7 @@ onMounted(load)
         type="button"
         class="item"
         :class="{ unread: !n.is_read, [`level-${n.level}`]: true }"
-        @click="markRead(n)"
+        @click="openItem(n)"
       >
         <span class="icon" :class="`cat-${n.category || 'system'}`">
           <i class="pi" :class="catIcon[n.category] || 'pi-bell'" />

@@ -173,7 +173,7 @@
           <input type="hidden" name="theme" value="{{ theme|default:'dark' }}">
         </form>
 
-        <div class="dropdown notif-dropdown">
+        <div class="dropdown notif-dropdown" data-mark-all-url="{% url 'notifications:mark_all_read' %}">
           <button class="btn btn-ghost btn-sm notif-bell-btn position-relative"
                   data-bs-toggle="dropdown"
                   data-bs-auto-close="outside"

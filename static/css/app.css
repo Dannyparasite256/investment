@@ -4954,3 +4954,360 @@ html[data-theme="light"][data-ui-theme="premium"] body::before {
     width: min(100vw - 1rem, 360px) !important;
   }
 }
+
+/* ==========================================================================
+   Support — WhatsApp-style chat shell
+   ========================================================================== */
+
+.wa-shell {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  height: min(72vh, 720px);
+  min-height: 480px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid var(--ci-border, rgba(255, 255, 255, 0.08));
+  background: var(--ci-bg-elevated, rgba(15, 23, 42, 0.55));
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+}
+.wa-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-right: 1px solid var(--ci-border, rgba(255, 255, 255, 0.08));
+  background: rgba(0, 0, 0, 0.18);
+}
+.wa-side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: rgba(17, 27, 33, 0.92);
+  border-bottom: 1px solid var(--ci-border, rgba(255, 255, 255, 0.08));
+}
+.wa-side-title {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+.wa-side-h1 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.wa-brand-dot {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(145deg, #25D366, #128C7E);
+  box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.2);
+}
+.wa-chat-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+.wa-empty-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--ci-muted, #94a3b8);
+}
+.wa-empty-side i {
+  font-size: 1.8rem;
+  opacity: 0.65;
+}
+.wa-chat-row {
+  width: 100%;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.wa-chat-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+}
+.wa-chat-row.active {
+  background: rgba(37, 211, 102, 0.12);
+}
+.wa-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: #fff;
+  background: linear-gradient(145deg, #128C7E, #075E54);
+}
+.wa-avatar-lg {
+  width: 42px;
+  height: 42px;
+}
+.wa-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.wa-row-top,
+.wa-row-bot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.wa-row-top strong {
+  font-size: 0.92rem;
+}
+.wa-time {
+  font-size: 0.72rem;
+  color: var(--ci-muted, #94a3b8);
+  white-space: nowrap;
+}
+.wa-preview {
+  font-size: 0.8rem;
+  color: var(--ci-muted, #94a3b8);
+  flex: 1;
+  min-width: 0;
+}
+.wa-status {
+  transform: scale(0.85);
+  transform-origin: right center;
+}
+.wa-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wa-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background:
+    linear-gradient(180deg, rgba(11, 20, 26, 0.55), rgba(11, 20, 26, 0.75)),
+    radial-gradient(circle at 20% 10%, rgba(37, 211, 102, 0.06), transparent 40%),
+    radial-gradient(circle at 80% 90%, rgba(18, 140, 126, 0.08), transparent 45%);
+}
+.wa-pane-empty {
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+.wa-placeholder-card {
+  max-width: 360px;
+  text-align: center;
+}
+.wa-placeholder-icon {
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(37, 211, 102, 0.12);
+  border: 1px solid rgba(37, 211, 102, 0.25);
+  color: #25D366;
+  font-size: 2rem;
+}
+.wa-placeholder-card h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.3rem;
+  font-weight: 750;
+}
+
+.wa-chat-head {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.9rem;
+  background: rgba(17, 27, 33, 0.95);
+  border-bottom: 1px solid var(--ci-border, rgba(255, 255, 255, 0.08));
+}
+.wa-chat-meta {
+  min-width: 0;
+  flex: 1;
+}
+.wa-chat-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+.wa-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 0;
+}
+.wa-day-pill {
+  align-self: center;
+  margin: 0.35rem 0 0.75rem;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ci-muted, #94a3b8);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.wa-bubble-row {
+  display: flex;
+  width: 100%;
+}
+.wa-bubble-row.mine { justify-content: flex-end; }
+.wa-bubble-row.theirs { justify-content: flex-start; }
+.wa-bubble {
+  max-width: min(78%, 520px);
+  padding: 0.45rem 0.65rem 0.35rem;
+  border-radius: 10px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
+  word-break: break-word;
+}
+.wa-bubble-row.mine .wa-bubble {
+  background: linear-gradient(160deg, #005c4b 0%, #025c4c 100%);
+  color: #e9fef6;
+  border-top-right-radius: 3px;
+}
+.wa-bubble-row.theirs .wa-bubble {
+  background: rgba(32, 44, 51, 0.95);
+  color: #e9edef;
+  border-top-left-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.wa-sender {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #53bdeb;
+  margin-bottom: 0.15rem;
+}
+.wa-text {
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.wa-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.28rem;
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+.wa-meta i { color: #53bdeb; }
+.wa-empty-msgs {
+  text-align: center;
+  margin: auto;
+  padding: 2rem;
+}
+.wa-composer {
+  padding: 0.55rem 0.75rem 0.7rem;
+  background: rgba(17, 27, 33, 0.96);
+  border-top: 1px solid var(--ci-border, rgba(255, 255, 255, 0.08));
+}
+.wa-composer-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.55rem;
+  margin: 0;
+}
+.wa-composer-closed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.wa-input {
+  flex: 1;
+  min-height: 42px;
+  max-height: 120px;
+  resize: none;
+  border: 0 !important;
+  border-radius: 22px !important;
+  padding: 0.7rem 1rem !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: inherit !important;
+  outline: 0;
+  line-height: 1.35;
+}
+.wa-input:focus {
+  box-shadow: 0 0 0 2px rgba(37, 211, 102, 0.25) !important;
+}
+.wa-send {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #25D366 !important;
+  border-color: #25D366 !important;
+}
+.wa-send:hover {
+  background: #1ebe57 !important;
+  border-color: #1ebe57 !important;
+}
+.wa-new-chat .wa-avatar {
+  width: 52px;
+  height: 52px;
+}
+
+[data-theme="light"] .wa-sidebar,
+[data-theme="light"] .wa-side-head,
+[data-theme="light"] .wa-chat-head,
+[data-theme="light"] .wa-composer {
+  background: rgba(240, 242, 245, 0.98);
+}
+[data-theme="light"] .wa-pane {
+  background:
+    linear-gradient(180deg, rgba(230, 236, 232, 0.9), rgba(220, 230, 224, 0.95)),
+    radial-gradient(circle at 20% 10%, rgba(37, 211, 102, 0.08), transparent 40%);
+}
+[data-theme="light"] .wa-bubble-row.theirs .wa-bubble {
+  background: #fff;
+  color: #111;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+[data-theme="light"] .wa-chat-row:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+[data-theme="light"] .wa-chat-row.active {
+  background: rgba(37, 211, 102, 0.14);
+}
+[data-theme="light"] .wa-input {
+  background: #fff !important;
+  color: #0f172a !important;
+}
+
+@media (max-width: 991.98px) {
+  .wa-shell {
+    grid-template-columns: 1fr;
+    height: min(78vh, 720px);
+  }
+  .wa-shell.has-chat .wa-sidebar {
+    display: none !important;
+  }
+  .wa-back {
+    display: inline-flex !important;
+  }
+}

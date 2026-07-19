@@ -1,22 +1,48 @@
 {% extends "base_app.html" %}
-{% block page_title %}Contact support{% endblock %}
+{% block title %}New conversation — Support — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}New conversation{% endblock %}
+{% block page_subtitle %}Start a chat with support{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center"><div class="col-lg-6">
-<div class="glass-card p-4">
-<form method="post">{% csrf_token %}
-  <div class="mb-3"><label class="form-label">Subject</label><input class="form-control" name="subject" required></div>
-  <div class="mb-3"><label class="form-label">Category</label>
-    <select class="form-select" name="category">
-      <option value="general">General</option>
-      <option value="deposit">Deposit</option>
-      <option value="withdrawal">Withdrawal</option>
-      <option value="investment">Investment</option>
-      <option value="kyc">KYC</option>
-      <option value="technical">Technical</option>
-    </select>
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="glass-card p-4 wa-new-chat">
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <span class="wa-avatar wa-avatar-lg">S</span>
+        <div>
+          <div class="fw-bold">CryptoInvest Support</div>
+          <div class="small text-muted">Usually replies within a few hours</div>
+        </div>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">Subject</label>
+          <input class="form-control" name="subject" required placeholder="Brief summary">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Category</label>
+          <select class="form-select" name="category">
+            <option value="general">General</option>
+            <option value="deposit">Deposit</option>
+            <option value="withdrawal">Withdrawal</option>
+            <option value="investment">Investment</option>
+            <option value="kyc">KYC</option>
+            <option value="technical">Technical</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Message</label>
+          <textarea class="form-control" name="body" rows="5" required placeholder="Describe your issue…"></textarea>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="{% url 'support:list' %}" class="btn btn-outline-ci">Cancel</a>
+          <button class="btn btn-ci flex-grow-1" type="submit">
+            <i class="bi bi-send-fill me-1"></i> Start chat
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
-  <div class="mb-3"><label class="form-label">Message</label><textarea class="form-control" name="body" rows="5" required></textarea></div>
-  <button class="btn btn-ci w-100">Submit ticket</button>
-</form>
-</div></div></div>
+</div>
 {% endblock %}

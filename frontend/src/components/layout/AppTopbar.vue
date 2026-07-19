@@ -73,12 +73,37 @@ const notifItems = computed<MenuItem[]>(() => {
   return notifications.value.slice(0, 6).map((n) => ({
     label: n.title,
     icon: n.is_read ? 'pi pi-circle' : 'pi pi-circle-fill',
-    command: () => router.push('/notifications'),
+    command: async () => {
+      if (!n.is_read) {
+        try {
+          await api.markNotificationRead(n.id)
+          n.is_read = true
+        } catch { /* ignore */ }
+      }
+      if (n.link) {
+        if (n.link.startsWith('http')) window.location.href = n.link
+        else router.push(n.link.startsWith('/') ? n.link.replace(/^\/app/, '') || '/' : `/${n.link}`)
+      } else {
+        router.push('/notifications')
+      }
+    },
   })).concat([
     { separator: true },
     { label: 'View all', icon: 'pi pi-arrow-right', command: () => router.push('/notifications') },
   ])
 })
+
+/** Opening the notification menu classifies them as viewed. */
+async function openNotifMenu(e: Event) {
+  notifMenu.value?.toggle(e)
+  if (!unread.value) return
+  try {
+    await api.markAllNotificationsRead()
+    notifications.value.forEach((n) => {
+      n.is_read = true
+    })
+  } catch { /* ignore */ }
+}
 
 onMounted(async () => {
   try {
@@ -150,7 +175,7 @@ onMounted(async () => {
           text
           rounded
           aria-label="Notifications"
-          @click="(e) => notifMenu.toggle(e)"
+          @click="openNotifMenu"
         />
         <Badge v-if="unread" :value="String(unread)" severity="danger" class="badge" />
         <Menu ref="notifMenu" :model="notifItems" popup />

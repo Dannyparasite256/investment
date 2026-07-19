@@ -876,3 +876,50 @@
       window.syncNotifBadges(detail.count);
     }
   });
+
+  /* Opening the bell dropdown marks notifications as viewed */
+  (function notifDropdownAutoView() {
+    var dropdown = document.querySelector('.notif-dropdown');
+    if (!dropdown) return;
+    var markUrl = dropdown.getAttribute('data-mark-all-url');
+    if (!markUrl) return;
+    var csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+    var token = csrf ? csrf.value : (document.cookie.match(/csrftoken=([^;]+)/) || [])[1];
+    var busy = false;
+    dropdown.addEventListener('show.bs.dropdown', function () {
+      if (busy) return;
+      var countEl = document.querySelector('[data-notif-badge]:not(.is-empty)');
+      if (!countEl) return;
+      busy = true;
+      fetch(markUrl, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': token || '',
+          'X-Requested-With': 'XMLHttpRequest',
+          'HX-Request': 'true',
+          'X-Notif-Partial': 'dropdown-open',
+        },
+        credentials: 'same-origin',
+      }).then(function (res) {
+        if (res.ok) {
+          window.syncNotifBadges(0);
+          dropdown.querySelectorAll('.notif-drop-item.is-unread').forEach(function (el) {
+            el.classList.remove('is-unread');
+          });
+          dropdown.querySelectorAll('.notif-dot').forEach(function (el) {
+            el.remove();
+          });
+          var headLeft = dropdown.querySelector('.notif-dropdown-head-left');
+          if (headLeft) {
+            headLeft.querySelectorAll('[data-notif-inline-count]').forEach(function (el) {
+              el.remove();
+            });
+          }
+          var markBtn = dropdown.querySelector('.notif-mark-all-btn');
+          if (markBtn && markBtn.closest('form')) markBtn.closest('form').remove();
+        }
+      }).catch(function () { /* ignore */ }).finally(function () {
+        busy = false;
+      });
+    });
+  })();

@@ -174,8 +174,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'support/:id',
         name: 'support-detail',
-        component: () => import('@/views/SupportDetailView.vue'),
-        meta: { title: 'Ticket' },
+        component: () => import('@/views/SupportView.vue'),
+        meta: { title: 'Support chat' },
       },
       {
         path: 'faq',

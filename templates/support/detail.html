@@ -1,23 +1,105 @@
 {% extends "base_app.html" %}
+{% block title %}{{ ticket.subject }} — Support — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}{{ ticket.subject }}{% endblock %}
+{% block page_subtitle %}Support chat{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center"><div class="col-lg-8">
-<div class="glass-card p-4">
-  <div class="d-flex justify-content-between mb-3">
-    <h5 class="mb-0">{{ ticket.subject }}</h5>
-    <span class="badge badge-status badge-info">{{ ticket.get_status_display }}</span>
-  </div>
-  {% for m in messages_list %}
-  <div class="p-3 mb-2 rounded {% if m.is_staff_reply %}bg-elevated{% else %}border border-ci{% endif %}">
-    <div class="small text-muted mb-1">{% if m.is_staff_reply %}Support{% else %}You{% endif %} · {{ m.created_at|when }}</div>
-    <div>{{ m.body|linebreaksbr }}</div>
-  </div>
-  {% endfor %}
-  {% if ticket.status != 'closed' %}
-  <form method="post" class="mt-3">{% csrf_token %}
-    <textarea class="form-control mb-2" name="body" rows="3" required placeholder="Reply…"></textarea>
-    <button class="btn btn-ci">Send</button>
-  </form>
-  {% endif %}
-</div></div></div>
+<div class="wa-shell has-chat">
+  <aside class="wa-sidebar d-none d-lg-flex">
+    <header class="wa-side-head">
+      <div class="wa-side-title">
+        <span class="wa-brand-dot" aria-hidden="true"></span>
+        <div>
+          <div class="wa-side-h1">Support</div>
+          <div class="small text-muted">Your conversations</div>
+        </div>
+      </div>
+      <a href="{% url 'support:create' %}" class="btn btn-ci btn-sm rounded-pill">
+        <i class="bi bi-plus-lg"></i>
+      </a>
+    </header>
+    <div class="wa-chat-list">
+      {% for t in other_tickets %}
+      <a href="{% url 'support:detail' t.pk %}" class="wa-chat-row {% if t.pk == ticket.pk %}active{% endif %}">
+        <span class="wa-avatar">{{ t.subject|slice:":1"|upper }}</span>
+        <span class="wa-row-body">
+          <span class="wa-row-top">
+            <strong class="wa-truncate">{{ t.subject }}</strong>
+            <span class="wa-time">{{ t.updated_at|when }}</span>
+          </span>
+          <span class="wa-row-bot">
+            <span class="wa-preview wa-truncate">{{ t.get_status_display }} · {{ t.category }}</span>
+          </span>
+        </span>
+      </a>
+      {% empty %}
+      <a href="{% url 'support:list' %}" class="wa-chat-row active">
+        <span class="wa-avatar">{{ ticket.subject|slice:":1"|upper }}</span>
+        <span class="wa-row-body">
+          <span class="wa-row-top"><strong class="wa-truncate">{{ ticket.subject }}</strong></span>
+          <span class="wa-row-bot"><span class="wa-preview">Current chat</span></span>
+        </span>
+      </a>
+      {% endfor %}
+    </div>
+  </aside>
+
+  <section class="wa-pane">
+    <header class="wa-chat-head">
+      <a href="{% url 'support:list' %}" class="btn btn-ghost btn-sm wa-back" aria-label="Back">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <span class="wa-avatar wa-avatar-lg">S</span>
+      <div class="wa-chat-meta">
+        <div class="wa-chat-title wa-truncate">{{ ticket.subject }}</div>
+        <div class="small text-muted">
+          Support · {{ ticket.category }}
+          <span class="badge badge-status badge-info ms-1">{{ ticket.get_status_display }}</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="wa-messages" id="wa-messages">
+      <div class="wa-day-pill">Conversation started · {{ ticket.created_at|when }}</div>
+      {% for m in messages_list %}
+      <div class="wa-bubble-row {% if m.is_staff_reply %}theirs{% else %}mine{% endif %}">
+        <div class="wa-bubble">
+          {% if m.is_staff_reply %}<div class="wa-sender">Support</div>{% endif %}
+          <div class="wa-text">{{ m.body|linebreaksbr }}</div>
+          <div class="wa-meta">
+            <span>{{ m.created_at|when }}</span>
+            {% if not m.is_staff_reply %}<i class="bi bi-check2-all" title="Sent"></i>{% endif %}
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="wa-empty-msgs text-muted">Send a message to start the conversation.</div>
+      {% endfor %}
+    </div>
+
+    {% if ticket.status != 'closed' and ticket.status != 'resolved' %}
+    <footer class="wa-composer">
+      <form method="post" class="wa-composer-form">
+        {% csrf_token %}
+        <textarea name="body" rows="1" required placeholder="Type a message" class="wa-input"></textarea>
+        <button class="btn btn-success rounded-circle wa-send" type="submit" title="Send" aria-label="Send">
+          <i class="bi bi-send-fill"></i>
+        </button>
+      </form>
+    </footer>
+    {% else %}
+    <footer class="wa-composer wa-composer-closed">
+      <span class="text-muted small">This conversation is closed.</span>
+      <a href="{% url 'support:create' %}" class="btn btn-ci btn-sm">New chat</a>
+    </footer>
+    {% endif %}
+  </section>
+</div>
+
+<script>
+(function () {
+  var el = document.getElementById('wa-messages');
+  if (el) el.scrollTop = el.scrollHeight;
+})();
+</script>
 {% endblock %}

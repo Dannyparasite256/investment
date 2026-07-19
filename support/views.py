@@ -9,8 +9,8 @@ from support.models import SupportTicket, TicketMessage
 
 @login_required
 def ticket_list(request):
-    qs = SupportTicket.objects.filter(user=request.user)
-    page = Paginator(qs, 15).get_page(request.GET.get('page'))
+    qs = SupportTicket.objects.filter(user=request.user).prefetch_related('messages')
+    page = Paginator(qs, 30).get_page(request.GET.get('page'))
     return render(request, 'support/list.html', {'page': page})
 
 
@@ -26,7 +26,7 @@ def ticket_create(request):
                 user=request.user, subject=subject, category=category,
             )
             TicketMessage.objects.create(ticket=ticket, sender=request.user, body=body)
-            messages.success(request, 'Support ticket created.')
+            messages.success(request, 'Conversation started.')
             return redirect('support:detail', pk=ticket.pk)
         messages.error(request, 'Subject and message are required.')
     return render(request, 'support/create.html')
@@ -45,7 +45,12 @@ def ticket_detail(request, pk):
                 ticket.save(update_fields=['status', 'updated_at'])
             messages.success(request, 'Message sent.')
             return redirect('support:detail', pk=pk)
+    other_tickets = (
+        SupportTicket.objects.filter(user=request.user)
+        .order_by('-updated_at')[:40]
+    )
     return render(request, 'support/detail.html', {
         'ticket': ticket,
         'messages_list': ticket.messages.select_related('sender'),
+        'other_tickets': other_tickets,
     })
