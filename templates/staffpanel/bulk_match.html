@@ -1,4 +1,5 @@
 {% extends "staffpanel/base.html" %}
+{% load crypto_icons %}
 {% block page_title %}Bulk deposit match{% endblock %}
 {% block page_subtitle %}Paste transaction hashes to find or approve pending deposits{% endblock %}
 
@@ -37,7 +38,7 @@
               <td class="font-mono small">{{ r.line|truncatechars:24 }}</td>
               <td class="font-mono small">{{ r.hash|truncatechars:16 }}</td>
               <td class="small">{% if r.deposit %}{{ r.deposit.user.email }}{% else %}—{% endif %}</td>
-              <td class="font-mono small">{% if r.deposit %}{{ r.deposit.amount|money_trim:8 }} {{ r.deposit.cryptocurrency.symbol }}{% else %}—{% endif %}</td>
+              <td class="font-mono small">{% if r.deposit %}<span class="d-inline-flex align-items-center gap-1">{% crypto_icon r.deposit.cryptocurrency.symbol size="xs" %} {{ r.deposit.amount|money_trim:8 }} {{ r.deposit.cryptocurrency.symbol }}</span>{% else %}—{% endif %}</td>
               <td>
                 {% if r.status == 'matched' %}<span class="badge badge-status badge-info">Matched</span>
                 {% elif r.status == 'approved' %}<span class="badge badge-status badge-success">Approved</span>

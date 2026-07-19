@@ -1,4 +1,5 @@
 {% extends "base_app.html" %}
+{% load crypto_icons %}
 {% block title %}Deposit — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}Crypto deposit{% endblock %}
 {% block page_subtitle %}Amount is in the crypto you select — not USD{% endblock %}
@@ -7,6 +8,7 @@
 <div class="ui-flow-hero glass-card p-3 mb-3">
   {% include "partials/ui_sticker.html" with kind="deposit" size="sm" compact=1 title="Fund your wallet" text="Send crypto, submit the TxID, and we credit after approval." %}
 </div>
+{% include "partials/crypto_asset_strip.html" with cryptos=cryptos strip_subtitle="Select one below when depositing" %}
 <div class="row g-4">
   <div class="col-lg-6">
     <div class="glass-card p-4">
@@ -86,7 +88,7 @@
       <h6 class="small text-muted mb-2">Supported</h6>
       <div class="d-flex flex-wrap gap-2">
         {% for c in cryptos %}
-        <span class="badge badge-status badge-info">{{ c.symbol }}</span>
+        <span class="crypto-asset-chip">{% crypto_icon c.symbol size="sm" %}<strong class="ms-1">{{ c.symbol }}</strong></span>
         {% empty %}
         <span class="text-muted small">No cryptocurrencies configured. Ask admin to add deposit wallets.</span>
         {% endfor %}
@@ -123,6 +125,20 @@
       .replace(/'/g, '&#39;');
   }
 
+  var CRYPTO_COLORS = {
+    BTC: '#F7931A', ETH: '#627EEA', USDT: '#26A17B', USDC: '#2775CA',
+    BNB: '#F3BA2F', LTC: '#345D9D', TRX: '#FF0013', SOL: '#9945FF'
+  };
+  function cryptoBadge(symbol) {
+    var base = String(symbol || '').split(/[_\s/-]/)[0].toUpperCase();
+    var color = CRYPTO_COLORS[base] || '#64748B';
+    var letter = (base.slice(0, 1) || '?');
+    return '<span class="ci-crypto-icon" style="display:inline-flex;align-items:center;justify-content:center;' +
+      'width:28px;height:28px;min-width:28px;border-radius:50%;background:' + color +
+      ';color:#fff;font-weight:800;font-size:13px;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,.35);' +
+      'border:2px solid rgba(255,255,255,.25);vertical-align:middle">' + escapeHtml(letter) + '</span>';
+  }
+
   function renderCrypto(c) {
     if (!c) {
       info.innerHTML = '<p class="text-muted small mb-0">Select a currency to see the deposit wallet address &amp; QR code.</p>';
@@ -132,9 +148,11 @@
     var addr = (c.deposit_address || '').trim();
     var html = '<div class="glass-card p-3 bg-elevated">';
     html += '<div class="d-flex justify-content-between align-items-start mb-2">';
-    html += '<div><div class="fw-semibold">' + escapeHtml(c.name) + '</div>';
-    html += '<div class="small text-muted">Network: <span class="network-badge badge badge-status badge-info">' + escapeHtml(c.network_label || c.network) + '</span></div></div>';
-    html += '<span class="badge badge-status badge-info">' + escapeHtml(c.symbol) + '</span></div>';
+    html += '<div class="d-flex align-items-start gap-2">' + cryptoBadge(c.symbol) + '<div>';
+    html += '<div class="fw-semibold">' + escapeHtml(c.name) + '</div>';
+    html += '<div class="small text-muted">Network: <span class="network-badge badge badge-status badge-info">' + escapeHtml(c.network_label || c.network) + '</span></div></div></div>';
+    html += '<span class="d-inline-flex align-items-center gap-2">' + cryptoBadge(c.symbol) +
+      '<strong>' + escapeHtml(c.symbol) + '</strong></span></div>';
 
     if (c.qr) {
       html += '<div class="text-center mb-3 qr-frame"><img src="' + escapeHtml(c.qr) + '" alt="QR" class="img-fluid rounded" style="max-width:180px;background:#fff;padding:10px"></div>';

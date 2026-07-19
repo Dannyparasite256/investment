@@ -26,7 +26,10 @@
     <div class="col-lg-7">
       <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
         <span class="stat-label mb-0">Available balance</span>
-        <span class="badge badge-status badge-info" data-balance="symbol">{{ available_display.symbol|default:display_currency|default:"USD" }}</span>
+        <span class="d-inline-flex align-items-center gap-1" data-balance="symbol">
+          {% crypto_icon available_display.symbol|default:display_currency|default:"USD" size="sm" %}
+          <span class="badge badge-status badge-info">{{ available_display.symbol|default:display_currency|default:"USD" }}</span>
+        </span>
       </div>
       {% if available_display %}
       <div class="display-5 fw-bold font-mono mb-2">
@@ -94,18 +97,24 @@
   </div>
 </div>
 
+{% url 'transactions:deposit_create' as deposit_create_url %}
+{% include "partials/crypto_asset_strip.html" with cryptos=cryptos strip_link=deposit_create_url strip_link_label="Deposit" strip_subtitle="Icons for every supported network" %}
+
 <div class="row g-3 mb-3">
   <div class="col-lg-8">
     <div class="glass-card p-3 market-pulse d-flex flex-wrap gap-2 align-items-center" id="market-pulse" data-live-prices>
       <span class="small text-muted me-1"><i class="bi bi-broadcast-pin"></i> Live</span>
       <a href="{% url 'markets:overview' %}" class="pulse-chip" data-price-chip="BTC">
-        <span class="pulse-dot"></span>BTC <strong class="font-mono" data-price-val="BTC">${{ market_ticker.prices.BTC|default:"—" }}</strong>
+        {% crypto_icon "BTC" size="sm" %}
+        BTC <strong class="font-mono" data-price-val="BTC">${{ market_ticker.prices.BTC|default:"—" }}</strong>
       </a>
       <a href="{% url 'markets:overview' %}" class="pulse-chip" data-price-chip="ETH">
-        <span class="pulse-dot"></span>ETH <strong class="font-mono" data-price-val="ETH">${{ market_ticker.prices.ETH|default:"—" }}</strong>
+        {% crypto_icon "ETH" size="sm" %}
+        ETH <strong class="font-mono" data-price-val="ETH">${{ market_ticker.prices.ETH|default:"—" }}</strong>
       </a>
       <a href="{% url 'markets:overview' %}" class="pulse-chip" data-price-chip="BNB">
-        <span class="pulse-dot"></span>BNB <strong class="font-mono" data-price-val="BNB">${{ market_ticker.prices.BNB|default:"—" }}</strong>
+        {% crypto_icon "BNB" size="sm" %}
+        BNB <strong class="font-mono" data-price-val="BNB">${{ market_ticker.prices.BNB|default:"—" }}</strong>
       </a>
       <span class="small text-muted d-none d-md-inline" data-price-updated>
         {% if market_ticker.source %}via {{ market_ticker.source }}{% endif %}

@@ -84,6 +84,11 @@ def dashboard(request):
     plans = InvestmentPlan.objects.filter(status=InvestmentPlan.Status.ACTIVE, is_featured=True)[:3]
     addresses = user.wallet_addresses.select_related('cryptocurrency')[:5]
 
+    from wallets.models import Cryptocurrency
+    platform_cryptos = list(
+        Cryptocurrency.objects.filter(is_active=True).order_by('sort_order', 'symbol')[:12]
+    )
+
     # Chart data in display currency so it matches the rest of the UI
     chart_earnings = list(
         Earning.objects.filter(user=user)
@@ -127,6 +132,7 @@ def dashboard(request):
         'notifications': notifications,
         'plans': plans,
         'addresses': addresses,
+        'cryptos': platform_cryptos,
         'chart_labels': json.dumps(chart_labels),
         'chart_values': json.dumps(chart_values),
         'portfolio_labels': json.dumps(portfolio_labels),

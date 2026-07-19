@@ -1,5 +1,5 @@
 {% extends "base_app.html" %}
-{% load static %}
+{% load static crypto_icons %}
 {% block title %}{{ title }} — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}{{ title }}{% endblock %}
 {% block page_subtitle %}Official record · {{ currency_symbol|default:display_currency|default:"USD" }}{% endblock %}
@@ -101,9 +101,15 @@
           </div>
           {% endif %}
           {% elif kind == 'deposit' and deposit %}
-          <div class="receipt-amount">{{ deposit.amount|money_trim:8 }} {{ deposit.cryptocurrency.symbol }}</div>
+          <div class="receipt-amount d-flex align-items-center justify-content-center gap-2 flex-wrap">
+            {% crypto_icon deposit.cryptocurrency.symbol size="lg" %}
+            {{ deposit.amount|money_trim:8 }} {{ deposit.cryptocurrency.symbol }}
+          </div>
           {% elif kind == 'withdrawal' and withdrawal %}
-          <div class="receipt-amount">{{ withdrawal.amount|money_trim:8 }}</div>
+          <div class="receipt-amount d-flex align-items-center justify-content-center gap-2 flex-wrap">
+            {% crypto_icon withdrawal.cryptocurrency.symbol size="lg" %}
+            {{ withdrawal.amount|money_trim:8 }}
+          </div>
           {% endif %}
         </div>
       </div>
@@ -114,15 +120,20 @@
           <td class="text-muted">{{ label }}</td>
           <td class="text-end {% if label == 'Receipt ID' or label == 'Tx hash' or label == 'Transaction hash' or label == 'Wallet address' or label == 'Address' or label == 'Reference' %}font-mono small{% elif label == 'Amount' or label == 'Fee' or label == 'Net amount' or label == 'Platform value' or label == 'Crypto amount' or label == 'You entered' %}font-mono{% endif %}"
               style="{% if label == 'Tx hash' or label == 'Transaction hash' or label == 'Wallet address' or label == 'Address' %}word-break:break-all{% endif %}">
-            {% if label == 'Date' or label == 'Submitted' %}{{ value|when:"full" }}{% else %}{{ value }}{% endif %}
+            {% if label == 'Date' or label == 'Submitted' %}{{ value|when:"full" }}
+            {% elif label == 'Asset' or label == 'Cryptocurrency' or label == 'Network' or label == 'Currency' %}
+              <span class="d-inline-flex align-items-center gap-1 justify-content-end">{% crypto_icon value size="xs" %} {{ value }}</span>
+            {% else %}{{ value }}{% endif %}
           </td>
         </tr>
         {% empty %}
         {% if kind == 'deposit' and deposit %}
         <tr><td class="text-muted">Receipt ID</td><td class="font-mono text-end small">{{ deposit.id }}</td></tr>
+        <tr><td class="text-muted">Asset</td><td class="text-end">{% crypto_label deposit.cryptocurrency.symbol size="sm" %}</td></tr>
         <tr><td class="text-muted">Amount</td><td class="font-mono text-end">{{ deposit.amount|money_trim:8 }} {{ deposit.cryptocurrency.symbol }}</td></tr>
         {% elif kind == 'withdrawal' and withdrawal %}
         <tr><td class="text-muted">Receipt ID</td><td class="font-mono text-end small">{{ withdrawal.id }}</td></tr>
+        <tr><td class="text-muted">Asset</td><td class="text-end">{% crypto_label withdrawal.cryptocurrency.symbol size="sm" %}</td></tr>
         <tr><td class="text-muted">Amount</td><td class="font-mono text-end">{{ withdrawal.amount|money_trim:8 }}</td></tr>
         {% endif %}
         {% endfor %}

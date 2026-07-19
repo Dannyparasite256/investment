@@ -109,11 +109,16 @@
     <div class="glass-card p-3">
       <h6 class="mb-2">Platform deposit wallets</h6>
       {% for c in cryptos %}
-      <div class="small mb-2">
-        <strong>{{ c.symbol }}</strong>
-        <span class="text-muted">({{ c.network }})</span>
-        <div class="font-mono text-muted">{{ c.deposit_address|default:"—" }}</div>
+      <div class="small mb-2 d-flex align-items-start gap-2">
+        {% crypto_icon c.symbol size="md" %}
+        <div>
+          <strong>{{ c.symbol }}</strong>
+          <span class="text-muted">({{ c.network }})</span>
+          <div class="font-mono text-muted">{{ c.deposit_address|default:"—" }}</div>
+        </div>
       </div>
+      {% empty %}
+      <p class="text-muted small mb-0">No deposit wallets configured.</p>
       {% endfor %}
     </div>
   </div>

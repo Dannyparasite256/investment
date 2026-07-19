@@ -118,6 +118,11 @@ def dashboard(request):
     annotate_withdrawals(recent_withdrawals, use_user_pref=True)
     recent_activity = AdminActivityLog.objects.select_related('admin')[:10]
 
+    from wallets.models import Cryptocurrency
+    platform_cryptos = list(
+        Cryptocurrency.objects.filter(is_active=True).order_by('sort_order', 'symbol')[:12]
+    )
+
     return render(request, 'staffpanel/dashboard.html', {
         'stats': stats,
         'chart_labels': json.dumps(chart_labels),
@@ -126,6 +131,7 @@ def dashboard(request):
         'recent_deposits': recent_deposits,
         'recent_withdrawals': recent_withdrawals,
         'recent_activity': recent_activity,
+        'cryptos': platform_cryptos,
     })
 
 

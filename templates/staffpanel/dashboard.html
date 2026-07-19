@@ -4,6 +4,9 @@
 {% block page_title %}Operations dashboard{% endblock %}
 
 {% block content %}
+{% url 'staffpanel:cryptos' as staff_cryptos_url %}
+{% include "partials/crypto_asset_strip.html" with cryptos=cryptos strip_link=staff_cryptos_url strip_link_label="Manage wallets" strip_subtitle="Platform supported assets" %}
+
 <div class="row g-3 mb-4">
   <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Pending deposits</div><div class="stat-value">{{ stats.deposits_pending }}</div><small class="text-muted font-mono">{{ stats.deposits_pending_sum }}</small></div></div>
   <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Pending withdrawals</div><div class="stat-value">{{ stats.withdrawals_pending }}</div><small class="text-muted font-mono">{{ stats.withdrawals_pending_sum }}</small></div></div>
@@ -42,20 +45,19 @@
       <div class="p-3 border-bottom border-ci d-flex justify-content-between"><h6 class="mb-0">Recent deposits</h6><a href="{% url 'staffpanel:deposits' %}" class="small">All</a></div>
       <div class="table-responsive">
         <table class="table table-ci mb-0">
-          <thead><tr><th>User</th><th>Amount</th><th>Status</th></tr></thead>
+          <thead><tr><th>User</th><th>Asset</th><th>Amount</th><th>Status</th></tr></thead>
           <tbody>
             {% for d in recent_deposits %}
             <tr>
               <td class="small">{{ d.user.email|truncatechars:22 }}</td>
+              <td>{% crypto_label d.cryptocurrency.symbol size="sm" %}</td>
               <td class="font-mono small">
-                <div class="d-flex align-items-center gap-2 mb-1">{% crypto_icon d.cryptocurrency.symbol size="xs" %}
-                  {% if d.amount_display %}{{ d.amount_display.label }}{% else %}{{ d.amount|money_trim:8 }} {{ d.cryptocurrency.symbol }}{% endif %}
-                </div>
+                {% if d.amount_display %}{{ d.amount_display.label }}{% else %}{{ d.amount|money_trim:8 }} {{ d.cryptocurrency.symbol }}{% endif %}
                 {% if d.crypto_label %}<div class="text-muted" style="font-size:0.7rem">{{ d.crypto_label }}</div>{% endif %}
               </td>
               <td><span class="badge badge-status badge-{{ d.status }}">{{ d.get_status_display }}</span></td>
             </tr>
-            {% empty %}<tr><td colspan="3" class="text-muted text-center py-3">None</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="4" class="text-muted text-center py-3">None</td></tr>{% endfor %}
           </tbody>
         </table>
       </div>
@@ -66,21 +68,19 @@
       <div class="p-3 border-bottom border-ci d-flex justify-content-between"><h6 class="mb-0">Recent withdrawals</h6><a href="{% url 'staffpanel:withdrawals' %}" class="small">All</a></div>
       <div class="table-responsive">
         <table class="table table-ci mb-0">
-          <thead><tr><th>User</th><th>Amount</th><th>Status</th></tr></thead>
+          <thead><tr><th>User</th><th>Asset</th><th>Amount</th><th>Status</th></tr></thead>
           <tbody>
             {% for w in recent_withdrawals %}
             <tr>
               <td class="small">{{ w.user.email|truncatechars:22 }}</td>
+              <td>{% crypto_label w.cryptocurrency.symbol size="sm" %}</td>
               <td class="font-mono small">
-                <div class="d-flex align-items-center gap-2 mb-1">
-                  {% crypto_icon w.cryptocurrency.symbol size="xs" %}
-                  {% if w.amount_display %}{{ w.amount_display.label }}{% else %}{{ w.amount|money:2 }}{% endif %}
-                </div>
+                {% if w.amount_display %}{{ w.amount_display.label }}{% else %}{{ w.amount|money:2 }}{% endif %}
                 {% if w.platform_label %}<div class="text-muted" style="font-size:0.7rem">{{ w.platform_label }}</div>{% endif %}
               </td>
               <td><span class="badge badge-status badge-{{ w.status }}">{{ w.get_status_display }}</span></td>
             </tr>
-            {% empty %}<tr><td colspan="3" class="text-muted text-center py-3">None</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="4" class="text-muted text-center py-3">None</td></tr>{% endfor %}
           </tbody>
         </table>
       </div>

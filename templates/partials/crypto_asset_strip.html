@@ -1,0 +1,34 @@
+{% load crypto_icons %}
+{# Reusable strip of supported cryptos. Pass: cryptos (queryset/list), optional strip_link, strip_link_label #}
+<div class="glass-card p-3 mb-3 crypto-asset-strip">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <div>
+      <strong class="d-block">Crypto assets</strong>
+      <span class="small text-muted">{{ strip_subtitle|default:"Supported deposit networks" }}</span>
+    </div>
+    {% if strip_link %}
+    <a href="{{ strip_link }}" class="btn btn-ghost btn-sm">{{ strip_link_label|default:"View" }}</a>
+    {% endif %}
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if cryptos %}
+      {% for c in cryptos %}
+      <span class="crypto-asset-chip">
+        {% crypto_icon c.symbol size="md" %}
+        <span class="crypto-asset-chip-text">
+          <strong>{{ c.symbol }}</strong>
+          {% if c.network %}
+          <small class="text-muted d-block">{{ c.get_network_display|default:c.network }}</small>
+          {% endif %}
+        </span>
+      </span>
+      {% endfor %}
+    {% else %}
+      <span class="crypto-asset-chip">{% crypto_icon "BTC" size="md" %}<span class="crypto-asset-chip-text"><strong>BTC</strong></span></span>
+      <span class="crypto-asset-chip">{% crypto_icon "ETH" size="md" %}<span class="crypto-asset-chip-text"><strong>ETH</strong></span></span>
+      <span class="crypto-asset-chip">{% crypto_icon "USDT" size="md" %}<span class="crypto-asset-chip-text"><strong>USDT</strong></span></span>
+      <span class="crypto-asset-chip">{% crypto_icon "BNB" size="md" %}<span class="crypto-asset-chip-text"><strong>BNB</strong></span></span>
+      <span class="crypto-asset-chip">{% crypto_icon "LTC" size="md" %}<span class="crypto-asset-chip-text"><strong>LTC</strong></span></span>
+    {% endif %}
+  </div>
+</div>
