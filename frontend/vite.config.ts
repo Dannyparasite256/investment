@@ -33,6 +33,8 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
+        // Load push/notificationclick handlers for VAPID web push (served from dist root)
+        importScripts: ['push-handler.js'],
       },
     }),
   ],

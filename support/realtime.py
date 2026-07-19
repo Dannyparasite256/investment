@@ -289,6 +289,87 @@ def message_payload(msg) -> dict:
     }
 
 
+def _preview_body(msg, max_len: int = 140) -> str:
+    body = (getattr(msg, 'body', None) or '').strip()
+    if not body or body == '(attachment)':
+        if getattr(msg, 'attachment', None):
+            return '📎 Attachment'
+        return 'New message'
+    body = ' '.join(body.split())
+    if len(body) > max_len:
+        return body[: max_len - 1] + '…'
+    return body
+
+
+def _staff_notification_recipients(ticket, exclude_user_id=None):
+    """Assigned agent if set; otherwise all staff-panel users."""
+    from django.contrib.auth import get_user_model
+    from django.db.models import Q
+
+    User = get_user_model()
+    if ticket.assigned_to_id and ticket.assigned_to_id != exclude_user_id:
+        u = User.objects.filter(pk=ticket.assigned_to_id, is_active=True).first()
+        return [u] if u else []
+
+    qs = User.objects.filter(is_active=True).filter(
+        Q(is_staff=True)
+        | Q(is_superuser=True)
+        | Q(role__in=['support', 'manager', 'admin']),
+    )
+    if exclude_user_id:
+        qs = qs.exclude(pk=exclude_user_id)
+    return list(qs[:40])
+
+
+def notify_chat_parties(ticket, msg) -> None:
+    """
+    In-app (+ optional browser push) when support or customer sends a message.
+    - Staff reply → notify the ticket customer
+    - Customer message / new ticket → notify assigned agent or all staff
+    """
+    from notifications.models import Notification, notify
+
+    preview = _preview_body(msg)
+    tid = str(ticket.id)
+
+    if msg.is_staff_reply:
+        # Don't spam if customer is actively viewing this chat (still mark for badge later optional)
+        # Always create inbox item so they see it in the bell even after leaving.
+        if ticket.user_id and ticket.user_id != msg.sender_id:
+            notify(
+                ticket.user,
+                'Support replied',
+                preview if preview else f'Re: {ticket.subject}',
+                level=Notification.Level.INFO,
+                category=Notification.Category.SUPPORT,
+                link=f'/app/support/{tid}',
+                ticket_id=tid,
+                message_id=str(msg.id),
+            )
+        return
+
+    # Customer → staff
+    who = ''
+    try:
+        who = ticket.user.get_full_name() or ticket.user.email
+    except Exception:
+        who = 'Customer'
+    title = f'New support message · {ticket.subject[:60]}'
+    body = f'{who}: {preview}'
+    link = f'/app/admin/tickets/{tid}'
+    for agent in _staff_notification_recipients(ticket, exclude_user_id=msg.sender_id):
+        notify(
+            agent,
+            title,
+            body,
+            level=Notification.Level.INFO,
+            category=Notification.Category.SUPPORT,
+            link=link,
+            ticket_id=tid,
+            message_id=str(msg.id),
+        )
+
+
 def notify_new_message(ticket, msg) -> None:
     from support.models import SupportTicket
 
@@ -316,6 +397,14 @@ def notify_new_message(ticket, msg) -> None:
     broadcast_ticket(ticket.id, payload)
     broadcast_user(ticket.user_id, payload)
     broadcast_staff(payload)
+
+    # Bell + browser push for the other party
+    try:
+        notify_chat_parties(ticket, msg)
+    except Exception:
+        # Never fail the chat send path because of notifications
+        import logging
+        logging.getLogger('support').exception('notify_chat_parties failed')
 
 
 def notify_receipts(ticket_id, message_ids: list, status: str, at_iso: str) -> None:

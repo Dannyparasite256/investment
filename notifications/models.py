@@ -26,6 +26,7 @@ class Notification(UUIDModel, TimeStampedModel):
         SECURITY = 'security', 'Security'
         REFERRAL = 'referral', 'Referral'
         ANNOUNCEMENT = 'announcement', 'Announcement'
+        SUPPORT = 'support', 'Support'
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications',
@@ -80,6 +81,64 @@ def push_notification_ws(user_id, payload):
         logger.debug('WS push skipped: %s', exc)
 
 
+def send_web_push(user, title: str, body: str, url: str = '') -> int:
+    """
+    Browser Web Push for devices that subscribed (Profile → Enable push).
+    Requires VAPID keys + pywebpush. Silently no-ops when not configured.
+    """
+    from django.conf import settings
+
+    public = getattr(settings, 'VAPID_PUBLIC_KEY', '') or ''
+    private = getattr(settings, 'VAPID_PRIVATE_KEY', '') or ''
+    if not public or not private:
+        return 0
+    try:
+        from pywebpush import webpush, WebPushException
+    except ImportError:
+        logger.debug('pywebpush not installed — skip web push')
+        return 0
+
+    try:
+        from core.platform_models import PushSubscription
+    except Exception:
+        return 0
+
+    import json
+
+    sent = 0
+    payload = json.dumps({
+        'title': title[:120],
+        'body': (body or '')[:200],
+        'url': url or '/app/notifications',
+        'tag': f'ci-{(url or "notif")[:80]}',
+    })
+    claims = {
+        'sub': getattr(settings, 'VAPID_ADMIN_EMAIL', None) or 'mailto:admin@localhost',
+    }
+    for sub in PushSubscription.objects.filter(user=user, is_active=True)[:20]:
+        if not sub.endpoint or not sub.p256dh or not sub.auth:
+            continue
+        try:
+            webpush(
+                subscription_info={
+                    'endpoint': sub.endpoint,
+                    'keys': {'p256dh': sub.p256dh, 'auth': sub.auth},
+                },
+                data=payload,
+                vapid_private_key=private,
+                vapid_claims=claims,
+            )
+            sent += 1
+        except Exception as exc:
+            # Gone / unsubscribed → deactivate
+            status = getattr(getattr(exc, 'response', None), 'status_code', None)
+            if status in (404, 410):
+                PushSubscription.objects.filter(pk=sub.pk).update(is_active=False)
+            else:
+                logger.debug('Web push failed for %s: %s', user.pk, exc)
+    return sent
+
+
 def notify(user, title, message, level=Notification.Level.INFO, category=Notification.Category.SYSTEM, link='', **meta):
     n = Notification.objects.create(
         user=user,
@@ -90,5 +149,10 @@ def notify(user, title, message, level=Notification.Level.INFO, category=Notific
         link=link,
         metadata=meta or {},
     )
-    push_notification_ws(user.pk, n.to_payload())
+    payload = n.to_payload()
+    push_notification_ws(user.pk, payload)
+    try:
+        send_web_push(user, title, message, url=link or '/app/notifications')
+    except Exception as exc:
+        logger.debug('Web push outer skip: %s', exc)
     return n

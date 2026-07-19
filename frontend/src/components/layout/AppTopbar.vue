@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Badge from 'primevue/badge'
@@ -17,6 +17,7 @@ import CryptoIcon from '@/components/ui/CryptoIcon.vue'
 
 /** Always-visible sample icons (proves badges render even if a page has no crypto list). */
 const tickerIcons = ['BTC', 'ETH', 'USDT', 'BNB', 'LTC']
+const POLL_MS = 12000
 
 const route = useRoute()
 const router = useRouter()
@@ -28,6 +29,9 @@ const currency = useCurrencyStore()
 const profileMenu = ref()
 const notifMenu = ref()
 const notifications = ref<AppNotification[]>([])
+const knownIds = ref<Set<string>>(new Set())
+let pollTimer: ReturnType<typeof setInterval> | null = null
+let firstPoll = true
 
 const title = computed(() => (route.meta.title as string) || 'Dashboard')
 const available = computed(() =>
@@ -109,14 +113,70 @@ async function openNotifMenu(e: Event) {
   } catch { /* ignore */ }
 }
 
+function notifPath(link?: string): string | null {
+  if (!link) return null
+  if (link.startsWith('http')) return null
+  return link.startsWith('/') ? link.replace(/^\/app/, '') || '/' : `/${link}`
+}
+
+function showDesktopNotification(n: AppNotification) {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+  // Prefer when tab is in background; still allow support pings in foreground
+  try {
+    const note = new Notification(n.title, {
+      body: n.message,
+      tag: `ci-notif-${n.id}`,
+      icon: '/app/favicon.svg',
+    })
+    note.onclick = () => {
+      window.focus()
+      const path = notifPath(n.link)
+      if (path) router.push(path)
+      note.close()
+    }
+  } catch { /* ignore */ }
+}
+
+function announceNew(n: AppNotification) {
+  const isSupport = (n.category || '').toLowerCase() === 'support'
+  const severity = isSupport ? 'info' : n.level === 'danger' ? 'error' : n.level === 'warning' ? 'warn' : 'info'
+  ui.toast(n.title, n.message, severity as any)
+  if (isSupport || document.hidden) showDesktopNotification(n)
+}
+
+async function loadNotifications(opts?: { silent?: boolean }) {
+  try {
+    const { data } = await api.notifications()
+    const list = unwrapList(data) as AppNotification[]
+    if (!firstPoll && !opts?.silent) {
+      for (const n of list) {
+        if (!knownIds.value.has(n.id) && !n.is_read) {
+          announceNew(n)
+        }
+      }
+    }
+    knownIds.value = new Set(list.map((n) => n.id))
+    notifications.value = list
+    firstPoll = false
+  } catch { /* ignore */ }
+}
+
 onMounted(async () => {
   try {
     await currency.init()
   } catch { /* ignore */ }
-  try {
-    const { data } = await api.notifications()
-    notifications.value = unwrapList(data)
-  } catch { /* ignore */ }
+  await loadNotifications({ silent: true })
+  pollTimer = setInterval(() => loadNotifications(), POLL_MS)
+  document.addEventListener('visibilitychange', onVisibility)
+})
+
+function onVisibility() {
+  if (document.visibilityState === 'visible') loadNotifications({ silent: true })
+}
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
+  document.removeEventListener('visibilitychange', onVisibility)
 })
 </script>
 

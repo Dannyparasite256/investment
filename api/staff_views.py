@@ -597,8 +597,5 @@ class StaffTicketDetailView(APIView):
         t.status = SupportTicket.Status.WAITING
         t.save(update_fields=['status', 'updated_at'])
         notify_new_message(t, msg)
-        notify(
-            t.user, 'Support reply', f'Re: {t.subject}',
-            category=Notification.Category.SYSTEM, link=f'/app/support/{t.id}',
-        )
+        # Customer inbox + push handled inside notify_new_message → notify_chat_parties
         return Response(self._msg_dict(msg), status=201)

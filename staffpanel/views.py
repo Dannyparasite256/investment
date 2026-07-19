@@ -1006,10 +1006,7 @@ def ticket_detail(request, pk):
             ticket.assigned_to = request.user
             ticket.save(update_fields=['status', 'assigned_to', 'updated_at'])
             notify_new_message(ticket, msg)
-            notify(
-                ticket.user, 'Support reply', f'Re: {ticket.subject}',
-                category=Notification.Category.SYSTEM, link=f'/app/support/{ticket.id}',
-            )
+            # Customer inbox + push handled inside notify_new_message → notify_chat_parties
             if wants_json:
                 from support.views import _msg_json
                 return JsonResponse({
