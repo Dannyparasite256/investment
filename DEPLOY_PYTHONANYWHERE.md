@@ -6,6 +6,39 @@ Replace `investment256` with **your** PythonAnywhere username if different.
 
 ---
 
+## Vue SPA (no npm on PythonAnywhere)
+
+Free PythonAnywhere **does not include npm**. Do **not** run `npm install` on the server.
+
+The built files are already in the repo at `frontend/dist/` (built with base path `/app/`).
+
+After `git pull`, just confirm:
+
+```bash
+ls ~/investment/frontend/dist/index.html
+```
+
+Then open:
+
+`https://YOUR_USERNAME.pythonanywhere.com/app/`
+
+Classic Django UI stays at `/` and `/dashboard/`.
+
+If you change the Vue app later, rebuild on your PC:
+
+```powershell
+cd frontend
+$env:VITE_BASE="/app/"
+npm run build
+git add frontend/dist
+git commit -m "Update Vue production build"
+git push
+```
+
+Then on PythonAnywhere only: `git pull` + Reload.
+
+---
+
 ## 1. Create account
 
 1. Sign up / log in: https://www.pythonanywhere.com  

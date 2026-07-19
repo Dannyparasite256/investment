@@ -1,6 +1,6 @@
 # Frontend
 frontend/node_modules/
-frontend/dist/
+# Track frontend/dist so PythonAnywhere can deploy without npm
 
 # Python
 __pycache__/
