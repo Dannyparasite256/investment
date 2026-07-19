@@ -560,7 +560,7 @@ onUnmounted(() => chat.leave())
               rows="1"
               placeholder="Type a reply as support…"
               @keydown="onKeydown"
-              @input="chat.onComposerInput()"
+              @input="body.trim() ? chat.onComposerInput() : chat.sendTyping(false)"
             />
             <Button
               icon="pi pi-send"

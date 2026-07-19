@@ -125,18 +125,29 @@
       .replace(/'/g, '&#39;');
   }
 
+  var CRYPTO_LOGOS = {
+    BTC: 'btc', ETH: 'eth', USDT: 'usdt', USDC: 'usdc',
+    BNB: 'bnb', LTC: 'ltc', TRX: 'trx', SOL: 'sol', DOGE: 'doge'
+  };
   var CRYPTO_COLORS = {
     BTC: '#F7931A', ETH: '#627EEA', USDT: '#26A17B', USDC: '#2775CA',
     BNB: '#F3BA2F', LTC: '#345D9D', TRX: '#FF0013', SOL: '#9945FF'
   };
   function cryptoBadge(symbol) {
     var base = String(symbol || '').split(/[_\s/-]/)[0].toUpperCase();
+    var slug = CRYPTO_LOGOS[base];
     var color = CRYPTO_COLORS[base] || '#64748B';
     var letter = (base.slice(0, 1) || '?');
-    return '<span class="ci-crypto-icon" style="display:inline-flex;align-items:center;justify-content:center;' +
-      'width:28px;height:28px;min-width:28px;border-radius:50%;background:' + color +
-      ';color:#fff;font-weight:800;font-size:13px;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,.35);' +
-      'border:2px solid rgba(255,255,255,.25);vertical-align:middle">' + escapeHtml(letter) + '</span>';
+    var box = 'display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;' +
+      'min-width:28px;border-radius:50%;overflow:hidden;vertical-align:middle;box-sizing:border-box;' +
+      'box-shadow:0 2px 6px rgba(0,0,0,.35);border:1.5px solid rgba(255,255,255,.2);';
+    if (slug) {
+      return '<span class="ci-crypto-icon" style="' + box + 'background:#fff">' +
+        '<img src="/static/img/crypto/' + slug + '.svg" alt="' + escapeHtml(base) +
+        '" width="28" height="28" style="width:100%;height:100%;object-fit:cover;display:block" /></span>';
+    }
+    return '<span class="ci-crypto-icon" style="' + box + 'background:' + color +
+      ';color:#fff;font-weight:800;font-size:13px;line-height:1">' + escapeHtml(letter) + '</span>';
   }
 
   function renderCrypto(c) {

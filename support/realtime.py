@@ -12,7 +12,8 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.utils import timezone
 
-TYPING_TTL = 6
+# Short TTL so sticky typing cannot linger when stop events are missed
+TYPING_TTL = 3
 PRESENCE_TTL = 45
 
 
@@ -47,6 +48,11 @@ def _is_fresh(dt, seconds: int) -> bool:
 def set_typing(ticket_id, user, *, is_typing: bool, is_staff: bool = False) -> None:
     from support.models import SupportTicket
 
+    # Coerce so "false"/0 never sticky-true
+    is_typing = bool(is_typing) if not isinstance(is_typing, str) else str(is_typing).strip().lower() in (
+        '1', 'true', 'yes', 'on',
+    )
+
     field = 'staff_typing_at' if is_staff else 'user_typing_at'
     value = timezone.now() if is_typing else None
     updates = {field: value}
@@ -65,7 +71,7 @@ def set_typing(ticket_id, user, *, is_typing: bool, is_staff: bool = False) -> N
         'user_id': user.pk,
         'name': name if not is_staff else 'Support',
         'is_staff': is_staff,
-        'is_typing': is_typing,
+        'is_typing': bool(is_typing),
     })
 
 
@@ -265,6 +271,16 @@ def notify_new_message(ticket, msg) -> None:
         SupportTicket.objects.filter(pk=ticket.pk).update(staff_typing_at=None)
     else:
         SupportTicket.objects.filter(pk=ticket.pk).update(user_typing_at=None)
+
+    # Explicit typing-stop so peer UI does not stick after a message
+    broadcast_ticket(ticket.id, {
+        'type': 'typing',
+        'ticket_id': str(ticket.id),
+        'user_id': msg.sender_id,
+        'name': 'Support' if msg.is_staff_reply else (msg.sender.get_full_name() or msg.sender.email),
+        'is_staff': bool(msg.is_staff_reply),
+        'is_typing': False,
+    })
 
     payload = {
         'type': 'message',

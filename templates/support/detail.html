@@ -259,7 +259,7 @@
       .then(function (data) {
         (data.messages || []).forEach(appendMsg);
         applyReceipts(data.receipts || []);
-        var typing = data.typing || [];
+        var typing = (data.typing || []).filter(function (t) { return t && t.is_staff; });
         if (typingRow) {
           typingRow.classList.toggle('d-none', !typing.length);
           if (typing.length) scrollBottom();
@@ -270,6 +270,8 @@
             statusLine.innerHTML = '<span class="text-success fw-semibold">' + who + ' is typing…</span>';
           } else if (data.presence && data.presence.staff_online) {
             statusLine.innerHTML = '<span class="text-success">online</span>';
+          } else {
+            statusLine.textContent = 'support chat';
           }
         }
       })
@@ -294,7 +296,7 @@
       typingTimer = setTimeout(function () {
         sendTyping(false);
         if (typingPulse) { clearInterval(typingPulse); typingPulse = null; }
-      }, 2000);
+      }, 1500);
     });
   }
 

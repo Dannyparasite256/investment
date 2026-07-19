@@ -232,15 +232,19 @@
     post('poll').then(function (data) {
       (data.messages || []).forEach(appendMsg);
       applyReceipts(data.receipts || []);
-      var typing = data.typing || [];
+      var typing = (data.typing || []).filter(function (t) { return t && !t.is_staff; });
       if (typingRow) {
         typingRow.classList.toggle('d-none', !typing.length);
         if (typing.length) scrollBottom();
       }
-      if (statusLine && typing.length) {
-        statusLine.innerHTML = '<span class="text-success fw-semibold">Customer is typing…</span>';
-      } else if (statusLine && data.presence && data.presence.user_online) {
-        statusLine.innerHTML = '<span class="text-success">online</span> · customer';
+      if (statusLine) {
+        if (typing.length) {
+          statusLine.innerHTML = '<span class="text-success fw-semibold">Customer is typing…</span>';
+        } else if (data.presence && data.presence.user_online) {
+          statusLine.innerHTML = '<span class="text-success">online</span> · customer';
+        } else {
+          statusLine.textContent = 'customer chat';
+        }
       }
     }).catch(function () {});
   }
@@ -255,7 +259,7 @@
       typingTimer = setTimeout(function () {
         sendTyping(false);
         if (typingPulse) { clearInterval(typingPulse); typingPulse = null; }
-      }, 2000);
+      }, 1500);
     });
   }
   if (form) {

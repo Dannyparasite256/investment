@@ -12,6 +12,9 @@ import type {
   TicketMessage,
 } from '@/types/api'
 
+/** How long peer typing may show without a fresh event (ms). */
+const PEER_TYPING_MAX_MS = 3500
+
 export function receiptOf(m: TicketMessage): ReceiptStatus {
   if (m._pending) return 'pending'
   if (m._failed) return 'sent'
@@ -25,6 +28,11 @@ function wsUrl(token: string | null): string {
   const host = window.location.host
   const q = token ? `?token=${encodeURIComponent(token)}` : ''
   return `${proto}://${host}/ws/support/${q}`
+}
+
+function sameUser(a: unknown, b: unknown): boolean {
+  if (a == null || b == null) return false
+  return String(a) === String(b)
 }
 
 export function useSupportChat(options: {
@@ -43,12 +51,15 @@ export function useSupportChat(options: {
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null
   let typingTimer: ReturnType<typeof setTimeout> | null = null
   let typingPulse: ReturnType<typeof setInterval> | null = null
+  let peerTypingExpiry: ReturnType<typeof setTimeout> | null = null
   let lastTypingSent = false
   let activeTicketId: string | null = null
   let sinceIso: string | null = null
   let destroyed = false
   let messagesRef: Ref<TicketMessage[]> | null = null
   let pollInFlight = false
+  /** Last time we received a positive peer-typing signal (ws or poll). */
+  let peerTypingSeenAt = 0
 
   function setMessagesRef(r: Ref<TicketMessage[]>) {
     messagesRef = r
@@ -113,15 +124,53 @@ export function useSupportChat(options: {
     })
   }
 
-  function updateTyping(list: ChatTyper[]) {
-    typing.value = list || []
-    if (!list?.length) {
-      peerTypingText.value = ''
+  /** Keep only the peer side (customer never sees own typing; staff never sees own). */
+  function filterPeerTypers(list: ChatTyper[] | null | undefined): ChatTyper[] {
+    if (!list?.length) return []
+    const me = auth.user?.id
+    return list.filter((t) => {
+      if (!t) return false
+      if (sameUser(t.user_id, me)) return false
+      // Customer UI: only staff typers
+      if (!options.isStaff && !t.is_staff) return false
+      // Staff UI: only customer typers
+      if (options.isStaff && t.is_staff) return false
+      return true
+    })
+  }
+
+  function clearPeerTyping() {
+    typing.value = []
+    peerTypingText.value = ''
+    peerTypingSeenAt = 0
+    if (peerTypingExpiry) {
+      clearTimeout(peerTypingExpiry)
+      peerTypingExpiry = null
+    }
+  }
+
+  function schedulePeerTypingExpiry() {
+    if (peerTypingExpiry) clearTimeout(peerTypingExpiry)
+    peerTypingExpiry = setTimeout(() => {
+      // Auto-hide if no fresh signal (missed typing:false or stale poll)
+      if (Date.now() - peerTypingSeenAt >= PEER_TYPING_MAX_MS - 50) {
+        clearPeerTyping()
+      }
+    }, PEER_TYPING_MAX_MS)
+  }
+
+  function updateTyping(list: ChatTyper[] | null | undefined) {
+    const peers = filterPeerTypers(list)
+    if (!peers.length) {
+      clearPeerTyping()
       return
     }
-    const names = list.map((t) => (t.is_staff ? 'Support' : t.name || 'Customer'))
+    typing.value = peers
+    peerTypingSeenAt = Date.now()
+    const names = peers.map((t) => (t.is_staff ? 'Support' : t.name || 'Customer'))
     peerTypingText.value =
       names.length === 1 ? `${names[0]} is typing…` : `${names.join(', ')} are typing…`
+    schedulePeerTypingExpiry()
   }
 
   function handleEvent(data: any) {
@@ -129,20 +178,28 @@ export function useSupportChat(options: {
     if (data.type === 'message' && data.message) {
       if (!activeTicketId || String(data.ticket_id) === String(activeTicketId)) {
         mergeMessage(data.message)
+        // Incoming message implies peer stopped composing
+        if (data.message.is_staff_reply !== !!options.isStaff) {
+          clearPeerTyping()
+        }
       }
     } else if (data.type === 'typing') {
       if (String(data.ticket_id) !== String(activeTicketId)) return
-      if (data.user_id === auth.user?.id) return
-      if (data.is_typing) {
+      if (sameUser(data.user_id, auth.user?.id)) return
+      // Role filter: only care about peer side
+      if (options.isStaff && data.is_staff) return
+      if (!options.isStaff && !data.is_staff) return
+      if (data.is_typing === true || data.is_typing === 'true' || data.is_typing === 1) {
         updateTyping([
           {
             user_id: data.user_id,
             name: data.name,
-            is_staff: data.is_staff,
+            is_staff: !!data.is_staff,
           },
         ])
       } else {
-        updateTyping([])
+        // Explicit stop
+        clearPeerTyping()
       }
     } else if (data.type === 'presence') {
       if (String(data.ticket_id) !== String(activeTicketId)) return
@@ -153,6 +210,8 @@ export function useSupportChat(options: {
           staff_name: data.name || presence.value.staff_name,
           staff_last_seen: data.at,
         }
+        // Peer left chat → clear typing
+        if (!data.online && !options.isStaff) clearPeerTyping()
       } else {
         presence.value = {
           ...presence.value,
@@ -160,6 +219,7 @@ export function useSupportChat(options: {
           user_name: data.name || presence.value.user_name,
           user_last_seen: data.at,
         }
+        if (!data.online && options.isStaff) clearPeerTyping()
       }
     } else if (data.type === 'receipts') {
       if (String(data.ticket_id) !== String(activeTicketId)) return
@@ -191,6 +251,7 @@ export function useSupportChat(options: {
         const payload = data as any
         for (const m of payload.messages || []) mergeMessage(m)
         applyReceipts(payload.receipts || [])
+        // Poll is source of truth for typing — empty list clears sticky UI
         updateTyping(payload.typing || [])
         presence.value = payload.presence || presence.value
       } else {
@@ -213,7 +274,6 @@ export function useSupportChat(options: {
     stopPoll()
     if (mode.value === 'idle') mode.value = 'poll'
     pollOnce()
-    // Fast poll so typing appears within ~1s
     pollTimer = setInterval(pollOnce, 1200)
   }
 
@@ -228,7 +288,6 @@ export function useSupportChat(options: {
       mode.value = 'ws'
       connected.value = true
       ws?.send(JSON.stringify({ action: 'join', ticket_id: activeTicketId }))
-      // Keep HTTP poll running — WS alone is unreliable on multi-worker hosts
       if (heartbeatTimer) clearInterval(heartbeatTimer)
       heartbeatTimer = setInterval(() => {
         if (ws?.readyState === WebSocket.OPEN) {
@@ -259,7 +318,7 @@ export function useSupportChat(options: {
     setMessagesRef(messages)
     const list = messages.value || []
     sinceIso = list.length ? list[list.length - 1].created_at : null
-    // Poll is primary; WS is optional
+    clearPeerTyping()
     startPoll()
     connectWs()
     window.addEventListener('pagehide', onPageHide)
@@ -267,7 +326,6 @@ export function useSupportChat(options: {
   }
 
   function notifyLeave(ticketId: string) {
-    // Prefer sendBeacon so leave still fires on tab close / navigation
     try {
       const token = auth.token
       const headers: Record<string, string> = {
@@ -283,9 +341,6 @@ export function useSupportChat(options: {
 
       if (options.isStaff) {
         const body = JSON.stringify({ action: 'leave' })
-        if (navigator.sendBeacon) {
-          // sendBeacon can't set auth headers easily — fall through to fetch keepalive
-        }
         fetch(`/api/v1/staff/tickets/${ticketId}/`, {
           method: 'POST',
           body,
@@ -310,6 +365,7 @@ export function useSupportChat(options: {
     window.removeEventListener('pagehide', onPageHide)
     window.removeEventListener('beforeunload', onPageHide)
     if (typingTimer) clearTimeout(typingTimer)
+    typingTimer = null
     if (typingPulse) {
       clearInterval(typingPulse)
       typingPulse = null
@@ -337,21 +393,24 @@ export function useSupportChat(options: {
     }
     activeTicketId = null
     mode.value = 'idle'
-    typing.value = []
-    peerTypingText.value = ''
+    clearPeerTyping()
     presence.value = {}
   }
 
   function sendTyping(isTyping: boolean) {
     if (!activeTicketId) return
+    // Avoid spamming identical state
+    if (lastTypingSent === isTyping && isTyping) {
+      // still refresh server TTL when pulse says keep-alive
+    }
     lastTypingSent = isTyping
     if (ws?.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ action: 'typing', is_typing: isTyping }))
+      ws.send(JSON.stringify({ action: 'typing', is_typing: !!isTyping }))
     }
     if (options.isStaff) {
-      api.staffTicketAction(activeTicketId, { action: 'typing', is_typing: isTyping }).catch(() => {})
+      api.staffTicketAction(activeTicketId, { action: 'typing', is_typing: !!isTyping }).catch(() => {})
     } else {
-      api.supportTyping(activeTicketId, isTyping).catch(() => {})
+      api.supportTyping(activeTicketId, !!isTyping).catch(() => {})
     }
   }
 
@@ -360,19 +419,19 @@ export function useSupportChat(options: {
     if (!activeTicketId) return
     sendTyping(true)
     if (typingTimer) clearTimeout(typingTimer)
-    // Refresh TTL every 2s while still typing
     if (!typingPulse) {
       typingPulse = setInterval(() => {
         if (lastTypingSent) sendTyping(true)
-      }, 2500)
+      }, 2000)
     }
+    // Idle → stop typing quickly so peer UI does not stick
     typingTimer = setTimeout(() => {
       sendTyping(false)
       if (typingPulse) {
         clearInterval(typingPulse)
         typingPulse = null
       }
-    }, 2000)
+    }, 1500)
   }
 
   function markRead() {
@@ -406,5 +465,6 @@ export function useSupportChat(options: {
     mergeMessage,
     receiptOf,
     pollOnce,
+    clearPeerTyping,
   }
 }

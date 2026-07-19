@@ -303,7 +303,9 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 function onInput() {
-  chat.onComposerInput()
+  // Only signal typing when there is actual text
+  if (body.value.trim()) chat.onComposerInput()
+  else chat.sendTyping(false)
 }
 
 watch(
