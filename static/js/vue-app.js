@@ -202,22 +202,23 @@
           start();
         }
 
+        var mo = null;
         onMounted(function () {
           window.addEventListener('scroll', onScroll, { passive: true });
           onScroll();
           document.addEventListener('click', onNavClick, true);
           window.addEventListener('pageshow', stop);
-          // Observe theme changes from other controls
-          var mo = new MutationObserver(function () {
+          mo = new MutationObserver(function () {
             colorMode.value = document.documentElement.getAttribute('data-theme') || 'dark';
             uiTheme.value = document.documentElement.getAttribute('data-ui-theme') || 'classic';
           });
           mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-ui-theme'] });
-          onBeforeUnmount(function () {
-            window.removeEventListener('scroll', onScroll);
-            document.removeEventListener('click', onNavClick, true);
-            mo.disconnect();
-          });
+        });
+        onBeforeUnmount(function () {
+          window.removeEventListener('scroll', onScroll);
+          document.removeEventListener('click', onNavClick, true);
+          window.removeEventListener('pageshow', stop);
+          if (mo) mo.disconnect();
         });
 
         return {
