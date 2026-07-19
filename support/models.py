@@ -31,6 +31,11 @@ class SupportTicket(UUIDModel, TimeStampedModel):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         null=True, blank=True, related_name='assigned_tickets',
     )
+    # Cross-process realtime flags (works without Redis on PythonAnywhere)
+    user_typing_at = models.DateTimeField(null=True, blank=True)
+    staff_typing_at = models.DateTimeField(null=True, blank=True)
+    user_last_seen_at = models.DateTimeField(null=True, blank=True)
+    staff_last_seen_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-updated_at', '-created_at']

@@ -1,7 +1,8 @@
 {% extends "staffpanel/base.html" %}
 {% block page_title %}{{ ticket.subject }} — Support{% endblock %}
 {% block content %}
-<div class="wa-shell has-chat">
+<div class="wa-shell has-chat" id="wa-chat-root"
+     data-send-url="{% url 'staffpanel:ticket_detail' ticket.pk %}">
   <aside class="wa-sidebar d-none d-lg-flex">
     <header class="wa-side-head">
       <div class="wa-side-title">
@@ -43,7 +44,7 @@
       </span>
       <div class="wa-chat-meta">
         <div class="wa-chat-title wa-truncate">{{ ticket.user.get_full_name|default:ticket.user.email }}</div>
-        <div class="small text-muted">
+        <div class="small text-muted" id="wa-status-line">
           {% if presence.user_online %}<span class="text-success">online</span> · {% endif %}
           {{ ticket.user.email }} · {{ ticket.subject }}
           <span class="badge badge-status badge-info ms-1">{{ ticket.get_status_display }}</span>
@@ -63,7 +64,7 @@
     <div class="wa-messages" id="wa-messages">
       <div class="wa-day-pill">Conversation started · {{ ticket.created_at|when }}</div>
       {% for m in messages_list %}
-      <div class="wa-bubble-row {% if m.is_staff_reply %}mine{% else %}theirs{% endif %}">
+      <div class="wa-bubble-row {% if m.is_staff_reply %}mine{% else %}theirs{% endif %}" data-msg-id="{{ m.id }}">
         <div class="wa-bubble" {% if m.is_staff_reply %}style="background:linear-gradient(160deg,#1d4ed8,#1e40af);color:#eef2ff;border-top-right-radius:3px"{% endif %}>
           <div class="wa-sender">{% if m.is_staff_reply %}You (support){% else %}{{ m.sender.get_full_name|default:m.sender.email }}{% endif %}</div>
           <div class="wa-text">{{ m.body|linebreaksbr }}</div>
@@ -82,15 +83,20 @@
         </div>
       </div>
       {% empty %}
-      <div class="wa-empty-msgs text-muted">No messages yet.</div>
+      <div class="wa-empty-msgs text-muted" id="wa-empty">No messages yet.</div>
       {% endfor %}
+      <div class="wa-bubble-row theirs d-none" id="wa-typing-row">
+        <div class="wa-bubble wa-typing-bubble">
+          <span class="wa-dot"></span><span class="wa-dot"></span><span class="wa-dot"></span>
+        </div>
+      </div>
     </div>
 
     <footer class="wa-composer">
-      <form method="post" class="wa-composer-form">
+      <form class="wa-composer-form" id="wa-send-form">
         {% csrf_token %}
-        <textarea name="body" rows="1" required placeholder="Type a reply as support…" class="wa-input"></textarea>
-        <button class="btn btn-primary rounded-circle wa-send" type="submit" style="background:#3B82F6;border-color:#3B82F6" title="Send" aria-label="Send">
+        <textarea name="body" rows="1" required placeholder="Type a reply as support…" class="wa-input" id="wa-input"></textarea>
+        <button class="btn btn-primary rounded-circle wa-send" type="submit" style="background:#3B82F6;border-color:#3B82F6" title="Send" aria-label="Send" id="wa-send-btn">
           <i class="bi bi-send-fill"></i>
         </button>
       </form>
@@ -111,11 +117,167 @@
 .wa-ticks .wa-tick-2 { left: 0.28rem; }
 .wa-ticks-read { color: #53bdeb !important; }
 .wa-chat-row.active { background: rgba(59, 130, 246, 0.14) !important; }
+.wa-typing-bubble {
+  display: flex !important;
+  gap: 4px;
+  align-items: center;
+  padding: 0.7rem 0.95rem !important;
+}
+.wa-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #94a3b8;
+  animation: waBounce 1.2s ease-in-out infinite;
+}
+.wa-dot:nth-child(2) { animation-delay: 0.15s; }
+.wa-dot:nth-child(3) { animation-delay: 0.3s; }
+@keyframes waBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+#wa-send-btn:disabled { opacity: 0.6; }
 </style>
 <script>
 (function () {
-  var el = document.getElementById('wa-messages');
-  if (el) el.scrollTop = el.scrollHeight;
+  var root = document.getElementById('wa-chat-root');
+  if (!root) return;
+  var sendUrl = root.getAttribute('data-send-url');
+  var messagesEl = document.getElementById('wa-messages');
+  var typingRow = document.getElementById('wa-typing-row');
+  var statusLine = document.getElementById('wa-status-line');
+  var input = document.getElementById('wa-input');
+  var form = document.getElementById('wa-send-form');
+  var sendBtn = document.getElementById('wa-send-btn');
+  var csrf = (document.querySelector('#wa-send-form [name=csrfmiddlewaretoken]') || {}).value || '';
+  var seen = {};
+  var typingTimer = null;
+  var typingPulse = null;
+  var sending = false;
+
+  document.querySelectorAll('[data-msg-id]').forEach(function (el) {
+    seen[el.getAttribute('data-msg-id')] = true;
+  });
+  function scrollBottom() { if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight; }
+  scrollBottom();
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function ticksHtml(status) {
+    if (status === 'read' || status === 'delivered') {
+      var cls = status === 'read' ? 'wa-ticks-read' : '';
+      return '<span class="wa-ticks ' + cls + '"><i class="bi bi-check2"></i><i class="bi bi-check2 wa-tick-2"></i></span>';
+    }
+    return '<span class="wa-ticks"><i class="bi bi-check2"></i></span>';
+  }
+  function appendMsg(m) {
+    if (!m || !m.id || seen[m.id]) return;
+    seen[m.id] = true;
+    var empty = document.getElementById('wa-empty');
+    if (empty) empty.remove();
+    var mine = !!m.is_staff_reply;
+    var row = document.createElement('div');
+    row.className = 'wa-bubble-row ' + (mine ? 'mine' : 'theirs');
+    row.setAttribute('data-msg-id', m.id);
+    var style = mine ? ' style="background:linear-gradient(160deg,#1d4ed8,#1e40af);color:#eef2ff;border-top-right-radius:3px"' : '';
+    var sender = mine ? 'You (support)' : (m.sender_name || 'Customer');
+    var body = escapeHtml(m.body || '').replace(/\n/g, '<br>');
+    var ticks = mine ? ticksHtml(m.receipt_status || 'sent') : '';
+    row.innerHTML = '<div class="wa-bubble"' + style + '><div class="wa-sender">' + escapeHtml(sender) +
+      '</div><div class="wa-text">' + body + '</div><div class="wa-meta"><span>now</span>' + ticks + '</div></div>';
+    if (typingRow && typingRow.parentNode === messagesEl) messagesEl.insertBefore(row, typingRow);
+    else messagesEl.appendChild(row);
+    scrollBottom();
+  }
+  function applyReceipts(list) {
+    (list || []).forEach(function (r) {
+      var el = document.querySelector('[data-msg-id="' + r.id + '"] .wa-ticks');
+      if (el) el.outerHTML = ticksHtml(r.receipt_status || 'sent');
+    });
+  }
+  function post(action, extra) {
+    var fd = new FormData();
+    fd.append('csrfmiddlewaretoken', csrf);
+    fd.append('action', action);
+    if (extra) Object.keys(extra).forEach(function (k) { fd.append(k, extra[k]); });
+    return fetch(sendUrl, {
+      method: 'POST', body: fd, credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    }).then(function (r) { return r.json(); });
+  }
+  function poll() {
+    post('poll').then(function (data) {
+      (data.messages || []).forEach(appendMsg);
+      applyReceipts(data.receipts || []);
+      var typing = data.typing || [];
+      if (typingRow) {
+        typingRow.classList.toggle('d-none', !typing.length);
+        if (typing.length) scrollBottom();
+      }
+      if (statusLine && typing.length) {
+        statusLine.innerHTML = '<span class="text-success fw-semibold">Customer is typing…</span>';
+      } else if (statusLine && data.presence && data.presence.user_online) {
+        statusLine.innerHTML = '<span class="text-success">online</span> · customer';
+      }
+    }).catch(function () {});
+  }
+  function sendTyping(on) {
+    post('typing', { is_typing: on ? '1' : '0' }).catch(function () {});
+  }
+  if (input) {
+    input.addEventListener('input', function () {
+      sendTyping(true);
+      if (typingTimer) clearTimeout(typingTimer);
+      if (!typingPulse) typingPulse = setInterval(function () { sendTyping(true); }, 2500);
+      typingTimer = setTimeout(function () {
+        sendTyping(false);
+        if (typingPulse) { clearInterval(typingPulse); typingPulse = null; }
+      }, 2000);
+    });
+  }
+  if (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (sending || !input || !input.value.trim()) return;
+      var text = input.value.trim();
+      input.value = '';
+      sendTyping(false);
+      if (typingPulse) { clearInterval(typingPulse); typingPulse = null; }
+      sending = true;
+      if (sendBtn) sendBtn.disabled = true;
+      var tempId = 'tmp-' + Date.now();
+      appendMsg({ id: tempId, body: text, is_staff_reply: true, receipt_status: 'sent' });
+      var fd = new FormData();
+      fd.append('csrfmiddlewaretoken', csrf);
+      fd.append('body', text);
+      fetch(sendUrl, {
+        method: 'POST', body: fd, credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+      })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (res.ok && res.j.message) {
+            var tempEl = document.querySelector('[data-msg-id="' + tempId + '"]');
+            if (tempEl) { delete seen[tempId]; tempEl.remove(); }
+            appendMsg(res.j.message);
+          } else {
+            alert((res.j && res.j.detail) || 'Could not send');
+          }
+        })
+        .catch(function () { alert('Could not send'); })
+        .finally(function () {
+          sending = false;
+          if (sendBtn) sendBtn.disabled = false;
+          if (input) input.focus();
+        });
+    });
+    input && input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      }
+    });
+  }
+  setInterval(poll, 1200);
+  poll();
 })();
 </script>
 {% endblock %}

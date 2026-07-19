@@ -56,22 +56,49 @@ def ticket_create(request):
     return render(request, 'support/create.html')
 
 
+def _msg_json(m):
+    return {
+        'id': str(m.id),
+        'body': m.body,
+        'is_staff_reply': m.is_staff_reply,
+        'created_at': m.created_at.isoformat() if m.created_at else None,
+        'delivered_at': m.delivered_at.isoformat() if m.delivered_at else None,
+        'read_at': m.read_at.isoformat() if m.read_at else None,
+        'receipt_status': m.receipt_status,
+        'sender_name': m.sender.get_full_name() or m.sender.email,
+    }
+
+
 @login_required
 @require_http_methods(['GET', 'POST'])
 def ticket_detail(request, pk):
     ticket = get_object_or_404(SupportTicket, pk=pk, user=request.user)
     if request.method == 'POST':
         body = request.POST.get('body', '').strip()
-        if body and ticket.status not in (SupportTicket.Status.CLOSED, SupportTicket.Status.RESOLVED):
-            msg = TicketMessage.objects.create(ticket=ticket, sender=request.user, body=body)
-            if ticket.status == SupportTicket.Status.WAITING:
-                ticket.status = SupportTicket.Status.OPEN
-                ticket.save(update_fields=['status', 'updated_at'])
-            else:
-                ticket.save(update_fields=['updated_at'])
-            notify_new_message(ticket, msg)
-            messages.success(request, 'Message sent.')
+        wants_json = (
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or 'application/json' in (request.headers.get('Accept') or '')
+        )
+        if not body:
+            if wants_json:
+                return JsonResponse({'detail': 'Message required'}, status=400)
+            messages.error(request, 'Message required.')
             return redirect('support:detail', pk=pk)
+        if ticket.status in (SupportTicket.Status.CLOSED, SupportTicket.Status.RESOLVED):
+            if wants_json:
+                return JsonResponse({'detail': 'Conversation closed'}, status=400)
+            return redirect('support:detail', pk=pk)
+        msg = TicketMessage.objects.create(ticket=ticket, sender=request.user, body=body)
+        if ticket.status == SupportTicket.Status.WAITING:
+            ticket.status = SupportTicket.Status.OPEN
+            ticket.save(update_fields=['status', 'updated_at'])
+        else:
+            ticket.save(update_fields=['updated_at'])
+        notify_new_message(ticket, msg)
+        if wants_json:
+            return JsonResponse({'ok': True, 'message': _msg_json(msg)})
+        messages.success(request, 'Message sent.')
+        return redirect('support:detail', pk=pk)
     set_presence(ticket.id, request.user, is_staff=False)
     _mark_staff_messages_read(ticket, request.user)
     other_tickets = (

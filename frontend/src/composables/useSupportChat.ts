@@ -1,6 +1,6 @@
 /**
- * Realtime support chat: WebSocket when available, HTTP poll fallback.
- * Handles typing, presence, and delivery/read receipt merges.
+ * Realtime support chat: HTTP poll is always the source of truth
+ * (works on PythonAnywhere). WebSocket is optional bonus.
  */
 import { onUnmounted, ref, type Ref } from 'vue'
 import { api } from '@/services/api'
@@ -42,24 +42,25 @@ export function useSupportChat(options: {
   let pollTimer: ReturnType<typeof setInterval> | null = null
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null
   let typingTimer: ReturnType<typeof setTimeout> | null = null
+  let typingPulse: ReturnType<typeof setInterval> | null = null
   let lastTypingSent = false
   let activeTicketId: string | null = null
   let sinceIso: string | null = null
   let destroyed = false
   let messagesRef: Ref<TicketMessage[]> | null = null
+  let pollInFlight = false
 
   function setMessagesRef(r: Ref<TicketMessage[]>) {
     messagesRef = r
   }
 
   function mergeMessage(m: TicketMessage) {
-    if (!messagesRef) return
+    if (!messagesRef || !m?.id) return
     const list = messagesRef.value
-    const idx = list.findIndex((x) => x.id === m.id)
+    const idx = list.findIndex((x) => String(x.id) === String(m.id))
     if (idx >= 0) {
       list[idx] = { ...list[idx], ...m, _pending: false, _failed: false }
     } else {
-      // Drop matching optimistic pending by body
       const pendingIdx = list.findIndex(
         (x) => x._pending && x.body === m.body && !!x.is_staff_reply === !!m.is_staff_reply,
       )
@@ -75,9 +76,9 @@ export function useSupportChat(options: {
 
   function applyReceipts(receipts: TicketMessage[]) {
     if (!messagesRef || !receipts?.length) return
-    const map = new Map(receipts.map((r) => [r.id, r]))
+    const map = new Map(receipts.map((r) => [String(r.id), r]))
     messagesRef.value = messagesRef.value.map((m) => {
-      const r = map.get(m.id)
+      const r = map.get(String(m.id))
       if (!r) return m
       return {
         ...m,
@@ -118,7 +119,7 @@ export function useSupportChat(options: {
       peerTypingText.value = ''
       return
     }
-    const names = list.map((t) => (t.is_staff ? 'Support' : t.name || 'User'))
+    const names = list.map((t) => (t.is_staff ? 'Support' : t.name || 'Customer'))
     peerTypingText.value =
       names.length === 1 ? `${names[0]} is typing…` : `${names.join(', ')} are typing…`
   }
@@ -176,42 +177,44 @@ export function useSupportChat(options: {
       clearInterval(pollTimer)
       pollTimer = null
     }
-    if (heartbeatTimer) {
-      clearInterval(heartbeatTimer)
-      heartbeatTimer = null
+  }
+
+  async function pollOnce() {
+    if (!activeTicketId || destroyed || pollInFlight) return
+    pollInFlight = true
+    try {
+      if (options.isStaff) {
+        const { data } = await api.staffTicketAction(activeTicketId, {
+          action: 'poll',
+          since: sinceIso || undefined,
+        })
+        const payload = data as any
+        for (const m of payload.messages || []) mergeMessage(m)
+        applyReceipts(payload.receipts || [])
+        updateTyping(payload.typing || [])
+        presence.value = payload.presence || presence.value
+      } else {
+        const { data } = await api.supportPoll(activeTicketId, sinceIso || undefined)
+        for (const m of data.messages || []) mergeMessage(m)
+        applyReceipts(data.receipts || [])
+        updateTyping(data.typing || [])
+        presence.value = data.presence || presence.value
+      }
+      connected.value = true
+      if (mode.value !== 'ws') mode.value = 'poll'
+    } catch {
+      connected.value = false
+    } finally {
+      pollInFlight = false
     }
   }
 
   function startPoll() {
     stopPoll()
-    mode.value = 'poll'
-    const tick = async () => {
-      if (!activeTicketId || destroyed) return
-      try {
-        if (options.isStaff) {
-          const { data } = await api.staffTicketAction(activeTicketId, {
-            action: 'poll',
-            since: sinceIso || undefined,
-          })
-          const payload = data as any
-          for (const m of payload.messages || []) mergeMessage(m)
-          applyReceipts(payload.receipts || [])
-          updateTyping(payload.typing || [])
-          presence.value = payload.presence || presence.value
-        } else {
-          const { data } = await api.supportPoll(activeTicketId, sinceIso || undefined)
-          for (const m of data.messages || []) mergeMessage(m)
-          applyReceipts(data.receipts || [])
-          updateTyping(data.typing || [])
-          presence.value = data.presence || presence.value
-        }
-        connected.value = true
-      } catch {
-        connected.value = false
-      }
-    }
-    tick()
-    pollTimer = setInterval(tick, 2500)
+    if (mode.value === 'idle') mode.value = 'poll'
+    pollOnce()
+    // Fast poll so typing appears within ~1s
+    pollTimer = setInterval(pollOnce, 1200)
   }
 
   function connectWs() {
@@ -219,27 +222,14 @@ export function useSupportChat(options: {
     try {
       ws = new WebSocket(wsUrl(auth.token))
     } catch {
-      startPoll()
       return
     }
-    let opened = false
-    const failTimer = setTimeout(() => {
-      if (!opened) {
-        try {
-          ws?.close()
-        } catch { /* */ }
-        startPoll()
-      }
-    }, 2500)
-
     ws.onopen = () => {
-      opened = true
-      clearTimeout(failTimer)
       mode.value = 'ws'
       connected.value = true
       ws?.send(JSON.stringify({ action: 'join', ticket_id: activeTicketId }))
-      stopPoll()
-      // Light poll still for receipt safety if channel layer is in-memory multi-worker
+      // Keep HTTP poll running — WS alone is unreliable on multi-worker hosts
+      if (heartbeatTimer) clearInterval(heartbeatTimer)
       heartbeatTimer = setInterval(() => {
         if (ws?.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ action: 'heartbeat' }))
@@ -252,15 +242,9 @@ export function useSupportChat(options: {
         handleEvent(JSON.parse(ev.data))
       } catch { /* */ }
     }
-    ws.onerror = () => {
-      /* onclose handles fallback */
-    }
+    ws.onerror = () => { /* poll covers us */ }
     ws.onclose = () => {
-      connected.value = false
-      if (!destroyed && activeTicketId && mode.value === 'ws') {
-        // fall back to polling
-        startPoll()
-      }
+      if (mode.value === 'ws') mode.value = 'poll'
     }
   }
 
@@ -270,23 +254,27 @@ export function useSupportChat(options: {
     activeTicketId = ticketId
     setMessagesRef(messages)
     const list = messages.value || []
-    if (list.length) {
-      sinceIso = list[list.length - 1].created_at
-    } else {
-      sinceIso = null
-    }
-    connectWs()
-    // Always run poll as reliable baseline (WS may not work on PA)
+    sinceIso = list.length ? list[list.length - 1].created_at : null
+    // Poll is primary; WS is optional
     startPoll()
+    connectWs()
   }
 
   function leave() {
     if (typingTimer) clearTimeout(typingTimer)
+    if (typingPulse) {
+      clearInterval(typingPulse)
+      typingPulse = null
+    }
     if (lastTypingSent && activeTicketId) {
       sendTyping(false)
     }
     lastTypingSent = false
     stopPoll()
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer)
+      heartbeatTimer = null
+    }
     if (ws) {
       try {
         if (ws.readyState === WebSocket.OPEN) {
@@ -305,9 +293,6 @@ export function useSupportChat(options: {
 
   function sendTyping(isTyping: boolean) {
     if (!activeTicketId) return
-    if (isTyping === lastTypingSent && isTyping) {
-      // refresh TTL
-    }
     lastTypingSent = isTyping
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ action: 'typing', is_typing: isTyping }))
@@ -319,10 +304,24 @@ export function useSupportChat(options: {
     }
   }
 
+  /** Call on every keystroke — keeps typing flag alive while composing. */
   function onComposerInput() {
+    if (!activeTicketId) return
     sendTyping(true)
     if (typingTimer) clearTimeout(typingTimer)
-    typingTimer = setTimeout(() => sendTyping(false), 1800)
+    // Refresh TTL every 2s while still typing
+    if (!typingPulse) {
+      typingPulse = setInterval(() => {
+        if (lastTypingSent) sendTyping(true)
+      }, 2500)
+    }
+    typingTimer = setTimeout(() => {
+      sendTyping(false)
+      if (typingPulse) {
+        clearInterval(typingPulse)
+        typingPulse = null
+      }
+    }, 2000)
   }
 
   function markRead() {
@@ -355,5 +354,6 @@ export function useSupportChat(options: {
     markRead,
     mergeMessage,
     receiptOf,
+    pollOnce,
   }
 }

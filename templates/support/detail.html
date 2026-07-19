@@ -7,7 +7,8 @@
 <div class="wa-shell has-chat" id="wa-chat-root"
      data-ticket-id="{{ ticket.pk }}"
      data-poll-url="{% url 'support:poll' ticket.pk %}"
-     data-typing-url="{% url 'support:typing' ticket.pk %}">
+     data-typing-url="{% url 'support:typing' ticket.pk %}"
+     data-send-url="{% url 'support:detail' ticket.pk %}">
   <aside class="wa-sidebar d-none d-lg-flex">
     <header class="wa-side-head">
       <div class="wa-side-title">
@@ -56,7 +57,7 @@
       <div class="wa-chat-meta">
         <div class="wa-chat-title wa-truncate">{{ ticket.subject }}</div>
         <div class="small text-muted" id="wa-status-line">
-          {% if presence.staff_online %}online{% else %}Support · {{ ticket.category }}{% endif %}
+          {% if presence.staff_online %}<span class="text-success">online</span>{% else %}Support · {{ ticket.category }}{% endif %}
           <span class="badge badge-status badge-info ms-1">{{ ticket.get_status_display }}</span>
         </div>
       </div>
@@ -74,9 +75,7 @@
             <span>{{ m.created_at|when }}</span>
             {% if not m.is_staff_reply %}
             <span class="wa-ticks wa-ticks-{{ m.receipt_status }}" title="{{ m.receipt_status }}" data-receipt="{{ m.receipt_status }}">
-              {% if m.receipt_status == 'read' %}
-              <i class="bi bi-check2"></i><i class="bi bi-check2 wa-tick-2"></i>
-              {% elif m.receipt_status == 'delivered' %}
+              {% if m.receipt_status == 'read' or m.receipt_status == 'delivered' %}
               <i class="bi bi-check2"></i><i class="bi bi-check2 wa-tick-2"></i>
               {% else %}
               <i class="bi bi-check2"></i>
@@ -87,7 +86,7 @@
         </div>
       </div>
       {% empty %}
-      <div class="wa-empty-msgs text-muted">Send a message to start the conversation.</div>
+      <div class="wa-empty-msgs text-muted" id="wa-empty">Send a message to start the conversation.</div>
       {% endfor %}
       <div class="wa-bubble-row theirs d-none" id="wa-typing-row">
         <div class="wa-bubble wa-typing-bubble">
@@ -98,10 +97,10 @@
 
     {% if ticket.status != 'closed' and ticket.status != 'resolved' %}
     <footer class="wa-composer">
-      <form method="post" class="wa-composer-form" id="wa-send-form">
+      <form class="wa-composer-form" id="wa-send-form">
         {% csrf_token %}
         <textarea name="body" rows="1" required placeholder="Type a message" class="wa-input" id="wa-input"></textarea>
-        <button class="btn btn-success rounded-circle wa-send" type="submit" title="Send" aria-label="Send">
+        <button class="btn btn-success rounded-circle wa-send" type="submit" title="Send" aria-label="Send" id="wa-send-btn">
           <i class="bi bi-send-fill"></i>
         </button>
       </form>
@@ -144,6 +143,7 @@
   30% { transform: translateY(-4px); opacity: 1; }
 }
 #wa-live-pill { font-size: 0.7rem; font-weight: 700; }
+#wa-send-btn:disabled { opacity: 0.6; }
 </style>
 
 <script>
@@ -152,13 +152,18 @@
   if (!root) return;
   var pollUrl = root.getAttribute('data-poll-url');
   var typingUrl = root.getAttribute('data-typing-url');
+  var sendUrl = root.getAttribute('data-send-url');
   var messagesEl = document.getElementById('wa-messages');
   var typingRow = document.getElementById('wa-typing-row');
   var statusLine = document.getElementById('wa-status-line');
   var input = document.getElementById('wa-input');
+  var form = document.getElementById('wa-send-form');
+  var sendBtn = document.getElementById('wa-send-btn');
   var csrf = (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
   var seen = {};
   var typingTimer = null;
+  var typingPulse = null;
+  var sending = false;
 
   document.querySelectorAll('[data-msg-id]').forEach(function (el) {
     seen[el.getAttribute('data-msg-id')] = true;
@@ -186,17 +191,25 @@
   function appendMsg(m) {
     if (!m || !m.id || seen[m.id]) return;
     seen[m.id] = true;
+    var empty = document.getElementById('wa-empty');
+    if (empty) empty.remove();
     var mine = !m.is_staff_reply;
     var row = document.createElement('div');
     row.className = 'wa-bubble-row ' + (mine ? 'mine' : 'theirs');
     row.setAttribute('data-msg-id', m.id);
     var body = escapeHtml(m.body || '').replace(/\n/g, '<br>');
     var ticks = mine ? ticksHtml(m.receipt_status || 'sent') : '';
+    var time = 'now';
+    if (m.created_at) {
+      try {
+        time = new Date(m.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+      } catch (e) {}
+    }
     row.innerHTML =
       '<div class="wa-bubble">' +
       (m.is_staff_reply ? '<div class="wa-sender">Support</div>' : '') +
       '<div class="wa-text">' + body + '</div>' +
-      '<div class="wa-meta"><span>now</span>' + ticks + '</div></div>';
+      '<div class="wa-meta"><span>' + time + '</span>' + ticks + '</div></div>';
     if (typingRow && typingRow.parentNode === messagesEl) {
       messagesEl.insertBefore(row, typingRow);
     } else {
@@ -226,7 +239,8 @@
         }
         if (statusLine) {
           if (typing.length) {
-            statusLine.innerHTML = '<span class="text-success fw-semibold">Support is typing…</span>';
+            var who = typing[0].is_staff ? 'Support' : (typing[0].name || 'Someone');
+            statusLine.innerHTML = '<span class="text-success fw-semibold">' + who + ' is typing…</span>';
           } else if (data.presence && data.presence.staff_online) {
             statusLine.innerHTML = '<span class="text-success">online</span>';
           }
@@ -247,11 +261,82 @@
     input.addEventListener('input', function () {
       sendTyping(true);
       if (typingTimer) clearTimeout(typingTimer);
-      typingTimer = setTimeout(function () { sendTyping(false); }, 1800);
+      if (!typingPulse) {
+        typingPulse = setInterval(function () { sendTyping(true); }, 2500);
+      }
+      typingTimer = setTimeout(function () {
+        sendTyping(false);
+        if (typingPulse) { clearInterval(typingPulse); typingPulse = null; }
+      }, 2000);
     });
   }
 
-  setInterval(poll, 2500);
+  if (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (sending || !input || !input.value.trim()) return;
+      var text = input.value.trim();
+      input.value = '';
+      sendTyping(false);
+      if (typingPulse) { clearInterval(typingPulse); typingPulse = null; }
+      sending = true;
+      if (sendBtn) sendBtn.disabled = true;
+
+      // Optimistic bubble
+      var tempId = 'tmp-' + Date.now();
+      appendMsg({
+        id: tempId,
+        body: text,
+        is_staff_reply: false,
+        receipt_status: 'sent',
+        created_at: new Date().toISOString()
+      });
+
+      var fd = new FormData();
+      fd.append('csrfmiddlewaretoken', csrf);
+      fd.append('body', text);
+      fetch(sendUrl, {
+        method: 'POST',
+        body: fd,
+        credentials: 'same-origin',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        }
+      })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (res.ok && res.j.message) {
+            // Replace temp id with real
+            var tempEl = document.querySelector('[data-msg-id="' + tempId + '"]');
+            if (tempEl) {
+              delete seen[tempId];
+              tempEl.remove();
+            }
+            appendMsg(res.j.message);
+          } else {
+            alert((res.j && res.j.detail) || 'Could not send');
+          }
+        })
+        .catch(function () { alert('Could not send message'); })
+        .finally(function () {
+          sending = false;
+          if (sendBtn) sendBtn.disabled = false;
+          if (input) input.focus();
+        });
+    });
+
+    if (input) {
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
+      });
+    }
+  }
+
+  setInterval(poll, 1200);
   poll();
 })();
 </script>

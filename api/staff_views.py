@@ -500,8 +500,10 @@ class StaffTicketDetailView(APIView):
         action = (request.data.get('action') or 'reply').strip()
 
         if action == 'typing':
-            set_typing(t.id, request.user, is_typing=bool(request.data.get('is_typing', True)), is_staff=True)
-            return Response({'ok': True})
+            from support.realtime import as_bool
+            is_typing = as_bool(request.data.get('is_typing', True), default=True)
+            set_typing(t.id, request.user, is_typing=is_typing, is_staff=True)
+            return Response({'ok': True, 'is_typing': is_typing})
 
         if action == 'heartbeat':
             set_presence(t.id, request.user, is_staff=True)

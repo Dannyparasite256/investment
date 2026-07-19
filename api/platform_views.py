@@ -196,10 +196,10 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def typing(self, request, pk=None):
-        from support.realtime import set_typing
+        from support.realtime import as_bool, set_typing
 
         ticket = self.get_object()
-        is_typing = bool(request.data.get('is_typing', True))
+        is_typing = as_bool(request.data.get('is_typing', True), default=True)
         set_typing(ticket.id, request.user, is_typing=is_typing, is_staff=False)
         return Response({'ok': True, 'is_typing': is_typing})
 

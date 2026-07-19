@@ -902,6 +902,7 @@ def tickets_list(request):
 @staff_panel_required
 @require_http_methods(['GET', 'POST'])
 def ticket_detail(request, pk):
+    from django.http import JsonResponse
     from django.utils import timezone
     from support.realtime import (
         get_presence,
@@ -909,10 +910,55 @@ def ticket_detail(request, pk):
         notify_new_message,
         notify_receipts,
         set_presence,
+        set_typing,
+        as_bool,
     )
 
     ticket = get_object_or_404(SupportTicket.objects.select_related('user'), pk=pk)
+    wants_json = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
+
     if request.method == 'POST':
+        action = (request.POST.get('action') or request.GET.get('action') or '').strip()
+        if action == 'typing':
+            set_typing(
+                ticket.id, request.user,
+                is_typing=as_bool(request.POST.get('is_typing', '1')),
+                is_staff=True,
+            )
+            return JsonResponse({'ok': True})
+        if action == 'poll':
+            set_presence(ticket.id, request.user, is_staff=True)
+            now = timezone.now()
+            unread = TicketMessage.objects.filter(
+                ticket=ticket, is_staff_reply=False, read_at__isnull=True,
+            )
+            ids = list(unread.values_list('id', flat=True))
+            if ids:
+                unread.update(delivered_at=now, read_at=now, updated_at=now)
+                notify_receipts(ticket.id, ids, 'read', now.isoformat())
+            msgs = []
+            for m in ticket.messages.select_related('sender').all():
+                msgs.append({
+                    'id': str(m.id),
+                    'body': m.body,
+                    'is_staff_reply': m.is_staff_reply,
+                    'created_at': m.created_at.isoformat() if m.created_at else None,
+                    'delivered_at': m.delivered_at.isoformat() if m.delivered_at else None,
+                    'read_at': m.read_at.isoformat() if m.read_at else None,
+                    'receipt_status': m.receipt_status,
+                    'sender_name': m.sender.get_full_name() or m.sender.email,
+                })
+            own = [x for x in msgs if x['is_staff_reply']]
+            return JsonResponse({
+                'messages': msgs,
+                'receipts': own,
+                'typing': get_typing(ticket.id, exclude_user_id=request.user.pk),
+                'presence': get_presence(ticket.id),
+            })
+
         body = request.POST.get('body', '').strip()
         if body:
             msg = TicketMessage.objects.create(
@@ -926,6 +972,18 @@ def ticket_detail(request, pk):
                 ticket.user, 'Support reply', f'Re: {ticket.subject}',
                 category=Notification.Category.SYSTEM, link=f'/app/support/{ticket.id}',
             )
+            if wants_json:
+                return JsonResponse({
+                    'ok': True,
+                    'message': {
+                        'id': str(msg.id),
+                        'body': msg.body,
+                        'is_staff_reply': True,
+                        'created_at': msg.created_at.isoformat() if msg.created_at else None,
+                        'receipt_status': msg.receipt_status,
+                        'sender_name': request.user.get_full_name() or request.user.email,
+                    },
+                })
             messages.success(request, 'Reply sent.')
             return redirect('staffpanel:ticket_detail', pk=pk)
         new_status = request.POST.get('status')
