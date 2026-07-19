@@ -20,10 +20,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/layouts/AppLayout.vue'),
     meta: { requiresAuth: true },
     children: [
-      {
-        path: '',
-        redirect: '/dashboard',
-      },
+      { path: '', redirect: '/dashboard' },
       {
         path: 'dashboard',
         name: 'dashboard',
@@ -47,6 +44,24 @@ const routes: RouteRecordRaw[] = [
         name: 'investments',
         component: () => import('@/views/InvestmentsView.vue'),
         meta: { title: 'My Investments' },
+      },
+      {
+        path: 'investments/:id',
+        name: 'investment-detail',
+        component: () => import('@/views/InvestmentDetailView.vue'),
+        meta: { title: 'Investment' },
+      },
+      {
+        path: 'calculator',
+        name: 'calculator',
+        component: () => import('@/views/CalculatorView.vue'),
+        meta: { title: 'Calculator' },
+      },
+      {
+        path: 'portfolio',
+        name: 'portfolio',
+        component: () => import('@/views/PortfolioView.vue'),
+        meta: { title: 'Performance' },
       },
       {
         path: 'wallet',
@@ -79,10 +94,34 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Earnings' },
       },
       {
+        path: 'statements',
+        name: 'statements',
+        component: () => import('@/views/StatementsView.vue'),
+        meta: { title: 'Statements' },
+      },
+      {
         path: 'markets',
         name: 'markets',
         component: () => import('@/views/MarketsView.vue'),
         meta: { title: 'Markets' },
+      },
+      {
+        path: 'watchlist',
+        name: 'watchlist',
+        component: () => import('@/views/WatchlistView.vue'),
+        meta: { title: 'Watchlist' },
+      },
+      {
+        path: 'alerts',
+        name: 'alerts',
+        component: () => import('@/views/AlertsView.vue'),
+        meta: { title: 'Price Alerts' },
+      },
+      {
+        path: 'signals',
+        name: 'signals',
+        component: () => import('@/views/SignalsView.vue'),
+        meta: { title: 'Signals' },
       },
       {
         path: 'notifications',
@@ -91,16 +130,70 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Notifications' },
       },
       {
+        path: 'activity',
+        name: 'activity',
+        component: () => import('@/views/ActivityView.vue'),
+        meta: { title: 'Activity' },
+      },
+      {
         path: 'profile',
         name: 'profile',
         component: () => import('@/views/ProfileView.vue'),
         meta: { title: 'Profile' },
       },
       {
+        path: 'kyc',
+        name: 'kyc',
+        component: () => import('@/views/KycView.vue'),
+        meta: { title: 'KYC' },
+      },
+      {
+        path: 'security',
+        name: 'security',
+        component: () => import('@/views/SecurityView.vue'),
+        meta: { title: 'Security' },
+      },
+      {
         path: 'referrals',
         name: 'referrals',
         component: () => import('@/views/ReferralsView.vue'),
         meta: { title: 'Referrals' },
+      },
+      {
+        path: 'vip',
+        name: 'vip',
+        component: () => import('@/views/VipView.vue'),
+        meta: { title: 'VIP' },
+      },
+      {
+        path: 'support',
+        name: 'support',
+        component: () => import('@/views/SupportView.vue'),
+        meta: { title: 'Support' },
+      },
+      {
+        path: 'support/:id',
+        name: 'support-detail',
+        component: () => import('@/views/SupportDetailView.vue'),
+        meta: { title: 'Ticket' },
+      },
+      {
+        path: 'faq',
+        name: 'faq',
+        component: () => import('@/views/FaqView.vue'),
+        meta: { title: 'FAQ' },
+      },
+      {
+        path: 'risk-quiz',
+        name: 'risk-quiz',
+        component: () => import('@/views/RiskQuizView.vue'),
+        meta: { title: 'Risk Profile' },
+      },
+      {
+        path: 'search',
+        name: 'search',
+        component: () => import('@/views/SearchView.vue'),
+        meta: { title: 'Search' },
       },
     ],
   },

@@ -39,6 +39,32 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function register(payload: {
+    email: string
+    password: string
+    first_name?: string
+    last_name?: string
+    referral_code?: string
+  }) {
+    loading.value = true
+    error.value = ''
+    try {
+      const { data } = await api.register(payload)
+      token.value = data.token
+      localStorage.setItem(TOKEN_KEY, data.token)
+      user.value = data.user
+      await fetchMe()
+      return true
+    } catch (e: any) {
+      error.value = e?.response?.data?.email?.[0]
+        || e?.response?.data?.detail
+        || 'Registration failed'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function fetchMe() {
     if (!token.value) return
     try {
@@ -81,6 +107,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     displayName,
     login,
+    register,
     fetchMe,
     refreshWallet,
     logout,

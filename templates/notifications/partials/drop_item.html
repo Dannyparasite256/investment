@@ -1,0 +1,35 @@
+<form method="post"
+      action="{% url 'notifications:mark_read' n.pk %}"
+      class="notif-drop-form"
+      id="notif-drop-{{ n.id }}"
+      hx-post="{% url 'notifications:mark_read' n.pk %}"
+      hx-target="#notif-drop-{{ n.id }}"
+      hx-swap="outerHTML"
+      hx-headers='{"X-Notif-Partial":"drop"}'>
+  {% csrf_token %}
+  <input type="hidden" name="source" value="dropdown">
+  <button type="submit"
+          class="notif-drop-item {% if not n.is_read %}is-unread{% endif %} level-{{ n.level|default:'info' }}">
+    <span class="notif-drop-icon cat-{{ n.category|default:'system' }}">
+      {% if n.category == 'deposit' %}<i class="bi bi-download"></i>
+      {% elif n.category == 'withdrawal' %}<i class="bi bi-upload"></i>
+      {% elif n.category == 'investment' %}<i class="bi bi-graph-up-arrow"></i>
+      {% elif n.category == 'earning' %}<i class="bi bi-currency-dollar"></i>
+      {% elif n.category == 'kyc' %}<i class="bi bi-shield-check"></i>
+      {% elif n.category == 'security' %}<i class="bi bi-shield-lock"></i>
+      {% elif n.category == 'referral' %}<i class="bi bi-people"></i>
+      {% elif n.category == 'announcement' %}<i class="bi bi-megaphone"></i>
+      {% else %}<i class="bi bi-bell"></i>{% endif %}
+    </span>
+    <span class="notif-drop-copy">
+      <span class="notif-drop-title">{{ n.title }}</span>
+      <span class="notif-drop-msg">{{ n.message|truncatechars:90 }}</span>
+      <span class="notif-drop-time">{{ n.created_at|when }}</span>
+    </span>
+    {% if not n.is_read %}
+    <span class="notif-dot" aria-hidden="true"></span>
+    {% elif n.link %}
+    <i class="bi bi-chevron-right notif-drop-chevron" aria-hidden="true"></i>
+    {% endif %}
+  </button>
+</form>

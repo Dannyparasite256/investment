@@ -1,37 +1,73 @@
 {% extends "base_app.html" %}
 {% block title %}Notifications — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}Notifications{% endblock %}
+{% block page_subtitle %}
+  Alerts &amp; activity
+  {% if unread_count %}
+  · <span class="notif-bubble notif-bubble-inline is-pulse" data-notif-inline-count>{{ unread_count }}</span> unread
+  {% endif %}
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between mb-3">
-  <div class="btn-group">
-    <a href="?" class="btn btn-sm {% if not unread_only %}btn-ci{% else %}btn-ghost{% endif %}">All</a>
-    <a href="?unread=1" class="btn btn-sm {% if unread_only %}btn-ci{% else %}btn-ghost{% endif %}">Unread</a>
-  </div>
-  <form method="post" action="{% url 'notifications:mark_all_read' %}">
-    {% csrf_token %}
-    <button class="btn btn-outline-ci btn-sm" type="submit">Mark all read</button>
-  </form>
-</div>
-<div class="glass-card p-0 overflow-hidden">
-  {% for n in page %}
-  <div class="notif-item {% if not n.is_read %}unread{% endif %} d-flex justify-content-between align-items-start gap-3">
-    <div>
-      <div class="fw-semibold">{{ n.title }}</div>
-      <div class="small text-muted">{{ n.message }}</div>
-      <div class="small text-muted mt-1">{{ n.created_at|when:"full" }}</div>
+<div class="notif-page">
+  <div class="glass-card notif-toolbar mb-3">
+    <div class="notif-filters" role="tablist">
+      <a href="?"
+         class="notif-filter {% if not unread_only %}is-active{% endif %}"
+         role="tab"
+         aria-selected="{% if not unread_only %}true{% else %}false{% endif %}">
+        <i class="bi bi-inbox"></i> All
+      </a>
+      <a href="?unread=1"
+         class="notif-filter {% if unread_only %}is-active{% endif %}"
+         role="tab"
+         aria-selected="{% if unread_only %}true{% else %}false{% endif %}">
+        <i class="bi bi-envelope-exclamation"></i> Unread
+        {% if unread_count %}
+        <span class="notif-bubble notif-bubble-inline is-pulse" data-notif-inline-count>{{ unread_count }}</span>
+        {% endif %}
+      </a>
     </div>
-    {% if not n.is_read %}
-    <form method="post" action="{% url 'notifications:mark_read' n.pk %}">
+    {% if unread_count %}
+    <form method="post"
+          action="{% url 'notifications:mark_all_read' %}"
+          hx-post="{% url 'notifications:mark_all_read' %}"
+          hx-swap="none"
+          hx-headers='{"X-Notif-Partial":"list-all"}'>
       {% csrf_token %}
-      <button class="btn btn-ghost btn-sm" type="submit">Read</button>
+      <button class="btn btn-outline-ci btn-sm" type="submit">
+        <i class="bi bi-check2-all me-1"></i> Mark all read
+      </button>
     </form>
     {% endif %}
   </div>
-  {% empty %}
-  <div class="empty-state p-4">
-    {% include "partials/ui_sticker.html" with kind="notification" size="md" title="All quiet" text="You’ll see deposit, withdrawal, investment, and system alerts here." %}
+
+  <div class="glass-card notif-list p-0 overflow-hidden" id="notif-list">
+    {% for n in page %}
+      {% include "notifications/partials/row.html" with n=n %}
+    {% empty %}
+    <div class="empty-state p-5">
+      {% include "partials/ui_sticker.html" with kind="notification" size="md" title="All quiet" text="You’ll see deposit, withdrawal, investment, and system alerts here." %}
+    </div>
+    {% endfor %}
   </div>
-  {% endfor %}
+
+  {% if page.has_other_pages %}
+  <nav class="mt-3" aria-label="Notification pages">
+    <ul class="pagination justify-content-center mb-0">
+      {% if page.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page.previous_page_number }}{% if unread_only %}&unread=1{% endif %}">Prev</a>
+      </li>
+      {% endif %}
+      <li class="page-item disabled"><span class="page-link">{{ page.number }} / {{ page.paginator.num_pages }}</span></li>
+      {% if page.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page.next_page_number }}{% if unread_only %}&unread=1{% endif %}">Next</a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
 </div>
 {% endblock %}

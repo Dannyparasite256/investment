@@ -13,7 +13,9 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'email', 'first_name', 'last_name', 'phone', 'email_verified',
             'is_kyc_verified', 'two_factor_enabled', 'referral_code', 'referral_earnings',
-            'country', 'date_joined',
+            'country', 'country_code', 'date_joined', 'preferred_theme', 'preferred_ui_theme',
+            'preferred_language', 'preferred_currency', 'preferred_timezone',
+            'email_alerts', 'sms_alerts', 'risk_score', 'tour_completed',
         )
         read_only_fields = fields
 

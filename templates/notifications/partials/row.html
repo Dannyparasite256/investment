@@ -1,0 +1,46 @@
+<article class="notif-card {% if not n.is_read %}is-unread{% endif %} level-{{ n.level|default:'info' }}"
+         id="notif-{{ n.id }}">
+  <div class="notif-card-icon cat-{{ n.category|default:'system' }}" aria-hidden="true">
+    {% if n.category == 'deposit' %}<i class="bi bi-download"></i>
+    {% elif n.category == 'withdrawal' %}<i class="bi bi-upload"></i>
+    {% elif n.category == 'investment' %}<i class="bi bi-graph-up-arrow"></i>
+    {% elif n.category == 'earning' %}<i class="bi bi-currency-dollar"></i>
+    {% elif n.category == 'kyc' %}<i class="bi bi-shield-check"></i>
+    {% elif n.category == 'security' %}<i class="bi bi-shield-lock"></i>
+    {% elif n.category == 'referral' %}<i class="bi bi-people"></i>
+    {% elif n.category == 'announcement' %}<i class="bi bi-megaphone"></i>
+    {% else %}<i class="bi bi-bell"></i>{% endif %}
+  </div>
+  <div class="notif-card-body">
+    <div class="notif-card-meta">
+      <span class="notif-level-pill level-{{ n.level|default:'info' }}">{{ n.get_level_display|default:n.level }}</span>
+      <span class="notif-cat-pill">{{ n.get_category_display|default:n.category }}</span>
+      {% if not n.is_read %}<span class="notif-new-pill">New</span>{% endif %}
+      <span class="notif-card-time">{{ n.created_at|when:"full" }}</span>
+    </div>
+    <h3 class="notif-card-title">{{ n.title }}</h3>
+    <p class="notif-card-message">{{ n.message }}</p>
+    {% if n.link %}
+    <a class="notif-card-link" href="{{ n.link }}">
+      Open related page <i class="bi bi-box-arrow-up-right"></i>
+    </a>
+    {% endif %}
+  </div>
+  <div class="notif-card-actions">
+    {% if not n.is_read %}
+    <form method="post"
+          action="{% url 'notifications:mark_read' n.pk %}"
+          hx-post="{% url 'notifications:mark_read' n.pk %}"
+          hx-target="#notif-{{ n.id }}"
+          hx-swap="outerHTML swap:0.15s">
+      {% csrf_token %}
+      <button class="btn btn-ci btn-sm notif-read-btn" type="submit" title="Mark as read">
+        <i class="bi bi-check2"></i>
+        <span class="d-none d-sm-inline ms-1">Read</span>
+      </button>
+    </form>
+    {% else %}
+    <span class="notif-read-check" title="Read"><i class="bi bi-check2-all"></i></span>
+    {% endif %}
+  </div>
+</article>

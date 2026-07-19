@@ -818,3 +818,61 @@
       }
     });
   })();
+
+  /* ---- Notification number bubbles (topbar + sidebar sync) ---- */
+  function formatNotifCount(n) {
+    n = parseInt(n, 10) || 0;
+    return n > 99 ? '99+' : String(n);
+  }
+
+  window.syncNotifBadges = function (count) {
+    count = parseInt(count, 10) || 0;
+    var label = count + ' unread notification' + (count === 1 ? '' : 's');
+    document.querySelectorAll('[data-notif-badge]').forEach(function (el) {
+      el.setAttribute('data-count', String(count));
+      if (count > 0) {
+        el.hidden = false;
+        el.removeAttribute('hidden');
+        el.setAttribute('aria-hidden', 'false');
+        el.setAttribute('aria-label', label);
+        el.classList.remove('is-empty');
+        el.classList.add('is-pulse');
+        el.textContent = formatNotifCount(count);
+      } else {
+        el.hidden = true;
+        el.setAttribute('hidden', '');
+        el.setAttribute('aria-hidden', 'true');
+        el.setAttribute('data-count', '0');
+        el.classList.add('is-empty');
+        el.classList.remove('is-pulse');
+        el.textContent = '';
+      }
+    });
+    document.querySelectorAll('[data-notif-inline-count]').forEach(function (el) {
+      if (count > 0) {
+        el.hidden = false;
+        el.textContent = formatNotifCount(count);
+        el.classList.add('is-pulse');
+      } else {
+        el.hidden = true;
+        el.textContent = '0';
+      }
+    });
+    document.querySelectorAll('.notif-bell-btn .bi-bell').forEach(function (icon) {
+      icon.classList.toggle('notif-bell-active', count > 0);
+    });
+    var bell = document.querySelector('.notif-bell-btn');
+    if (bell) {
+      bell.setAttribute(
+        'aria-label',
+        count > 0 ? 'Notifications, ' + count + ' unread' : 'Notifications'
+      );
+    }
+  };
+
+  document.body.addEventListener('notif-updated', function (evt) {
+    var detail = evt.detail || {};
+    if (detail.count != null) {
+      window.syncNotifBadges(detail.count);
+    }
+  });

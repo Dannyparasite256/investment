@@ -1,0 +1,38 @@
+<div class="notif-dropdown-panel">
+  <div class="notif-dropdown-head" id="notif-dropdown-head">
+    <div class="notif-dropdown-head-left">
+      <span class="notif-dropdown-title">Notifications</span>
+      {% if unread_count %}
+      <span class="notif-bubble notif-bubble-inline is-pulse" data-notif-inline-count>{{ unread_count }}</span>
+      {% endif %}
+    </div>
+    {% if unread_count %}
+    <form method="post"
+          action="{% url 'notifications:mark_all_read' %}"
+          hx-post="{% url 'notifications:mark_all_read' %}"
+          hx-swap="none"
+          hx-headers='{"X-Notif-Partial":"dropdown-all"}'>
+      {% csrf_token %}
+      <button class="notif-mark-all-btn" type="submit">
+        <i class="bi bi-check2-all"></i> Mark all read
+      </button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="notif-dropdown-body" id="notif-dropdown-body">
+    {% for n in recent_notifications %}
+      {% include "notifications/partials/drop_item.html" with n=n %}
+    {% empty %}
+    <div class="notif-drop-empty">
+      <div class="notif-drop-empty-icon"><i class="bi bi-bell-slash"></i></div>
+      <div class="notif-drop-empty-title">You're all caught up</div>
+      <div class="small text-muted">New alerts will show up here</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <a class="notif-dropdown-foot" href="{% url 'notifications:list' %}">
+    View all notifications <i class="bi bi-arrow-right"></i>
+  </a>
+</div>

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
@@ -15,7 +14,9 @@ const nav = [
     items: [
       { to: '/dashboard', icon: 'pi pi-th-large', label: 'Dashboard' },
       { to: '/plans', icon: 'pi pi-chart-line', label: 'Invest' },
-      { to: '/investments', icon: 'pi pi-briefcase', label: 'Portfolio' },
+      { to: '/investments', icon: 'pi pi-briefcase', label: 'My Portfolio' },
+      { to: '/portfolio', icon: 'pi pi-chart-pie', label: 'Performance' },
+      { to: '/calculator', icon: 'pi pi-calculator', label: 'Calculator' },
       { to: '/markets', icon: 'pi pi-chart-bar', label: 'Markets' },
     ],
   },
@@ -27,19 +28,41 @@ const nav = [
       { to: '/withdrawals', icon: 'pi pi-upload', label: 'Withdraw' },
       { to: '/transactions', icon: 'pi pi-history', label: 'History' },
       { to: '/earnings', icon: 'pi pi-dollar', label: 'Earnings' },
+      { to: '/statements', icon: 'pi pi-file', label: 'Statements' },
+    ],
+  },
+  {
+    label: 'Markets tools',
+    items: [
+      { to: '/watchlist', icon: 'pi pi-star', label: 'Watchlist' },
+      { to: '/alerts', icon: 'pi pi-bell', label: 'Price alerts' },
+      { to: '/signals', icon: 'pi pi-bolt', label: 'Signals' },
+    ],
+  },
+  {
+    label: 'Grow',
+    items: [
+      { to: '/referrals', icon: 'pi pi-users', label: 'Referrals' },
+      { to: '/vip', icon: 'pi pi-crown', label: 'VIP' },
     ],
   },
   {
     label: 'Account',
     items: [
-      { to: '/referrals', icon: 'pi pi-users', label: 'Referrals' },
-      { to: '/notifications', icon: 'pi pi-bell', label: 'Notifications' },
+      { to: '/notifications', icon: 'pi pi-inbox', label: 'Notifications' },
+      { to: '/activity', icon: 'pi pi-clock', label: 'Activity' },
+      { to: '/support', icon: 'pi pi-comments', label: 'Support' },
+      { to: '/kyc', icon: 'pi pi-id-card', label: 'KYC' },
+      { to: '/security', icon: 'pi pi-shield', label: 'Security' },
       { to: '/profile', icon: 'pi pi-user', label: 'Profile' },
+      { to: '/faq', icon: 'pi pi-question-circle', label: 'FAQ' },
+      { to: '/risk-quiz', icon: 'pi pi-sliders-h', label: 'Risk profile' },
     ],
   },
 ]
 
 function isActive(path: string) {
+  if (path === '/dashboard') return route.path === path
   return route.path === path || route.path.startsWith(path + '/')
 }
 
@@ -82,6 +105,10 @@ function logout() {
     </nav>
 
     <div class="foot">
+      <button type="button" class="link" @click="go('/search')">
+        <i class="pi pi-search" />
+        <span v-if="!ui.sidebarCollapsed">Search</span>
+      </button>
       <button type="button" class="link" @click="logout">
         <i class="pi pi-sign-out" />
         <span v-if="!ui.sidebarCollapsed">Log out</span>
@@ -103,9 +130,7 @@ function logout() {
   overflow: hidden;
   transition: width 0.25s ease, transform 0.25s ease;
 }
-.sidebar.collapsed {
-  width: 76px;
-}
+.sidebar.collapsed { width: 76px; }
 .brand {
   display: flex;
   align-items: center;
@@ -113,6 +138,7 @@ function logout() {
   padding: 1.15rem 1rem;
   border-bottom: 1px solid var(--ci-border);
   cursor: pointer;
+  flex-shrink: 0;
 }
 .mark {
   width: 40px;
@@ -127,10 +153,7 @@ function logout() {
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
   flex-shrink: 0;
 }
-.brand-text .name {
-  font-weight: 800;
-  font-size: 1.05rem;
-}
+.brand-text .name { font-weight: 800; font-size: 1.05rem; }
 .brand-text .sub {
   font-size: 0.62rem;
   letter-spacing: 0.1em;
@@ -156,27 +179,20 @@ function logout() {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.7rem 0.85rem;
+  padding: 0.62rem 0.85rem;
   border-radius: 12px;
   border: 1px solid transparent;
   background: transparent;
   color: var(--ci-muted);
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   cursor: pointer;
   margin-bottom: 2px;
   transition: 0.2s ease;
   text-align: left;
 }
-.link i {
-  font-size: 1.05rem;
-  width: 1.25rem;
-  text-align: center;
-}
-.link:hover {
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--ci-text);
-}
+.link i { font-size: 1.05rem; width: 1.25rem; text-align: center; }
+.link:hover { background: rgba(59, 130, 246, 0.1); color: var(--ci-text); }
 .link.active {
   background: linear-gradient(90deg, rgba(59, 130, 246, 0.22), rgba(124, 58, 237, 0.08));
   border-color: rgba(96, 165, 250, 0.3);
@@ -184,23 +200,18 @@ function logout() {
   font-weight: 600;
 }
 .foot {
-  padding: 0.75rem;
+  padding: 0.65rem;
   border-top: 1px solid var(--ci-border);
+  flex-shrink: 0;
 }
 @media (max-width: 991.98px) {
   .sidebar {
-    top: 0;
-    left: 0;
-    bottom: 0;
+    top: 0; left: 0; bottom: 0;
     border-radius: 0;
     transform: translateX(-105%);
     width: min(280px, 88vw);
   }
-  .sidebar.open {
-    transform: translateX(0);
-  }
-  .sidebar.collapsed {
-    width: min(280px, 88vw);
-  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar.collapsed { width: min(280px, 88vw); }
 }
 </style>

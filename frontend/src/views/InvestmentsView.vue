@@ -34,7 +34,15 @@ onMounted(async () => {
     </PageHeader>
     <div class="glass panel">
       <Skeleton v-if="loading" height="240px" />
-      <DataTable v-else-if="rows.length" :value="rows" paginator :rows="10" responsive-layout="scroll">
+      <DataTable
+        v-else-if="rows.length"
+        :value="rows"
+        paginator
+        :rows="10"
+        responsive-layout="scroll"
+        row-hover
+        @row-click="(e: any) => router.push(`/investments/${e.data.id}`)"
+      >
         <Column field="plan_name" header="Plan" />
         <Column field="amount" header="Amount">
           <template #body="{ data }"><span class="mono">{{ formatMoney(data.amount) }}</span></template>
@@ -65,4 +73,5 @@ onMounted(async () => {
 <style scoped>
 .panel { padding: 0.75rem; }
 .small { font-size: 0.75rem; margin-top: 0.2rem; }
+:deep(.p-datatable-tbody > tr) { cursor: pointer; }
 </style>

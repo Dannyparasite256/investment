@@ -1,15 +1,33 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
 import Tag from 'primevue/tag'
+import ToggleSwitch from 'primevue/toggleswitch'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore, type ThemeMode } from '@/stores/theme'
+import { api } from '@/services/api'
 import { formatMoney } from '@/utils/money'
+import { useUiStore } from '@/stores/ui'
 
 const auth = useAuthStore()
 const theme = useThemeStore()
+const ui = useUiStore()
+const router = useRouter()
+const saving = ref(false)
+
+const form = ref({
+  first_name: '',
+  last_name: '',
+  phone: '',
+  country: '',
+  preferred_currency: '',
+  email_alerts: true,
+  sms_alerts: false,
+})
 
 const themes = [
   { label: 'Dark (Premium)', value: 'dark' },
@@ -22,11 +40,38 @@ const themeMode = computed({
   get: () => theme.mode,
   set: (v: ThemeMode) => theme.apply(v),
 })
+
+onMounted(() => {
+  const u = auth.user
+  if (!u) return
+  form.value = {
+    first_name: u.first_name || '',
+    last_name: u.last_name || '',
+    phone: u.phone || '',
+    country: u.country || '',
+    preferred_currency: u.preferred_currency || '',
+    email_alerts: u.email_alerts !== false,
+    sms_alerts: !!u.sms_alerts,
+  }
+})
+
+async function save() {
+  saving.value = true
+  try {
+    await api.updateProfile(form.value)
+    await auth.fetchMe()
+    ui.toast('Saved', 'Profile updated', 'success')
+  } catch (e: any) {
+    ui.toast('Failed', e?.response?.data?.detail || 'Could not save', 'error')
+  } finally {
+    saving.value = false
+  }
+}
 </script>
 
 <template>
   <div>
-    <PageHeader title="Profile" subtitle="Account and appearance" />
+    <PageHeader title="Profile" subtitle="Account, preferences, and security" />
     <div class="grid">
       <div class="glass card">
         <div class="avatar">{{ (auth.displayName || 'U').slice(0, 1).toUpperCase() }}</div>
@@ -42,92 +87,77 @@ const themeMode = computed({
         <ul>
           <li><span>Referral code</span><strong class="mono">{{ auth.user?.referral_code || '—' }}</strong></li>
           <li><span>Referral earnings</span><strong class="mono success">+{{ formatMoney(auth.user?.referral_earnings ?? 0) }}</strong></li>
-          <li><span>Country</span><strong>{{ auth.user?.country || '—' }}</strong></li>
+          <li><span>Risk score</span><strong>{{ auth.user?.risk_score ?? 0 }}</strong></li>
         </ul>
         <div class="actions">
-          <Button as="a" href="/accounts/kyc/" label="KYC" icon="pi pi-id-card" outlined class="w-full" />
-          <Button as="a" href="/accounts/setup-2fa/" label="2FA" icon="pi pi-shield" outlined class="w-full" />
+          <Button label="KYC" icon="pi pi-id-card" outlined class="w-full" @click="router.push('/kyc')" />
+          <Button label="Security" icon="pi pi-shield" outlined class="w-full" @click="router.push('/security')" />
+          <Button label="VIP" icon="pi pi-crown" outlined class="w-full" @click="router.push('/vip')" />
           <Button label="Log out" icon="pi pi-sign-out" severity="danger" text class="w-full" @click="auth.logout()" />
         </div>
       </div>
 
-      <div class="glass card">
-        <h3>Appearance</h3>
-        <p class="muted small">Theme switches instantly and is remembered on this device.</p>
-        <label class="field">
-          <span>Theme</span>
-          <Select v-model="themeMode" :options="themes" option-label="label" option-value="value" class="w-full" />
-        </label>
-        <div class="preview" :data-theme-preview="theme.mode">
-          <div class="mini" />
-          <div class="mini short" />
+      <div class="stack">
+        <div class="glass card">
+          <h3>Edit profile</h3>
+          <div class="form">
+            <label>First name <InputText v-model="form.first_name" class="w-full" /></label>
+            <label>Last name <InputText v-model="form.last_name" class="w-full" /></label>
+            <label>Phone <InputText v-model="form.phone" class="w-full" /></label>
+            <label>Country <InputText v-model="form.country" class="w-full" /></label>
+            <label>Display currency <InputText v-model="form.preferred_currency" class="w-full" placeholder="e.g. USDT" /></label>
+            <div class="switch-row">
+              <span>Email alerts</span>
+              <ToggleSwitch v-model="form.email_alerts" />
+            </div>
+            <div class="switch-row">
+              <span>SMS alerts</span>
+              <ToggleSwitch v-model="form.sms_alerts" />
+            </div>
+            <Button label="Save profile" icon="pi pi-check" :loading="saving" @click="save" />
+          </div>
         </div>
-        <h3 class="mt">Classic Django UI</h3>
-        <p class="muted small">Staff panel, full feature pages, and admin remain available.</p>
-        <Button as="a" href="/dashboard/" label="Open classic dashboard" icon="pi pi-external-link" class="w-full" />
+
+        <div class="glass card">
+          <h3>Appearance</h3>
+          <label class="field">
+            <span>Theme</span>
+            <Select v-model="themeMode" :options="themes" option-label="label" option-value="value" class="w-full" />
+          </label>
+          <div class="preview" :data-theme-preview="theme.mode">
+            <div class="mini" />
+            <div class="mini short" />
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-@media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+.grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 1rem; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.stack { display: flex; flex-direction: column; gap: 1rem; }
 .card { padding: 1.25rem; }
 .avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #fff;
-  background: linear-gradient(135deg, #3B82F6, #7C3AED);
-  margin-bottom: 0.75rem;
+  width: 64px; height: 64px; border-radius: 18px;
+  display: grid; place-items: center; font-weight: 800; font-size: 1.4rem;
+  background: linear-gradient(135deg, #3B82F6, #7C3AED); color: #fff; margin-bottom: 0.75rem;
 }
-h2 { font-size: 1.25rem; }
-.tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.75rem 0 1rem; }
-ul { list-style: none; padding: 0; margin: 0 0 1rem; display: grid; gap: 0.4rem; }
-li {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.55rem 0.65rem;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.03);
-  font-size: 0.9rem;
-}
-li span { color: var(--ci-muted); }
+.tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.75rem 0; }
+ul { list-style: none; padding: 0; margin: 0 0 1rem; }
+li { display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.45rem 0; border-bottom: 1px solid var(--ci-border); font-size: 0.9rem; }
 .actions { display: grid; gap: 0.45rem; }
-.field { display: grid; gap: 0.4rem; margin: 0.85rem 0; }
-.field span { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ci-muted); font-weight: 600; }
+.form { display: grid; gap: 0.65rem; margin-top: 0.75rem; }
+.form label, .field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; font-weight: 600; color: var(--ci-muted); }
+.switch-row { display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 0.9rem; }
 .w-full { width: 100%; }
+.success { color: var(--ci-success); }
 .preview {
-  height: 88px;
-  border-radius: 14px;
-  border: 1px solid var(--ci-border);
-  background:
-    radial-gradient(circle at 80% 20%, rgba(59,130,246,0.35), transparent 45%),
-    linear-gradient(145deg, rgba(255,255,255,0.06), rgba(0,0,0,0.15));
-  padding: 0.85rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 0.4rem;
+  margin-top: 0.85rem; padding: 1rem; border-radius: 14px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--ci-border);
+  display: flex; flex-direction: column; gap: 0.45rem;
 }
-.mini {
-  height: 12px;
-  border-radius: 6px;
-  background: rgba(255,255,255,0.12);
-  width: 70%;
-}
-.mini.short { width: 40%; }
-.mt { margin-top: 1.25rem; }
-.small { font-size: 0.88rem; }
+.mini { height: 10px; border-radius: 99px; background: linear-gradient(90deg, #3B82F6, #7C3AED); width: 70%; }
+.mini.short { width: 40%; opacity: 0.5; }
 </style>

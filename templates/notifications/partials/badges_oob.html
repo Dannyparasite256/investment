@@ -1,0 +1,34 @@
+{% comment %}HTMX out-of-band swaps for both topbar + sidebar number bubbles.{% endcomment %}
+{% if unread_count %}
+<span id="notif-badge-top"
+      class="notif-bubble is-pulse"
+      data-notif-badge
+      data-count="{{ unread_count }}"
+      hx-swap-oob="true"
+      aria-label="{{ unread_count }} unread notification{{ unread_count|pluralize }}">
+  {% if unread_count > 99 %}99+{% else %}{{ unread_count }}{% endif %}
+</span>
+<span id="notif-badge-side"
+      class="notif-bubble is-pulse"
+      data-notif-badge
+      data-count="{{ unread_count }}"
+      hx-swap-oob="true"
+      aria-label="{{ unread_count }} unread notification{{ unread_count|pluralize }}">
+  {% if unread_count > 99 %}99+{% else %}{{ unread_count }}{% endif %}
+</span>
+{% else %}
+<span id="notif-badge-top"
+      class="notif-bubble is-empty"
+      data-notif-badge
+      data-count="0"
+      hx-swap-oob="true"
+      hidden
+      aria-hidden="true"></span>
+<span id="notif-badge-side"
+      class="notif-bubble is-empty"
+      data-notif-badge
+      data-count="0"
+      hx-swap-oob="true"
+      hidden
+      aria-hidden="true"></span>
+{% endif %}

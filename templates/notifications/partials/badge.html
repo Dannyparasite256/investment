@@ -1,1 +1,22 @@
-{% if unread_count %}<span class="badge rounded-pill bg-danger">{{ unread_count }}</span>{% endif %}
+{% comment %}
+  Number bubble for unread notifications.
+  Pass badge_id so topbar + sidebar can both show a bubble without duplicate IDs.
+{% endcomment %}
+{% with bid=badge_id|default:"notif-badge-top" %}
+{% if unread_count %}
+<span id="{{ bid }}"
+      class="notif-bubble {% if pulse %}is-pulse{% endif %}"
+      data-notif-badge
+      data-count="{{ unread_count }}"
+      aria-label="{{ unread_count }} unread notification{{ unread_count|pluralize }}">
+  {% if unread_count > 99 %}99+{% else %}{{ unread_count }}{% endif %}
+</span>
+{% else %}
+<span id="{{ bid }}"
+      class="notif-bubble is-empty"
+      data-notif-badge
+      data-count="0"
+      hidden
+      aria-hidden="true"></span>
+{% endif %}
+{% endwith %}

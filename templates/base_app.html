@@ -67,8 +67,9 @@
         <i class="bi bi-person-circle"></i> Profile
       </a>
       <a class="nav-link {% if 'notifications' in request.path %}active{% endif %}" href="{% url 'notifications:list' %}">
-        <i class="bi bi-bell"></i> Notifications
-        {% if unread_count %}<span class="badge rounded-pill ms-auto" style="background:var(--ci-danger);font-size:0.65rem">{{ unread_count }}</span>{% endif %}
+        <i class="bi bi-bell"></i>
+        <span>Notifications</span>
+        {% include "notifications/partials/badge.html" with badge_id="notif-badge-side" pulse=unread_count %}
       </a>
       <a class="nav-link {% if request.path == '/activity/' %}active{% endif %}" href="{% url 'core:activity' %}">
         <i class="bi bi-activity"></i> Activity
@@ -169,28 +170,19 @@
           <input type="hidden" name="theme" value="{{ theme|default:'dark' }}">
         </form>
 
-        <div class="dropdown">
-          <button class="btn btn-ghost btn-sm position-relative" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications">
-            <i class="bi bi-bell"></i>
-            {% if unread_count %}<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" style="background:var(--ci-danger);font-size:0.55rem">{{ unread_count }}</span>{% endif %}
+        <div class="dropdown notif-dropdown">
+          <button class="btn btn-ghost btn-sm notif-bell-btn position-relative"
+                  data-bs-toggle="dropdown"
+                  data-bs-auto-close="outside"
+                  aria-expanded="false"
+                  aria-label="Notifications{% if unread_count %}, {{ unread_count }} unread{% endif %}">
+            <i class="bi bi-bell{% if unread_count %} notif-bell-active{% endif %}"></i>
+            <span class="notif-bell-slot">
+              {% include "notifications/partials/badge.html" with badge_id="notif-badge-top" pulse=unread_count %}
+            </span>
           </button>
-          <div class="dropdown-menu dropdown-menu-end dropdown-menu-start-sm" style="width:min(320px,calc(100vw - 1.5rem));max-height:min(380px,70vh);overflow:auto">
-            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom border-ci">
-              <strong class="small">Notifications</strong>
-              <form method="post" action="{% url 'notifications:mark_all_read' %}">
-                {% csrf_token %}
-                <button class="btn btn-link btn-sm p-0 text-decoration-none" type="submit">Mark all read</button>
-              </form>
-            </div>
-            {% for n in recent_notifications %}
-            <a href="{% url 'notifications:list' %}" class="notif-item unread d-block text-decoration-none">
-              <div class="fw-semibold small" style="color:var(--ci-text)">{{ n.title }}</div>
-              <div class="text-muted small">{{ n.message|truncatechars:80 }}</div>
-            </a>
-            {% empty %}
-            <div class="p-3 text-muted small text-center">No new notifications</div>
-            {% endfor %}
-            <a class="dropdown-item text-center small" href="{% url 'notifications:list' %}">View all</a>
+          <div class="dropdown-menu dropdown-menu-end notif-dropdown-menu p-0 border-0 shadow-lg">
+            {% include "notifications/partials/dropdown.html" %}
           </div>
         </div>
 
