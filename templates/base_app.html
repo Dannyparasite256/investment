@@ -66,6 +66,9 @@
       <a class="nav-link {% if 'profile' in request.path or 'kyc' in request.path %}active{% endif %}" href="{% url 'accounts:profile' %}">
         <i class="bi bi-person-circle"></i> Profile
       </a>
+      <a class="nav-link {% if 'connections' in request.path %}active{% endif %}" href="{% url 'accounts:social_connections' %}">
+        <i class="bi bi-link-45deg"></i> Connected accounts
+      </a>
       <a class="nav-link {% if 'notifications' in request.path %}active{% endif %}" href="{% url 'notifications:list' %}">
         <i class="bi bi-bell"></i>
         <span>Notifications</span>

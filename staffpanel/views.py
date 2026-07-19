@@ -446,6 +446,8 @@ def user_detail(request, pk):
     for inv in investments:
         inv.amount_display = format_amount_for_code(inv.amount, code)
         inv.earned_display = format_amount_for_code(inv.total_earned, code)
+    from accounts.social_features import social_risk_signals
+    social_links = {s.provider: s for s in user.social_accounts.all()}
     return render(request, 'staffpanel/user_detail.html', {
         'target': user,
         'wallet': wallet,
@@ -458,6 +460,8 @@ def user_detail(request, pk):
         'investments': investments,
         'logins': user.login_history.all()[:15],
         'kyc_docs': user.kyc_documents.all()[:5],
+        'social_signals': social_risk_signals(user),
+        'social_links': social_links,
     })
 
 

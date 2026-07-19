@@ -9,6 +9,7 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django_ratelimit.decorators import ratelimit
 
@@ -198,6 +199,24 @@ def deposit_detail(request, pk):
     })
 
 
+def _recent_google_reauth(request, minutes=15) -> bool:
+    """True if user confirmed Google identity within the window."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+    from django.utils.dateparse import parse_datetime
+
+    raw = request.session.get('social_reauth_at') or ''
+    if request.session.get('social_reauth_provider') != 'google':
+        return False
+    when = parse_datetime(raw) if raw else None
+    if not when:
+        return False
+    if timezone.is_naive(when):
+        when = timezone.make_aware(when, timezone.get_current_timezone())
+    return when >= timezone.now() - timedelta(minutes=minutes)
+
+
 @login_required
 @ratelimit(key='user', rate='10/h', method='POST', block=True)
 @require_http_methods(['GET', 'POST'])
@@ -218,12 +237,21 @@ def withdraw_create(request):
     wallet, _ = Wallet.objects.get_or_create(user=request.user)
     display_code = get_default_display_code(request.user, request=request)
     currency_meta = get_currency_meta(display_code)
+    needs_reauth = bool(getattr(request.user, 'require_social_reauth_withdraw', False))
+    reauth_ok = _recent_google_reauth(request) if needs_reauth else True
     form = WithdrawalForm(
         user=request.user,
         currency_code=display_code,
         data=request.POST or None,
     )
     if request.method == 'POST' and form.is_valid():
+        if needs_reauth and not _recent_google_reauth(request):
+            messages.error(
+                request,
+                'For your security, confirm with Google before withdrawing. '
+                'Use “Confirm with Google” below, then submit again.',
+            )
+            return redirect('transactions:withdraw_create')
         try:
             with transaction.atomic():
                 w = form.save(commit=False)
@@ -352,6 +380,11 @@ def withdraw_create(request):
         'currency_symbol': currency_meta['symbol'],
         'currency_decimals': currency_meta['decimals'],
         'crypto_rates': rates,
+        'needs_reauth': needs_reauth,
+        'reauth_ok': reauth_ok,
+        'google_reauth_url': (
+            reverse('accounts:oauth_start', args=['google']) + '?next=' + reverse('transactions:withdraw_create')
+        ),
     })
 
 

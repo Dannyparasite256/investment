@@ -110,6 +110,8 @@ class ProfileForm(forms.ModelForm):
         fields = (
             'first_name', 'last_name', 'phone', 'country', 'date_of_birth',
             'profile_picture', 'preferred_theme', 'preferred_ui_theme', 'preferred_currency',
+            'login_alert_emails', 'weekly_digest_emails', 'email_alerts',
+            'public_profile_enabled', 'public_bio', 'require_social_reauth_withdraw',
         )
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -120,6 +122,14 @@ class ProfileForm(forms.ModelForm):
             'profile_picture': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
             'preferred_theme': forms.Select(attrs={'class': 'form-select'}),
             'preferred_ui_theme': forms.Select(attrs={'class': 'form-select', 'id': 'id_preferred_ui_theme'}),
+            'login_alert_emails': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'weekly_digest_emails': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'email_alerts': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'public_profile_enabled': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'public_bio': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': 'Short public bio (optional)', 'maxlength': '280',
+            }),
+            'require_social_reauth_withdraw': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
     def __init__(self, *args, **kwargs):

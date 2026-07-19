@@ -105,7 +105,7 @@ def login_view(request):
         login(request, user)
         if not form.cleaned_data.get('remember_me'):
             request.session.set_expiry(0)
-        record_login(request, user=user, result=LoginHistory.Result.SUCCESS)
+        record_login(request, user=user, result=LoginHistory.Result.SUCCESS, auth_method='password')
         create_audit_log(request=request, user=user, action=AuditLog.Action.LOGIN, message='User logged in')
         ActivityEvent.objects.create(user=user, event_type='login', title='Logged in')
         messages.success(request, f'Welcome back, {user.display_name}!')
@@ -263,12 +263,20 @@ def profile_view(request):
     social_links = {
         s.provider: s for s in request.user.social_accounts.all()
     }
+    from accounts.social_features import referral_share_text, social_risk_signals
+    share_text, share_link, x_intent = referral_share_text(request.user, request)
     return render(request, 'accounts/profile.html', {
         'form': form,
         'kyc_latest': kyc_latest,
-        'referral_link': request.build_absolute_uri(reverse('accounts:register') + f'?ref={request.user.referral_code}'),
+        'referral_link': share_link,
         'social_links': social_links,
         'avatar_url': request.user.avatar_display_url,
+        'x_share_url': x_intent,
+        'share_text': share_text,
+        'signals': social_risk_signals(request.user),
+        'public_profile_url': request.build_absolute_uri(
+            reverse('accounts:public_profile', args=[request.user.referral_code])
+        ) if request.user.public_profile_enabled else '',
     })
 
 

@@ -104,6 +104,34 @@ class User(AbstractUser):
     country_code = models.CharField(max_length=2, blank=True, help_text='ISO country code')
     sms_alerts = models.BooleanField(default=False)
     email_alerts = models.BooleanField(default=True)
+    # Social / security preferences
+    login_alert_emails = models.BooleanField(
+        default=True,
+        help_text='Email me when a new login is detected',
+    )
+    weekly_digest_emails = models.BooleanField(
+        default=True,
+        help_text='Weekly portfolio summary by email',
+    )
+    google_verified = models.BooleanField(
+        default=False,
+        help_text='Email verified via Google OAuth',
+    )
+    last_login_method = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        help_text='password | google | x',
+    )
+    public_profile_enabled = models.BooleanField(
+        default=False,
+        help_text='Show public referral profile page',
+    )
+    public_bio = models.CharField(max_length=280, blank=True)
+    require_social_reauth_withdraw = models.BooleanField(
+        default=False,
+        help_text='Require recent Google confirmation before withdrawals',
+    )
 
     objects = UserManager()
 

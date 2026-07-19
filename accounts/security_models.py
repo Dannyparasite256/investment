@@ -31,6 +31,12 @@ class LoginHistory(UUIDModel, TimeStampedModel):
     is_suspicious = models.BooleanField(default=False)
     suspicion_reason = models.CharField(max_length=255, blank=True)
     session_key = models.CharField(max_length=64, blank=True)
+    auth_method = models.CharField(
+        max_length=20,
+        blank=True,
+        default='password',
+        help_text='password | google | x | unknown',
+    )
 
     class Meta:
         ordering = ['-created_at']

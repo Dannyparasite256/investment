@@ -1,0 +1,119 @@
+{% extends "base_app.html" %}
+{% block title %}Connected accounts — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Connected accounts{% endblock %}
+{% block page_subtitle %}Google, X, security & invites{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="glass-card p-4 mb-3">
+      <h5 class="mb-3">Social logins</h5>
+      <div class="d-flex justify-content-between align-items-center border-bottom border-ci py-3">
+        <div>
+          <strong><i class="bi bi-google me-1"></i> Google</strong>
+          {% if links.google %}
+          <div class="small text-muted">{{ links.google.email|default:links.google.display_name }}</div>
+          {% if user.google_verified %}<span class="badge badge-status badge-success mt-1">Verified</span>{% endif %}
+          {% else %}
+          <div class="small text-muted">Not linked</div>
+          {% endif %}
+        </div>
+        <div>
+          {% if links.google %}
+          <form method="post" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="unlink">
+            <input type="hidden" name="provider" value="google">
+            <button class="btn btn-ghost btn-sm text-danger" type="submit">Unlink</button>
+          </form>
+          {% else %}
+          <a class="btn btn-outline-ci btn-sm" href="{{ oauth_google_url }}?next={% url 'accounts:social_connections' %}">Link</a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="d-flex justify-content-between align-items-center py-3">
+        <div>
+          <strong><i class="bi bi-twitter-x me-1"></i> X</strong>
+          {% if links.x %}
+          <div class="small text-muted">@{{ links.x.username|default:links.x.provider_user_id }}</div>
+          {% else %}
+          <div class="small text-muted">Not linked</div>
+          {% endif %}
+        </div>
+        <div>
+          {% if links.x %}
+          <form method="post" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="unlink">
+            <input type="hidden" name="provider" value="x">
+            <button class="btn btn-ghost btn-sm text-danger" type="submit">Unlink</button>
+          </form>
+          {% else %}
+          <a class="btn btn-outline-ci btn-sm" href="{{ oauth_x_url }}?next={% url 'accounts:social_connections' %}">Link</a>
+          {% endif %}
+        </div>
+      </div>
+      <p class="small text-muted mb-0 mt-2">
+        Last login method: <strong>{{ user.last_login_method|default:"password" }}</strong>
+      </p>
+    </div>
+
+    <div class="glass-card p-4 mb-3">
+      <h5 class="mb-2">Identity strength</h5>
+      <p class="small text-muted">Soft signal for security (not a substitute for KYC).</p>
+      <div class="progress-ci mb-2"><div class="bar" style="width:{{ signals.score }}%"></div></div>
+      <div class="small mb-2">Score: <strong>{{ signals.score }}</strong> / 100</div>
+      <ul class="small text-muted mb-0">
+        {% for n in signals.notes %}<li>{{ n }}</li>{% empty %}<li>Link Google or X to improve score.</li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="glass-card p-4 mb-3">
+      <h5 class="mb-3">Share referral on X</h5>
+      <p class="small text-muted">Opens X with a pre-filled post — you choose to publish.</p>
+      <div class="crypto-address small mb-2">{{ share_text }}</div>
+      <a class="btn btn-ci btn-sm" href="{{ x_share_url }}" target="_blank" rel="noopener">
+        <i class="bi bi-twitter-x me-1"></i> Share on X
+      </a>
+      <button class="btn btn-outline-ci btn-sm" type="button" onclick="copyText('{{ share_link }}', this)">Copy link</button>
+    </div>
+
+    <div class="glass-card p-4 mb-3">
+      <h5 class="mb-3">Invite by email</h5>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="invite">
+        <div class="mb-2">
+          <label class="form-label">Friend’s email</label>
+          <input type="email" name="email" class="form-control" required placeholder="friend@gmail.com">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Note (optional)</label>
+          <input type="text" name="note" class="form-control" maxlength="200" placeholder="Join me on the platform">
+        </div>
+        <button class="btn btn-ci btn-sm" type="submit"><i class="bi bi-envelope me-1"></i> Send invite</button>
+      </form>
+    </div>
+
+    <div class="glass-card p-4">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">Recent logins</h5>
+        <a href="{% url 'accounts:security_sessions' %}" class="small">View all</a>
+      </div>
+      <ul class="list-unstyled small mb-0">
+        {% for L in logins %}
+        <li class="border-bottom border-ci py-2">
+          <span class="badge badge-status badge-info">{{ L.auth_method|default:"password" }}</span>
+          {{ L.location_display }} · {{ L.created_at|when }}
+          {% if L.is_suspicious %}<span class="text-warning">flagged</span>{% endif %}
+        </li>
+        {% empty %}
+        <li class="text-muted">No logins recorded yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

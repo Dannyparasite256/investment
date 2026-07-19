@@ -3,11 +3,12 @@ from accounts.security_models import LoginHistory
 from core.utils import get_client_ip
 
 
-def record_login(request, user=None, email='', result=LoginHistory.Result.SUCCESS):
+def record_login(request, user=None, email='', result=LoginHistory.Result.SUCCESS, auth_method='password'):
     ip = get_client_ip(request)
     ua = request.META.get('HTTP_USER_AGENT', '')[:500]
     is_suspicious = False
     reason = ''
+    auth_method = (auth_method or 'password')[:20]
 
     # Geo + timezone for accurate access location
     geo = {'country': '', 'city': '', 'region': '', 'timezone': '', 'isp': ''}
@@ -83,7 +84,18 @@ def record_login(request, user=None, email='', result=LoginHistory.Result.SUCCES
         is_suspicious=is_suspicious,
         suspicion_reason=reason,
         session_key=request.session.session_key or '',
+        auth_method=auth_method,
     )
+
+    if user and result == LoginHistory.Result.SUCCESS:
+        try:
+            from accounts.social_features import send_login_alert_email, set_login_method
+            set_login_method(user, auth_method)
+            # Always email on suspicious; otherwise email when preference on
+            if entry.is_suspicious or getattr(user, 'login_alert_emails', True):
+                send_login_alert_email(user, entry)
+        except Exception:
+            pass
 
     if is_suspicious and user:
         from notifications.models import Notification, notify

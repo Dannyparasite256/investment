@@ -1,0 +1,47 @@
+{% extends "base_app.html" %}
+{% block title %}Login activity — {{ SITE_NAME }}{% endblock %}
+{% block page_title %}Login activity{% endblock %}
+{% block page_subtitle %}Devices and methods (password, Google, X){% endblock %}
+
+{% block content %}
+<div class="glass-card p-3 mb-3">
+  <span class="text-muted small">Last method:</span>
+  <strong class="text-uppercase">{{ last_method }}</strong>
+  <a href="{% url 'accounts:social_connections' %}" class="btn btn-outline-ci btn-sm float-end">Connected accounts</a>
+</div>
+<div class="glass-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-ci mb-0">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Method</th>
+          <th>Result</th>
+          <th>Location</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for L in logins %}
+        <tr>
+          <td class="small text-muted">{{ L.created_at|when:"full" }}</td>
+          <td><span class="badge badge-status badge-info">{{ L.auth_method|default:"—" }}</span></td>
+          <td>
+            <span class="badge badge-status badge-{% if L.result == 'success' %}success{% elif L.is_suspicious %}warning{% else %}danger{% endif %}">
+              {{ L.get_result_display }}
+            </span>
+          </td>
+          <td class="small">{{ L.location_display }}</td>
+          <td class="font-mono small">{{ L.ip_address|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4">No history yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<p class="small text-muted mt-3">
+  Tip: enable <strong>login alert emails</strong> on your profile. Keep <a href="{% url 'accounts:setup_2fa' %}">2FA</a> on for withdrawals.
+</p>
+{% endblock %}

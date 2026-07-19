@@ -19,7 +19,8 @@
       <h5 class="mb-1">{{ user.display_name }}</h5>
       <p class="text-muted small mb-3">{{ user.email }}</p>
       <div class="d-flex justify-content-center gap-2 flex-wrap mb-3">
-        {% if user.email_verified %}<span class="badge badge-status badge-success">Email verified</span>
+        {% if user.google_verified %}<span class="badge badge-status badge-success"><i class="bi bi-google me-1"></i>Google verified</span>
+        {% elif user.email_verified %}<span class="badge badge-status badge-success">Email verified</span>
         {% else %}<span class="badge badge-status badge-pending">Email pending</span>{% endif %}
         {% if user.is_kyc_verified %}<span class="badge badge-status badge-success">KYC verified</span>
         {% else %}<span class="badge badge-status badge-pending">KYC incomplete</span>{% endif %}
@@ -75,11 +76,23 @@
       <p class="small text-muted mt-2 mb-0">Earnings: <span class="font-mono text-profit">{{ user.referral_earnings }}</span></p>
     </div>
     <div class="d-grid gap-2">
+      <a href="{% url 'accounts:social_connections' %}" class="btn btn-outline-ci btn-sm">
+        <i class="bi bi-link-45deg me-1"></i> Connected accounts
+      </a>
+      <a href="{% url 'accounts:security_sessions' %}" class="btn btn-outline-ci btn-sm">Login activity</a>
       <a href="{% url 'accounts:kyc' %}" class="btn btn-outline-ci btn-sm">Complete KYC</a>
       <a href="{% url 'accounts:setup_2fa' %}" class="btn btn-outline-ci btn-sm">
         {% if user.two_factor_enabled %}Manage 2FA{% else %}Enable 2FA{% endif %}
       </a>
       <a href="{% url 'accounts:change_password' %}" class="btn btn-ghost btn-sm">Change password</a>
+      {% if x_share_url %}
+      <a href="{{ x_share_url }}" class="btn btn-ghost btn-sm" target="_blank" rel="noopener">
+        <i class="bi bi-twitter-x me-1"></i> Share referral on X
+      </a>
+      {% endif %}
+      {% if public_profile_url %}
+      <a href="{{ public_profile_url }}" class="btn btn-ghost btn-sm" target="_blank">Public profile</a>
+      {% endif %}
     </div>
   </div>
   <div class="col-lg-8">
@@ -182,6 +195,48 @@
                 JPG, PNG, GIF or WebP · max ~5MB. Or use Google / X photo from the left panel.
               </div>
             </div>
+          </div>
+          <div class="col-12"><hr class="border-ci"></div>
+          <div class="col-12">
+            <h6 class="mb-2">Email & security preferences</h6>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check">
+              {{ form.login_alert_emails }}
+              <label class="form-check-label" for="id_login_alert_emails">Email me on new logins</label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check">
+              {{ form.weekly_digest_emails }}
+              <label class="form-check-label" for="id_weekly_digest_emails">Weekly portfolio email</label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check">
+              {{ form.email_alerts }}
+              <label class="form-check-label" for="id_email_alerts">Price / product email alerts</label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check">
+              {{ form.require_social_reauth_withdraw }}
+              <label class="form-check-label" for="id_require_social_reauth_withdraw">Require Google confirm for withdrawals</label>
+            </div>
+          </div>
+          <div class="col-12"><hr class="border-ci"></div>
+          <div class="col-12">
+            <h6 class="mb-2">Public profile</h6>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check">
+              {{ form.public_profile_enabled }}
+              <label class="form-check-label" for="id_public_profile_enabled">Enable public referral page</label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Public bio</label>
+            {{ form.public_bio }}
           </div>
         </div>
         <button type="submit" class="btn btn-ci mt-4">

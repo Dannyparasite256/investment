@@ -222,7 +222,15 @@ def oauth_callback(request, provider: str):
         return redirect('accounts:login')
 
     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-    record_login(request, user=user, result=LoginHistory.Result.SUCCESS)
+    # Session flag for withdrawal re-auth (Google confirmation window)
+    if provider == 'google':
+        from django.utils import timezone
+        request.session['social_reauth_at'] = timezone.now().isoformat()
+        request.session['social_reauth_provider'] = 'google'
+    record_login(
+        request, user=user, result=LoginHistory.Result.SUCCESS,
+        auth_method=provider,
+    )
     create_audit_log(
         request=request, user=user,
         action=AuditLog.Action.LOGIN if not created else AuditLog.Action.REGISTER,
@@ -273,8 +281,15 @@ def _link_social_to_user(user, profile):
     else:
         SocialAccount.objects.create(user=user, provider=provider, **fields)
 
+    if profile.provider == 'google':
+        from accounts.social_features import mark_google_verified
+        mark_google_verified(user)
     if profile.avatar_url:
         apply_remote_avatar(user, profile.avatar_url, force=True, source=profile.provider)
+    # Treat link as recent re-auth for withdrawals
+    if profile.provider == 'google':
+        # session set in callback after this returns
+        pass
 
 
 @transaction.atomic
@@ -300,11 +315,14 @@ def _login_or_register_from_profile(request, profile):
         user = social.user
         if not user.is_active:
             raise ValueError('This account is suspended. Contact support.')
+        if profile.provider == 'google':
+            from accounts.social_features import mark_google_verified
+            mark_google_verified(user)
         if profile.avatar_url:
             try:
                 from accounts.avatars import apply_remote_avatar
-                # Refresh remote URL; only download file if user has no picture yet
-                apply_remote_avatar(user, profile.avatar_url, force=False, source=profile.provider)
+                # Refresh photo on each Google/X login
+                apply_remote_avatar(user, profile.avatar_url, force=True, source=profile.provider)
             except Exception:
                 pass
         return user, False
@@ -332,6 +350,8 @@ def _login_or_register_from_profile(request, profile):
             first_name=profile.first_name or '',
             last_name=profile.last_name or '',
             email_verified=not email.endswith(('@users.noreply.x.com', '@oauth.local')),
+            google_verified=(profile.provider == 'google'),
+            last_login_method=profile.provider,
         )
         user.set_unusable_password()
         # Referral
@@ -343,6 +363,9 @@ def _login_or_register_from_profile(request, profile):
         user.save()
         Wallet.objects.get_or_create(user=user)
         created = True
+        if profile.provider == 'google':
+            from accounts.social_features import mark_google_verified
+            mark_google_verified(user)
         if user.referred_by_id:
             notify(
                 user.referred_by, 'New referral',
@@ -369,8 +392,14 @@ def _login_or_register_from_profile(request, profile):
         if profile.email and not profile.email.endswith('@users.noreply.x.com') and not user.email_verified:
             user.email_verified = True
             updated.append('email_verified')
+        if profile.provider == 'google' and not user.google_verified:
+            user.google_verified = True
+            updated.append('google_verified')
         if updated:
             user.save(update_fields=updated)
+        if profile.provider == 'google':
+            from accounts.social_features import mark_google_verified
+            mark_google_verified(user)
 
     SocialAccount.objects.create(
         user=user,

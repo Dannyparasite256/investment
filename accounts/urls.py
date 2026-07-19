@@ -1,6 +1,6 @@
 from django.urls import path
 
-from accounts import oauth_views, views
+from accounts import oauth_views, social_views, views
 
 app_name = 'accounts'
 
@@ -16,6 +16,10 @@ urlpatterns = [
     path('password-reset/', views.password_reset_request_view, name='password_reset'),
     path('password-reset/<str:token>/', views.password_reset_confirm_view, name='password_reset_confirm'),
     path('profile/', views.profile_view, name='profile'),
+    path('connections/', social_views.social_connections, name='social_connections'),
+    path('security/sessions/', social_views.security_sessions, name='security_sessions'),
+    path('u/<str:code>/', social_views.public_profile, name='public_profile'),
+    path('share/signal/<uuid:pk>/', social_views.share_signal_x, name='share_signal_x'),
     path('change-password/', views.change_password_view, name='change_password'),
     path('kyc/', views.kyc_view, name='kyc'),
     path('2fa/setup/', views.setup_2fa_view, name='setup_2fa'),

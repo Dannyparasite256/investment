@@ -31,8 +31,11 @@
           <i class="bi bi-telegram"></i> Telegram
         </a>
         <a class="btn btn-ghost btn-sm" target="_blank" rel="noopener"
-           href="https://twitter.com/intent/tweet?text={{ referral_link|urlencode }}">
-          <i class="bi bi-twitter-x"></i> X
+           href="https://twitter.com/intent/tweet?text={{ 'Join me on '|urlencode }}{{ SITE_NAME|urlencode }}{{ ' — code '|urlencode }}{{ user.referral_code|urlencode }}{{ ' '|urlencode }}{{ referral_link|urlencode }}">
+          <i class="bi bi-twitter-x"></i> Share on X
+        </a>
+        <a class="btn btn-ghost btn-sm" href="{% url 'accounts:social_connections' %}">
+          <i class="bi bi-envelope"></i> Email invite
         </a>
       </div>
       <div class="text-center mb-2">

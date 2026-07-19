@@ -14,10 +14,13 @@
       </div>
       <h6 class="mb-1">{{ s.title }}</h6>
       {% if s.entry_note %}<p class="small text-muted">{{ s.entry_note|truncatechars:160 }}</p>{% endif %}
-      <div class="d-flex gap-3 small">
+      <div class="d-flex gap-3 small mb-2">
         {% if s.target %}<span>Target <strong class="font-mono">{{ s.target }}</strong></span>{% endif %}
         {% if s.stop_loss %}<span>SL <strong class="font-mono">{{ s.stop_loss }}</strong></span>{% endif %}
       </div>
+      <a class="btn btn-ghost btn-sm" href="{% url 'accounts:share_signal_x' s.pk %}" target="_blank" rel="noopener">
+        <i class="bi bi-twitter-x me-1"></i> Share on X
+      </a>
     </div>
   </div>
   {% empty %}

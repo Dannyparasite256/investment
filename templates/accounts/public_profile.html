@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ profile_user.display_name }} — {{ SITE_NAME }}{% endblock %}
+{% block body %}
+<div class="container py-5" style="max-width:560px">
+  <div class="glass-card p-4 text-center animate-in">
+    {% if avatar_url %}
+    <img src="{{ avatar_url }}" class="avatar avatar-lg mb-3" alt="" style="object-fit:cover">
+    {% else %}
+    <div class="avatar avatar-lg mx-auto mb-3 d-flex align-items-center justify-content-center bg-elevated" style="font-size:2rem">
+      <i class="bi bi-person"></i>
+    </div>
+    {% endif %}
+    <h3 class="mb-1">{{ profile_user.display_name }}</h3>
+    {% if google_verified %}
+    <span class="badge badge-status badge-success mb-2"><i class="bi bi-patch-check-fill me-1"></i> Google verified</span>
+    {% endif %}
+    {% if x_handle %}
+    <div class="small text-muted mb-2"><i class="bi bi-twitter-x"></i> @{{ x_handle }}</div>
+    {% endif %}
+    {% if profile_user.public_bio %}
+    <p class="text-muted">{{ profile_user.public_bio }}</p>
+    {% endif %}
+    <p class="small text-muted mb-3">Referral code <strong class="font-mono">{{ ref_code }}</strong></p>
+    <div class="d-grid gap-2">
+      <a class="btn btn-ci" href="{% url 'accounts:register' %}?ref={{ ref_code }}">Join with this code</a>
+      <a class="btn btn-outline-ci btn-sm" href="{{ x_share_url }}" target="_blank" rel="noopener">
+        <i class="bi bi-twitter-x me-1"></i> Share on X
+      </a>
+      <a class="btn btn-ghost btn-sm" href="{% url 'core:home' %}">Back to {{ SITE_NAME }}</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

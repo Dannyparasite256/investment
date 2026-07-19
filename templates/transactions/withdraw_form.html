@@ -22,6 +22,19 @@
     </div>
 
     <div class="glass-card p-4">
+      {% if needs_reauth %}
+      <div class="alert {% if reauth_ok %}alert-success{% else %}alert-warning{% endif %} glass-card border-0 small mb-3">
+        <i class="bi bi-shield-lock me-1"></i>
+        <strong>Extra security:</strong> Google confirmation is required before withdrawals.
+        {% if reauth_ok %}
+        You’re confirmed for the next few minutes.
+        {% else %}
+        <a class="btn btn-outline-ci btn-sm ms-2" href="{{ google_reauth_url }}">
+          <i class="bi bi-google me-1"></i> Confirm with Google
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
       <div class="alert alert-warning glass-card border-0 small mb-3">
         <i class="bi bi-exclamation-triangle me-1"></i>
         Enter the amount in <strong>{{ currency_symbol|default:display_currency }}</strong>.

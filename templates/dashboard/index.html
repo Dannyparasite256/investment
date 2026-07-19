@@ -3,9 +3,23 @@
 
 {% block title %}Dashboard — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
-{% block page_subtitle %}Your portfolio at a glance{% endblock %}
+{% block page_subtitle %}Welcome back, {{ user.display_name }}{% endblock %}
 
 {% block content %}
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  {% if user.avatar_display_url %}
+  <img src="{{ user.avatar_display_url }}" class="avatar" alt="" style="object-fit:cover">
+  {% endif %}
+  <div>
+    <div class="fw-semibold">Hi, {{ user.first_name|default:user.display_name }} 👋</div>
+    <div class="small text-muted">
+      {% if user.google_verified %}<span class="badge badge-status badge-success me-1"><i class="bi bi-google"></i> Verified</span>{% endif %}
+      Last login: {{ user.last_login_method|default:"password" }}
+      · <a href="{% url 'accounts:social_connections' %}">Connected accounts</a>
+    </div>
+  </div>
+</div>
 
 <div class="glass-card balance-hero mb-4 animate-in reveal lift" data-balance-root>
   <div class="row align-items-end g-4">

@@ -18,7 +18,21 @@
       <div class="small mb-1">Display currency: <strong>{{ display_currency|default:target.preferred_currency|default:"USD" }}</strong></div>
       <div class="small mb-1">Timezone: <strong class="font-mono">{{ target.preferred_timezone|default:"—" }}</strong></div>
       <div class="small mb-1">Last IP: <strong class="font-mono">{{ target.last_login_ip|default:"—" }}</strong></div>
+      <div class="small mb-1">Last login method: <strong>{{ target.last_login_method|default:"—" }}</strong></div>
       <div class="small mb-3">Referral earnings: <strong class="font-mono">{% if referral_display %}{{ referral_display.label }}{% else %}{{ target.referral_earnings|money:2 }}{% endif %}</strong></div>
+      {% if social_signals %}
+      <div class="border-top border-ci pt-3 mb-3">
+        <div class="small fw-semibold mb-1">Social identity score: {{ social_signals.score }}/100</div>
+        <div class="small text-muted mb-1">
+          {% if social_signals.google_linked %}<span class="badge badge-status badge-success me-1">Google</span>{% endif %}
+          {% if target.google_verified %}<span class="badge badge-status badge-success me-1">G-verified</span>{% endif %}
+          {% if social_signals.x_linked %}<span class="badge badge-status badge-info me-1">X @{{ social_signals.x_handle }}</span>{% endif %}
+        </div>
+        <ul class="small text-muted mb-0 ps-3">
+          {% for n in social_signals.notes %}<li>{{ n }}</li>{% endfor %}
+        </ul>
+      </div>
+      {% endif %}
 
       <div class="d-grid gap-2 mb-3">
         {% if not target.email_verified %}
