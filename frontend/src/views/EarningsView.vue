@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
+import Button from 'primevue/button'
 import VueApexCharts from 'vue3-apexcharts'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -9,6 +11,7 @@ import { api, unwrapList } from '@/services/api'
 import { formatMoney, shortDate } from '@/utils/money'
 import type { Earning } from '@/types/api'
 
+const router = useRouter()
 const rows = ref<Earning[]>([])
 const loading = ref(true)
 
@@ -62,6 +65,17 @@ onMounted(async () => {
         </Column>
         <Column field="is_reinvested" header="Reinvested">
           <template #body="{ data }">{{ data.is_reinvested ? 'Yes' : 'No' }}</template>
+        </Column>
+        <Column header="" style="width:7rem">
+          <template #body="{ data }">
+            <Button
+              label="Receipt"
+              size="small"
+              text
+              icon="pi pi-file"
+              @click="router.push(`/receipts/earning/${data.id}`)"
+            />
+          </template>
         </Column>
       </DataTable>
       <EmptyState v-else-if="!loading" title="No earnings yet" text="Profits will show as your investments pay out." />

@@ -31,6 +31,13 @@ onMounted(async () => {
   <div>
     <PageHeader :title="inv?.plan_name || 'Investment'" subtitle="Position details">
       <Button label="Back" icon="pi pi-arrow-left" text @click="router.push('/investments')" />
+      <Button
+        v-if="inv"
+        label="Receipt"
+        icon="pi pi-file"
+        outlined
+        @click="router.push(`/receipts/investment/${inv.id}`)"
+      />
     </PageHeader>
     <Skeleton v-if="loading" height="220px" border-radius="18px" />
     <div v-else-if="inv" class="glass card">

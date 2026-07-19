@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -7,10 +8,11 @@ import Tag from 'primevue/tag'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatCard from '@/components/ui/StatCard.vue'
 import { api } from '@/services/api'
-import { formatMoney, shortDate, statusSeverity } from '@/utils/money'
+import { formatMoney, statusSeverity } from '@/utils/money'
 import { useUiStore } from '@/stores/ui'
 import type { ReferralData } from '@/types/api'
 
+const router = useRouter()
 const ui = useUiStore()
 const loading = ref(true)
 const data = ref<ReferralData | null>(null)
@@ -74,6 +76,17 @@ onMounted(load)
           <Column field="level" header="Lvl" style="width:4rem" />
           <Column header="Status">
             <template #body="{ data: row }"><Tag :value="row.status" :severity="statusSeverity(row.status)" /></template>
+          </Column>
+          <Column header="" style="width:7rem">
+            <template #body="{ data: row }">
+              <Button
+                label="Receipt"
+                size="small"
+                text
+                icon="pi pi-file"
+                @click="router.push(`/receipts/referral/${row.id}`)"
+              />
+            </template>
           </Column>
         </DataTable>
       </div>

@@ -180,6 +180,10 @@ export interface Transaction {
   status: string
   description: string
   created_at: string
+  reference_type?: string
+  reference_id?: string
+  fee?: string
+  currency?: string
 }
 
 export interface Earning {

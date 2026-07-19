@@ -23,13 +23,13 @@ async function load() {
   error.value = ''
   try {
     let data: ReceiptData
-    if (kind.value === 'withdrawal') {
-      data = (await api.withdrawalReceipt(id.value)).data
-    } else if (kind.value === 'transaction') {
-      data = (await api.transactionReceipt(id.value)).data
-    } else {
-      data = (await api.depositReceipt(id.value)).data
-    }
+    const k = kind.value
+    if (k === 'withdrawal') data = (await api.withdrawalReceipt(id.value)).data
+    else if (k === 'transaction') data = (await api.transactionReceipt(id.value)).data
+    else if (k === 'investment') data = (await api.investmentReceipt(id.value)).data
+    else if (k === 'earning' || k === 'profit') data = (await api.earningReceipt(id.value)).data
+    else if (k === 'referral') data = (await api.referralReceipt(id.value)).data
+    else data = (await api.depositReceipt(id.value)).data
     receipt.value = data
   } catch {
     error.value = 'Receipt not found'

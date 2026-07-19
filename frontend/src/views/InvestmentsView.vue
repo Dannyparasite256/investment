@@ -40,10 +40,14 @@ onMounted(async () => {
         paginator
         :rows="10"
         responsive-layout="scroll"
-        row-hover
-        @row-click="(e: any) => router.push(`/investments/${e.data.id}`)"
       >
-        <Column field="plan_name" header="Plan" />
+        <Column field="plan_name" header="Plan">
+          <template #body="{ data }">
+            <button type="button" class="linkish" @click="router.push(`/investments/${data.id}`)">
+              {{ data.plan_name }}
+            </button>
+          </template>
+        </Column>
         <Column field="amount" header="Amount">
           <template #body="{ data }"><span class="mono">{{ formatMoney(data.amount) }}</span></template>
         </Column>
@@ -62,6 +66,17 @@ onMounted(async () => {
         <Column field="matures_at" header="Matures">
           <template #body="{ data }">{{ shortDate(data.matures_at) }}</template>
         </Column>
+        <Column header="" style="width:7rem">
+          <template #body="{ data }">
+            <Button
+              label="Receipt"
+              size="small"
+              text
+              icon="pi pi-file"
+              @click.stop="router.push(`/receipts/investment/${data.id}`)"
+            />
+          </template>
+        </Column>
       </DataTable>
       <EmptyState v-else title="No investments yet" text="Browse plans and put your balance to work.">
         <Button label="Browse plans" icon="pi pi-chart-line" @click="router.push('/plans')" />
@@ -73,5 +88,8 @@ onMounted(async () => {
 <style scoped>
 .panel { padding: 0.75rem; }
 .small { font-size: 0.75rem; margin-top: 0.2rem; }
-:deep(.p-datatable-tbody > tr) { cursor: pointer; }
+.linkish {
+  border: 0; background: transparent; color: #60A5FA; font-weight: 650; cursor: pointer; padding: 0;
+}
+.linkish:hover { text-decoration: underline; }
 </style>

@@ -1,4 +1,4 @@
-"""JSON receipts for deposits, withdrawals, and ledger transactions."""
+"""JSON receipts for deposits, withdrawals, investments, earnings, referrals."""
 from decimal import Decimal
 
 from django.shortcuts import get_object_or_404
@@ -6,6 +6,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.utils import format_money, quantize_amount
+from investments.models import Earning, Investment
+from referrals.models import ReferralCommission
 from transactions.models import Deposit, Transaction, Withdrawal
 from wallets.display import (
     format_amount_for_code,
@@ -185,3 +187,181 @@ class TransactionReceiptView(APIView):
     def get(self, request, pk):
         tx = get_object_or_404(Transaction, pk=pk, user=request.user)
         return Response(_tx_payload(request, tx))
+
+
+class InvestmentReceiptView(APIView):
+    """Receipt for opening / holding an investment position."""
+
+    def get(self, request, pk):
+        inv = get_object_or_404(
+            Investment.objects.select_related('plan'),
+            pk=pk,
+            user=request.user,
+        )
+        linked = Transaction.objects.filter(
+            user=request.user, reference_type='investment', reference_id=str(inv.id),
+        ).order_by('created_at').first()
+        if linked and request.GET.get('tx') == '1':
+            return Response(_tx_payload(request, linked))
+
+        code = get_default_display_code(request.user, request=request)
+        meta = get_currency_meta(code)
+        amount_disp = format_amount_for_code(inv.amount, code)
+        earned_disp = format_amount_for_code(inv.total_earned or 0, code)
+        rows = [
+            _row('Receipt ID', inv.id),
+            _row('Type', 'Investment'),
+            _row('Status', inv.get_status_display()),
+            _row('Plan', inv.plan.name if inv.plan_id else '—'),
+            _row('Invested amount', amount_disp['label']),
+            _row('Total earned', earned_disp['label']),
+            _row('Profit rate', f'{inv.profit_rate_percent}%'),
+            _row('Payout frequency', inv.payout_frequency),
+            _row('Duration', f'{inv.duration_days} days'),
+            _row('Payouts', f'{inv.payouts_count} / {inv.expected_payouts}'),
+            _row('Auto reinvest', 'Yes' if inv.auto_reinvest else 'No'),
+            _row('Return principal', 'Yes' if inv.return_principal else 'No'),
+            _row('Started', inv.started_at),
+            _row('Matures', inv.matures_at),
+        ]
+        if inv.completed_at:
+            rows.append(_row('Completed', inv.completed_at))
+        rows.append(_row('Platform value (invested)', format_amount_for_code(inv.amount, 'USD')['label']))
+        if linked:
+            rows.append(_row('Ledger tx', linked.id))
+
+        return Response({
+            'kind': 'investment',
+            'id': str(inv.id),
+            'title': 'Investment receipt',
+            'status': inv.status,
+            'status_label': inv.get_status_display(),
+            'display_currency': code,
+            'currency_symbol': str(meta['symbol']),
+            'amount': amount_disp,
+            'earned': earned_disp,
+            'rows': rows,
+            'print_url': '',
+        })
+
+
+class EarningReceiptView(APIView):
+    """Receipt for a profit / investment earnings payout."""
+
+    def get(self, request, pk):
+        earning = get_object_or_404(
+            Earning.objects.select_related('investment', 'investment__plan'),
+            pk=pk,
+            user=request.user,
+        )
+        linked = Transaction.objects.filter(
+            user=request.user, reference_type='earning', reference_id=str(earning.id),
+        ).first()
+        if linked and request.GET.get('tx') == '1':
+            return Response(_tx_payload(request, linked))
+
+        code = get_default_display_code(request.user, request=request)
+        meta = get_currency_meta(code)
+        amount_disp = format_amount_for_code(earning.amount, code)
+        plan_name = ''
+        inv_amount = None
+        if earning.investment_id:
+            plan_name = earning.investment.plan.name if earning.investment.plan_id else ''
+            inv_amount = earning.investment.amount
+        rows = [
+            _row('Receipt ID', earning.id),
+            _row('Type', 'Investment profit / earning'),
+            _row('Status', 'Reinvested' if earning.is_reinvested else 'Paid'),
+            _row('Amount', amount_disp['label']),
+            _row('Period', earning.period_number),
+            _row('Plan', plan_name or '—'),
+            _row('Investment ID', earning.investment_id or '—'),
+        ]
+        if inv_amount is not None:
+            rows.append(_row('Position size', format_amount_for_code(inv_amount, code)['label']))
+        if earning.description:
+            rows.append(_row('Description', earning.description))
+        rows.append(_row('Date', earning.created_at))
+        rows.append(_row('Platform value', format_amount_for_code(earning.amount, 'USD')['label']))
+        if linked:
+            rows.append(_row('Ledger tx', linked.id))
+
+        return Response({
+            'kind': 'earning',
+            'id': str(earning.id),
+            'title': 'Earning receipt',
+            'status': 'reinvested' if earning.is_reinvested else 'paid',
+            'status_label': 'Reinvested' if earning.is_reinvested else 'Paid',
+            'display_currency': code,
+            'currency_symbol': str(meta['symbol']),
+            'amount': amount_disp,
+            'rows': rows,
+            'print_url': '',
+        })
+
+
+class ReferralReceiptView(APIView):
+    """Receipt for a referral commission credit."""
+
+    def get(self, request, pk):
+        comm = get_object_or_404(
+            ReferralCommission.objects.select_related('referred_user'),
+            pk=pk,
+            referrer=request.user,
+        )
+        linked = Transaction.objects.filter(
+            user=request.user,
+            tx_type=Transaction.TxType.REFERRAL,
+            reference_id=str(comm.id),
+        ).first()
+        if not linked:
+            linked = Transaction.objects.filter(
+                user=request.user,
+                reference_type='referral',
+                reference_id=str(comm.id),
+            ).first()
+
+        code = get_default_display_code(request.user, request=request)
+        meta = get_currency_meta(code)
+        amount_disp = format_amount_for_code(comm.amount, code)
+        base_disp = format_amount_for_code(comm.base_amount, code)
+        referred = comm.referred_user.email if comm.referred_user_id else '—'
+        # Lightly mask email for privacy on printed receipt of referred user
+        if '@' in referred:
+            local, domain = referred.split('@', 1)
+            referred_display = (local[:2] + '***@' + domain) if len(local) > 2 else '***@' + domain
+        else:
+            referred_display = referred
+
+        rows = [
+            _row('Receipt ID', comm.id),
+            _row('Type', 'Referral commission'),
+            _row('Status', comm.get_status_display()),
+            _row('Commission', amount_disp['label']),
+            _row('Rate', f'{comm.rate_percent}%'),
+            _row('Level', comm.level),
+            _row('Source', comm.source or '—'),
+            _row('Base amount', base_disp['label']),
+            _row('Referred user', referred_display),
+            _row('Date', comm.created_at),
+        ]
+        if comm.paid_at:
+            rows.append(_row('Paid at', comm.paid_at))
+        if comm.notes:
+            rows.append(_row('Notes', comm.notes))
+        rows.append(_row('Platform value', format_amount_for_code(comm.amount, 'USD')['label']))
+        if linked:
+            rows.append(_row('Ledger tx', linked.id))
+
+        return Response({
+            'kind': 'referral',
+            'id': str(comm.id),
+            'title': 'Referral earnings receipt',
+            'status': comm.status,
+            'status_label': comm.get_status_display(),
+            'display_currency': code,
+            'currency_symbol': str(meta['symbol']),
+            'amount': amount_disp,
+            'rows': rows,
+            'print_url': '',
+        })

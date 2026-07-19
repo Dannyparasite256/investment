@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
@@ -11,6 +12,7 @@ import { api, unwrapList } from '@/services/api'
 import { formatMoney, shortDate, statusSeverity } from '@/utils/money'
 import type { Transaction } from '@/types/api'
 
+const router = useRouter()
 const rows = ref<Transaction[]>([])
 const loading = ref(true)
 const type = ref<string | null>(null)
@@ -22,6 +24,33 @@ const types = [
   { label: 'Profit', value: 'profit' },
   { label: 'Referral', value: 'referral' },
 ]
+
+function openReceipt(tx: Transaction) {
+  // Prefer domain receipts when the ledger points at a known object
+  const refType = (tx as any).reference_type as string | undefined
+  const refId = (tx as any).reference_id as string | undefined
+  if (refType === 'investment' && refId) {
+    router.push(`/receipts/investment/${refId}`)
+    return
+  }
+  if (refType === 'earning' && refId) {
+    router.push(`/receipts/earning/${refId}`)
+    return
+  }
+  if ((refType === 'referral' || tx.tx_type === 'referral') && refId) {
+    router.push(`/receipts/referral/${refId}`)
+    return
+  }
+  if (refType === 'deposit' && refId) {
+    router.push(`/receipts/deposit/${refId}`)
+    return
+  }
+  if (refType === 'withdrawal' && refId) {
+    router.push(`/receipts/withdrawal/${refId}`)
+    return
+  }
+  router.push(`/receipts/transaction/${tx.id}`)
+}
 
 async function load() {
   loading.value = true
@@ -69,6 +98,11 @@ onMounted(load)
         </Column>
         <Column field="status" header="Status">
           <template #body="{ data }"><Tag :value="data.status" :severity="statusSeverity(data.status)" /></template>
+        </Column>
+        <Column header="" style="width:7rem">
+          <template #body="{ data }">
+            <Button label="Receipt" size="small" text icon="pi pi-file" @click="openReceipt(data)" />
+          </template>
         </Column>
       </DataTable>
       <EmptyState v-else title="No transactions" text="Activity will appear here as you use the platform." />

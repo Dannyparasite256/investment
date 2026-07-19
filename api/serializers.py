@@ -110,7 +110,10 @@ class WithdrawalSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        fields = ('id', 'tx_type', 'amount', 'status', 'description', 'created_at')
+        fields = (
+            'id', 'tx_type', 'amount', 'status', 'description', 'created_at',
+            'reference_type', 'reference_id', 'fee', 'currency',
+        )
 
 
 class EarningSerializer(serializers.ModelSerializer):

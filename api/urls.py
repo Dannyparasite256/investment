@@ -33,6 +33,10 @@ urlpatterns = [
     path('receipts/deposit/<uuid:pk>/', receipt_views.DepositReceiptView.as_view(), name='api-deposit-receipt'),
     path('receipts/withdrawal/<uuid:pk>/', receipt_views.WithdrawalReceiptView.as_view(), name='api-withdrawal-receipt'),
     path('receipts/transaction/<uuid:pk>/', receipt_views.TransactionReceiptView.as_view(), name='api-tx-receipt'),
+    path('receipts/investment/<uuid:pk>/', receipt_views.InvestmentReceiptView.as_view(), name='api-investment-receipt'),
+    path('receipts/earning/<uuid:pk>/', receipt_views.EarningReceiptView.as_view(), name='api-earning-receipt'),
+    path('receipts/referral/<uuid:pk>/', receipt_views.ReferralReceiptView.as_view(), name='api-referral-receipt'),
+
     # User platform
     path('referrals/', platform_views.ReferralsView.as_view(), name='api-referrals'),
     path('referrals/leaderboard/', platform_views.LeaderboardView.as_view(), name='api-leaderboard'),

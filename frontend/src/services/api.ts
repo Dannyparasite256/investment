@@ -87,6 +87,16 @@ export const api = {
   transactionReceipt(id: string) {
     return http.get<ReceiptData>(`/api/v1/receipts/transaction/${id}/`)
   },
+  investmentReceipt(id: string) {
+    return http.get<ReceiptData>(`/api/v1/receipts/investment/${id}/`)
+  },
+  earningReceipt(id: string) {
+    return http.get<ReceiptData>(`/api/v1/receipts/earning/${id}/`)
+  },
+  referralReceipt(id: string) {
+    return http.get<ReceiptData>(`/api/v1/receipts/referral/${id}/`)
+  },
+
   // Staff admin
   staffDashboard() {
     return http.get('/api/v1/staff/dashboard/')
