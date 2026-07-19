@@ -9,7 +9,7 @@
 </form>
 <div class="glass-card p-0 overflow-hidden table-responsive">
 <table class="table table-ci table-hover mb-0">
-  <thead><tr><th>UUID</th><th>Time</th><th>User</th><th>Type</th><th>Amount</th><th>Fee</th><th>Currency</th><th>Network</th><th>Hash</th><th>Status</th><th>Admin</th></tr></thead>
+  <thead><tr><th>UUID</th><th>Time</th><th>User</th><th>Type</th><th>Amount (user)</th><th>Fee</th><th>Platform</th><th>Network</th><th>Hash</th><th>Status</th><th>Admin</th></tr></thead>
   <tbody>
   {% for t in page %}
   <tr>
@@ -17,9 +17,12 @@
     <td class="small text-muted">{{ t.created_at|when }}</td>
     <td class="small">{{ t.user.email|truncatechars:18 }}</td>
     <td>{{ t.get_tx_type_display }}</td>
-    <td class="font-mono">{{ t.amount|money_trim:8 }}</td>
-    <td class="font-mono small">{{ t.fee }}</td>
-    <td>{{ t.currency }}</td>
+    <td class="font-mono">
+      {% if t.amount_display %}{{ t.amount_display.label }}{% else %}{{ t.amount|money_trim:8 }}{% endif %}
+      {% if t.crypto_label %}<div class="small text-muted">{{ t.crypto_label }}</div>{% endif %}
+    </td>
+    <td class="font-mono small">{% if t.fee_display %}{{ t.fee_display.label }}{% else %}{{ t.fee|money_trim:8 }}{% endif %}</td>
+    <td class="font-mono small text-muted">{% if t.platform_label %}{{ t.platform_label }}{% else %}—{% endif %}</td>
     <td class="small">{{ t.network|default:"—" }}</td>
     <td class="font-mono small">{{ t.tx_hash|truncatechars:12|default:"—" }}</td>
     <td><span class="badge badge-status badge-{{ t.status }}">{{ t.status }}</span></td>

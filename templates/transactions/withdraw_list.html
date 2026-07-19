@@ -33,7 +33,9 @@
             {% if w.amount_display %}{{ w.amount_display.label }}{% else %}{{ w.amount|money:2 }}{% endif %}
           </td>
           <td class="font-mono small">
-            {% if w.crypto_payout %}≈ {{ w.crypto_payout }} {{ w.cryptocurrency.symbol }}{% else %}—{% endif %}
+            {% if w.crypto_label %}{{ w.crypto_label }}
+            {% elif w.crypto_payout %}{{ w.crypto_payout }}
+            {% else %}—{% endif %}
           </td>
           <td class="font-mono small">{{ w.wallet_address|truncatechars:16 }}</td>
           <td><span class="badge badge-status badge-{{ w.status }}">{{ w.get_status_display }}</span></td>

@@ -76,10 +76,8 @@ def dashboard(request):
 
     recent_tx = Transaction.objects.filter(user=user)[:10]
     # Same amount resolution as receipts / history so figures always match
-    from wallets.display import resolve_transaction_display_amounts
-    for tx in recent_tx:
-        resolved = resolve_transaction_display_amounts(tx, display_code)
-        tx.amount_display = resolved['amount_display']
+    from wallets.display import annotate_transactions
+    annotate_transactions(recent_tx, display_code=display_code, use_user_pref=False)
 
     recent_earnings = Earning.objects.filter(user=user).select_related('investment__plan')[:8]
     notifications = Notification.objects.filter(user=user, is_read=False)[:5]

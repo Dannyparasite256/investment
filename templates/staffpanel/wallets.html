@@ -1,24 +1,28 @@
 {% extends "staffpanel/base.html" %}
 {% block page_title %}Wallet management{% endblock %}
+{% block page_subtitle %}Platform totals in USD · per-user rows in each user’s preferred currency{% endblock %}
 {% block content %}
 <div class="row g-3 mb-3">
-  <div class="col-md-4"><div class="glass-card stat-card"><div class="stat-label">Total balances</div><div class="stat-value" style="font-size:1.3rem">{{ totals.bal|money }}</div></div></div>
-  <div class="col-md-4"><div class="glass-card stat-card"><div class="stat-label">Total profits</div><div class="stat-value text-profit" style="font-size:1.3rem">{{ totals.profit|money }}</div></div></div>
-  <div class="col-md-4"><div class="glass-card stat-card"><div class="stat-label">Total deposited</div><div class="stat-value" style="font-size:1.3rem">{{ totals.dep|money }}</div></div></div>
+  <div class="col-md-4"><div class="glass-card stat-card"><div class="stat-label">Total balances (USD)</div><div class="stat-value" style="font-size:1.3rem">{% if totals_fmt %}{{ totals_fmt.bal }}{% else %}{{ totals.bal|money }}{% endif %}</div></div></div>
+  <div class="col-md-4"><div class="glass-card stat-card"><div class="stat-label">Total profits (USD)</div><div class="stat-value text-profit" style="font-size:1.3rem">{% if totals_fmt %}{{ totals_fmt.profit }}{% else %}{{ totals.profit|money }}{% endif %}</div></div></div>
+  <div class="col-md-4"><div class="glass-card stat-card"><div class="stat-label">Total deposited (USD)</div><div class="stat-value" style="font-size:1.3rem">{% if totals_fmt %}{{ totals_fmt.dep }}{% else %}{{ totals.dep|money }}{% endif %}</div></div></div>
 </div>
 <div class="glass-card p-0 overflow-hidden table-responsive">
 <table class="table table-ci mb-0">
-<thead><tr><th>User</th><th>Balance</th><th>Locked</th><th>Deposited</th><th>Withdrawn</th><th>Profit</th></tr></thead>
+<thead><tr><th>User</th><th>Pref</th><th>Balance</th><th>Locked</th><th>Deposited</th><th>Withdrawn</th><th>Profit</th></tr></thead>
 <tbody>
 {% for w in wallets %}
 <tr>
   <td><a href="{% url 'staffpanel:user_detail' w.user_id %}">{{ w.user.email }}</a></td>
-  <td class="font-mono">{{ w.balance }}</td>
-  <td class="font-mono">{{ w.locked_balance }}</td>
-  <td class="font-mono">{{ w.total_deposited }}</td>
-  <td class="font-mono">{{ w.total_withdrawn }}</td>
-  <td class="font-mono text-profit">{{ w.total_profit }}</td>
+  <td class="small text-muted">{{ w.display_currency|default:"USD" }}</td>
+  <td class="font-mono">{% if w.bal_display %}{{ w.bal_display.label }}{% else %}{{ w.balance|money:2 }}{% endif %}</td>
+  <td class="font-mono">{{ w.locked_balance|money:2 }}</td>
+  <td class="font-mono">{{ w.total_deposited|money:2 }}</td>
+  <td class="font-mono">{{ w.total_withdrawn|money:2 }}</td>
+  <td class="font-mono text-profit">{% if w.profit_display %}{{ w.profit_display.label }}{% else %}{{ w.total_profit|money:2 }}{% endif %}</td>
 </tr>
+{% empty %}
+<tr><td colspan="7" class="text-center text-muted py-4">No wallets</td></tr>
 {% endfor %}
 </tbody></table></div>
 {% endblock %}

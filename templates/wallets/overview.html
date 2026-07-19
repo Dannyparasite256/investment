@@ -72,8 +72,8 @@
             <tr>
               <td class="small text-muted">{{ e.created_at|when }}</td>
               <td>{{ e.get_entry_type_display }}</td>
-              <td class="font-mono">{{ e.amount|money_trim:8 }}</td>
-              <td class="font-mono text-muted">{{ e.balance_after|money:2 }}</td>
+              <td class="font-mono">{% if e.amount_display %}{{ e.amount_display.label }}{% else %}{{ e.amount|money_trim:8 }}{% endif %}</td>
+              <td class="font-mono text-muted">{% if e.balance_display %}{{ e.balance_display.label }}{% else %}{{ e.balance_after|money:2 }}{% endif %}</td>
             </tr>
             {% empty %}
             <tr><td colspan="4" class="text-center text-muted py-4">No ledger entries</td></tr>

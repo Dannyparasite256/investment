@@ -44,7 +44,8 @@
           <th>Date</th>
           <th>User</th>
           <th>Crypto</th>
-          <th>Amount</th>
+          <th>Amount (user)</th>
+          <th>Crypto qty</th>
           <th>Hash</th>
           <th>Proof</th>
           <th>Status</th>
@@ -57,7 +58,11 @@
           <td class="small text-muted">{{ d.created_at|when:"full" }}</td>
           <td class="small"><a href="{% url 'staffpanel:user_detail' d.user_id %}">{{ d.user.email }}</a></td>
           <td><span class="badge badge-status badge-info">{{ d.cryptocurrency.symbol }}</span></td>
-          <td class="font-mono">{{ d.amount|money_trim:8 }} <span class="text-muted small">{{ d.cryptocurrency.symbol }}</span></td>
+          <td class="font-mono">
+            {% if d.amount_display %}{{ d.amount_display.label }}{% else %}{{ d.amount|money_trim:8 }}{% endif %}
+            {% if d.platform_label %}<div class="small text-muted">{{ d.platform_label }}</div>{% endif %}
+          </td>
+          <td class="font-mono small text-muted">{% if d.crypto_label %}{{ d.crypto_label }}{% else %}{{ d.amount|money_trim:8 }} {{ d.cryptocurrency.symbol }}{% endif %}</td>
           <td class="font-mono small" title="{{ d.transaction_hash }}">{{ d.transaction_hash|truncatechars:18 }}</td>
           <td>
             {% if d.screenshot %}
@@ -82,7 +87,7 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="8" class="text-center text-muted py-5">No deposits in this filter</td></tr>
+        <tr><td colspan="9" class="text-center text-muted py-5">No deposits in this filter</td></tr>
         {% endfor %}
       </tbody>
     </table>

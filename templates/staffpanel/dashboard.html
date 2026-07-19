@@ -10,8 +10,8 @@
   <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Open tickets</div><div class="stat-value">{{ stats.open_tickets }}</div></div></div>
   <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Users</div><div class="stat-value">{{ stats.users_total }}</div><small class="text-muted">+{{ stats.users_today }} today</small></div></div>
   <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Active investments</div><div class="stat-value">{{ stats.active_investments }}</div><small class="text-muted font-mono">{{ stats.invested_total }}</small></div></div>
-  <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Deposits (30d)</div><div class="stat-value text-profit font-mono" style="font-size:1.35rem">{{ stats.revenue_month|money }}</div></div></div>
-  <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Withdrawals (30d)</div><div class="stat-value font-mono" style="font-size:1.35rem">{{ stats.withdrawals_month|money }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Deposits (30d)</div><div class="stat-value text-profit font-mono" style="font-size:1.35rem">{{ stats.revenue_month_label|default:stats.revenue_month|money }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="glass-card stat-card"><div class="stat-label">Withdrawals (30d)</div><div class="stat-value font-mono" style="font-size:1.35rem">{{ stats.withdrawals_month_label|default:stats.withdrawals_month|money }}</div></div></div>
 </div>
 
 <div class="row g-4 mb-4">
@@ -46,7 +46,10 @@
             {% for d in recent_deposits %}
             <tr>
               <td class="small">{{ d.user.email|truncatechars:22 }}</td>
-              <td class="font-mono small">{{ d.amount|money_trim:8 }} {{ d.cryptocurrency.symbol }}</td>
+              <td class="font-mono small">
+                {% if d.amount_display %}{{ d.amount_display.label }}{% else %}{{ d.amount|money_trim:8 }} {{ d.cryptocurrency.symbol }}{% endif %}
+                {% if d.crypto_label %}<div class="text-muted" style="font-size:0.7rem">{{ d.crypto_label }}</div>{% endif %}
+              </td>
               <td><span class="badge badge-status badge-{{ d.status }}">{{ d.get_status_display }}</span></td>
             </tr>
             {% empty %}<tr><td colspan="3" class="text-muted text-center py-3">None</td></tr>{% endfor %}
@@ -65,7 +68,10 @@
             {% for w in recent_withdrawals %}
             <tr>
               <td class="small">{{ w.user.email|truncatechars:22 }}</td>
-              <td class="font-mono small">{{ w.amount|money_trim:8 }}</td>
+              <td class="font-mono small">
+                {% if w.amount_display %}{{ w.amount_display.label }}{% else %}{{ w.amount|money:2 }}{% endif %}
+                {% if w.platform_label %}<div class="text-muted" style="font-size:0.7rem">{{ w.platform_label }}</div>{% endif %}
+              </td>
               <td><span class="badge badge-status badge-{{ w.status }}">{{ w.get_status_display }}</span></td>
             </tr>
             {% empty %}<tr><td colspan="3" class="text-muted text-center py-3">None</td></tr>{% endfor %}

@@ -558,6 +558,196 @@ def tx_type_is_crypto_asset(tx) -> bool:
     return bool(md.get('crypto_amount') and md.get('rate_usd') and not md.get('platform_usd'))
 
 
+def deposit_platform_usd(dep) -> Decimal:
+    """Platform USD-equivalent credit for a Deposit (approved or estimated)."""
+    if getattr(dep, 'credit_amount', None) is not None:
+        return quantize_amount(_dec(dep.credit_amount), 8)
+    price = getattr(dep, 'rate_usd', None)
+    if not price or _dec(price) <= 0:
+        crypto = getattr(dep, 'cryptocurrency', None)
+        price = getattr(crypto, 'usd_price', None) if crypto else None
+    price = _dec(price, '1')
+    if price <= 0:
+        price = Decimal('1')
+    return quantize_amount(_dec(getattr(dep, 'amount', 0)) * price, 8)
+
+
+def resolve_deposit_display_amounts(dep, display_code: str | None = None) -> dict:
+    """Consistent deposit amounts for user UI, staff, and admin."""
+    from transactions.models import Transaction
+
+    code = (display_code or get_default_display_code(dep.user)).strip() or 'USD'
+    linked = Transaction.objects.filter(
+        user_id=dep.user_id,
+        reference_type='deposit',
+        reference_id=str(dep.id),
+    ).first()
+    if linked:
+        return resolve_transaction_display_amounts(linked, code)
+
+    credit = deposit_platform_usd(dep)
+    crypto = getattr(dep, 'cryptocurrency', None)
+    symbol = getattr(crypto, 'symbol', '') or ''
+    rate = getattr(dep, 'rate_usd', None) or getattr(crypto, 'usd_price', None)
+    return {
+        'platform_usd': credit,
+        'fee_usd': Decimal('0'),
+        'net_usd': credit,
+        'amount_display': format_amount_for_code(credit, code),
+        'fee_display': None,
+        'net_display': format_amount_for_code(credit, code),
+        'desired_amount': None,
+        'desired_currency': None,
+        'crypto_amount': str(dep.amount),
+        'crypto_symbol': symbol,
+        'rate_usd': str(rate) if rate is not None else '',
+    }
+
+
+def resolve_withdrawal_display_amounts(w, display_code: str | None = None) -> dict:
+    """Consistent withdrawal amounts — prefer linked tx desired amount."""
+    from transactions.models import Transaction
+
+    code = (display_code or get_default_display_code(w.user)).strip() or 'USD'
+    linked = Transaction.objects.filter(
+        user_id=w.user_id,
+        reference_type='withdrawal',
+        reference_id=str(w.id),
+    ).first()
+    if linked:
+        return resolve_transaction_display_amounts(linked, code)
+
+    platform = quantize_amount(_dec(w.amount), 8)
+    fee_usd = quantize_amount(_dec(w.fee), 8)
+    net_usd = quantize_amount(
+        _dec(w.net_amount) if getattr(w, 'net_amount', None) is not None else (platform - fee_usd),
+        8,
+    )
+
+    # "Display: {amt} {cur} · Payout: {crypto} {sym} · ..."
+    notes = getattr(w, 'admin_notes', '') or ''
+    amount_display = None
+    desired_amount = None
+    desired_currency = None
+    crypto_amount = None
+    if notes.startswith('Display:'):
+        try:
+            parts = [p.strip() for p in notes.split('·')]
+            head = parts[0].replace('Display:', '').strip()
+            bits = head.rsplit(' ', 1)
+            if len(bits) == 2:
+                desired_amount, desired_currency = bits[0], bits[1]
+                if desired_currency.upper() == code.upper():
+                    amount_display = format_amount_native(desired_amount, code)
+            if len(parts) > 1 and parts[1].lower().startswith('payout:'):
+                payout = parts[1].replace('Payout:', '').replace('payout:', '').strip()
+                pbits = payout.rsplit(' ', 1)
+                if len(pbits) == 2:
+                    crypto_amount = pbits[0]
+        except Exception:
+            amount_display = None
+
+    if amount_display is None:
+        amount_display = format_amount_for_code(platform, code)
+
+    fee_display = format_amount_for_code(fee_usd, code) if fee_usd > 0 else None
+    net_display = format_amount_for_code(net_usd, code)
+    if amount_display.get('native') and fee_display:
+        try:
+            native_net = _dec(amount_display['value']) - _dec(fee_display['value'])
+            if native_net < 0:
+                native_net = Decimal('0')
+            net_display = format_amount_native(native_net, code)
+        except Exception:
+            pass
+
+    crypto = getattr(w, 'cryptocurrency', None)
+    return {
+        'platform_usd': platform,
+        'fee_usd': fee_usd,
+        'net_usd': net_usd,
+        'amount_display': amount_display,
+        'fee_display': fee_display,
+        'net_display': net_display,
+        'desired_amount': desired_amount,
+        'desired_currency': desired_currency,
+        'crypto_amount': crypto_amount,
+        'crypto_symbol': getattr(crypto, 'symbol', '') or '',
+        'rate_usd': None,
+    }
+
+
+def apply_display_amounts(obj, resolved: dict):
+    """
+    Attach standard display fields onto a model instance for templates/admin.
+    Does not save the model.
+    """
+    amount_display = resolved.get('amount_display') or {}
+    obj.amount_display = amount_display
+    obj.fee_display = resolved.get('fee_display')
+    obj.net_display = resolved.get('net_display')
+    platform = resolved.get('platform_usd')
+    obj.platform_usd = platform
+    obj.platform_label = (
+        format_amount_for_code(platform, 'USD')['label']
+        if platform is not None
+        else None
+    )
+    crypto_amt = resolved.get('crypto_amount')
+    crypto_sym = resolved.get('crypto_symbol') or ''
+    if crypto_amt not in (None, '') and crypto_sym:
+        obj.crypto_label = f"{format_money(crypto_amt, 8, strip_trailing_zeros=True)} {crypto_sym}"
+    else:
+        obj.crypto_label = None
+    obj.display_label = amount_display.get('label') or obj.platform_label or '—'
+    obj.desired_currency = (
+        resolved.get('desired_currency')
+        or amount_display.get('code')
+        or ''
+    )
+    return obj
+
+
+def annotate_deposits(iterable, display_code: str | None = None, use_user_pref: bool = True):
+    """Annotate deposit queryset/list with amount_display fields."""
+    for dep in iterable:
+        code = None
+        if display_code:
+            code = display_code
+        elif use_user_pref:
+            code = get_default_display_code(dep.user)
+        apply_display_amounts(dep, resolve_deposit_display_amounts(dep, code))
+    return iterable
+
+
+def annotate_withdrawals(iterable, display_code: str | None = None, use_user_pref: bool = True):
+    for w in iterable:
+        code = None
+        if display_code:
+            code = display_code
+        elif use_user_pref:
+            code = get_default_display_code(w.user)
+        apply_display_amounts(w, resolve_withdrawal_display_amounts(w, code))
+    return iterable
+
+
+def annotate_transactions(iterable, display_code: str | None = None, use_user_pref: bool = True):
+    for tx in iterable:
+        code = None
+        if display_code:
+            code = display_code
+        elif use_user_pref:
+            code = get_default_display_code(tx.user)
+        apply_display_amounts(tx, resolve_transaction_display_amounts(tx, code))
+    return iterable
+
+
+def user_money_label(user, amount_usd, display_code: str | None = None) -> str:
+    """Format a platform USD amount in the user's preferred (or given) currency."""
+    code = display_code or get_default_display_code(user)
+    return format_amount_for_code(amount_usd, code)['label']
+
+
 def get_currency_meta(currency_code: str) -> dict:
     """
     Metadata for a display currency: code, symbol, decimal places, unit rate to USD.

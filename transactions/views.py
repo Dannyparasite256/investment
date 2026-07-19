@@ -172,15 +172,30 @@ def deposit_create(request):
 
 @login_required
 def deposit_list(request):
+    from wallets.display import annotate_deposits, get_default_display_code, get_currency_meta
+
+    code = get_default_display_code(request.user, request=request)
     qs = Deposit.objects.filter(user=request.user).select_related('cryptocurrency')
     page = Paginator(qs, 15).get_page(request.GET.get('page'))
-    return render(request, 'transactions/deposit_list.html', {'page': page})
+    annotate_deposits(page.object_list, display_code=code, use_user_pref=False)
+    return render(request, 'transactions/deposit_list.html', {
+        'page': page,
+        'display_currency': code,
+        'currency_symbol': get_currency_meta(code)['symbol'],
+    })
 
 
 @login_required
 def deposit_detail(request, pk):
+    from wallets.display import apply_display_amounts, get_default_display_code, resolve_deposit_display_amounts
+
     deposit = get_object_or_404(Deposit, pk=pk, user=request.user)
-    return render(request, 'transactions/deposit_detail.html', {'deposit': deposit})
+    code = get_default_display_code(request.user, request=request)
+    apply_display_amounts(deposit, resolve_deposit_display_amounts(deposit, code))
+    return render(request, 'transactions/deposit_detail.html', {
+        'deposit': deposit,
+        'display_currency': code,
+    })
 
 
 @login_required
@@ -342,20 +357,26 @@ def withdraw_create(request):
 
 @login_required
 def withdraw_list(request):
-    from wallets.display import format_amount_for_code, get_default_display_code, get_currency_meta
+    from wallets.display import (
+        annotate_withdrawals,
+        get_default_display_code,
+        get_currency_meta,
+        usd_to_crypto_units,
+    )
 
     code = get_default_display_code(request.user, request=request)
     qs = Withdrawal.objects.filter(user=request.user).select_related('cryptocurrency')
     page = Paginator(qs, 15).get_page(request.GET.get('page'))
+    annotate_withdrawals(page.object_list, display_code=code, use_user_pref=False)
     for w in page:
-        w.amount_display = format_amount_for_code(w.amount, code)
-        w.fee_display = format_amount_for_code(w.fee or 0, code)
-        # Crypto payout estimate from current rate (historical rate may differ slightly)
-        try:
-            from wallets.display import usd_to_crypto_units
-            w.crypto_payout = usd_to_crypto_units(w.net_amount or w.amount, w.cryptocurrency)
-        except Exception:
-            w.crypto_payout = None
+        # Prefer historical crypto label; else live estimate for payout column
+        if getattr(w, 'crypto_label', None):
+            w.crypto_payout = w.crypto_label
+        else:
+            try:
+                w.crypto_payout = f"{usd_to_crypto_units(w.net_amount or w.amount, w.cryptocurrency)} {w.cryptocurrency.symbol}"
+            except Exception:
+                w.crypto_payout = None
     return render(request, 'transactions/withdraw_list.html', {
         'page': page,
         'display_currency': code,
@@ -380,7 +401,7 @@ def withdraw_cancel(request, pk):
 
 @login_required
 def history(request):
-    from wallets.display import get_default_display_code, resolve_transaction_display_amounts
+    from wallets.display import annotate_transactions, get_default_display_code
 
     code = get_default_display_code(request.user, request=request)
     qs = Transaction.objects.filter(user=request.user)
@@ -388,10 +409,7 @@ def history(request):
     if tx_type:
         qs = qs.filter(tx_type=tx_type)
     page = Paginator(qs, 20).get_page(request.GET.get('page'))
-    for tx in page:
-        resolved = resolve_transaction_display_amounts(tx, code)
-        tx.amount_display = resolved['amount_display']
-        tx.fee_display = resolved['fee_display']
+    annotate_transactions(page.object_list, display_code=code, use_user_pref=False)
     if request.headers.get('HX-Request'):
         return render(request, 'transactions/partials/history_table.html', {
             'page': page,

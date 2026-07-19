@@ -33,39 +33,55 @@ User = get_user_model()
 
 @staff_panel_required
 def dashboard(request):
+    from wallets.display import (
+        annotate_deposits,
+        annotate_withdrawals,
+        deposit_platform_usd,
+        format_amount_for_code,
+    )
+
     today = timezone.now().date()
     week_ago = timezone.now() - timedelta(days=7)
     month_ago = timezone.now() - timedelta(days=30)
+
+    pending_deps = list(
+        Deposit.objects.filter(
+            status__in=[Deposit.Status.PENDING, Deposit.Status.WAITING_CONFIRMATION]
+        ).select_related('cryptocurrency', 'user')
+    )
+    pending_dep_usd = sum((deposit_platform_usd(d) for d in pending_deps), Decimal('0'))
+    pending_wd_usd = Withdrawal.objects.filter(
+        status__in=[Withdrawal.Status.PENDING, Withdrawal.Status.APPROVED]
+    ).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+    invested_total = Investment.objects.filter(status=Investment.Status.ACTIVE).aggregate(
+        t=Sum('amount')
+    )['t'] or Decimal('0')
+    revenue_month = Deposit.objects.filter(
+        status=Deposit.Status.APPROVED, reviewed_at__gte=month_ago,
+    ).aggregate(t=Sum('credit_amount'))['t'] or Decimal('0')
+    withdrawals_month = Withdrawal.objects.filter(
+        status=Withdrawal.Status.PAID, paid_at__gte=month_ago,
+    ).aggregate(t=Sum('amount'))['t'] or Decimal('0')
 
     stats = {
         'users_total': User.objects.count(),
         'users_today': User.objects.filter(date_joined__date=today).count(),
         'users_week': User.objects.filter(date_joined__gte=week_ago).count(),
-        'deposits_pending': Deposit.objects.filter(
-            status__in=[Deposit.Status.PENDING, Deposit.Status.WAITING_CONFIRMATION]
-        ).count(),
-        'deposits_pending_sum': Deposit.objects.filter(
-            status__in=[Deposit.Status.PENDING, Deposit.Status.WAITING_CONFIRMATION]
-        ).aggregate(t=Sum('amount'))['t'] or 0,
+        'deposits_pending': len(pending_deps),
+        'deposits_pending_sum': format_amount_for_code(pending_dep_usd, 'USD')['label'],
         'withdrawals_pending': Withdrawal.objects.filter(
             status__in=[Withdrawal.Status.PENDING, Withdrawal.Status.APPROVED]
         ).count(),
-        'withdrawals_pending_sum': Withdrawal.objects.filter(
-            status__in=[Withdrawal.Status.PENDING, Withdrawal.Status.APPROVED]
-        ).aggregate(t=Sum('amount'))['t'] or 0,
+        'withdrawals_pending_sum': format_amount_for_code(pending_wd_usd, 'USD')['label'],
         'kyc_pending': KYCDocument.objects.filter(
             status__in=[KYCDocument.Status.PENDING, KYCDocument.Status.UNDER_REVIEW]
         ).count(),
         'active_investments': Investment.objects.filter(status=Investment.Status.ACTIVE).count(),
-        'invested_total': Investment.objects.filter(status=Investment.Status.ACTIVE).aggregate(
-            t=Sum('amount')
-        )['t'] or 0,
-        'revenue_month': Deposit.objects.filter(
-            status=Deposit.Status.APPROVED, reviewed_at__gte=month_ago,
-        ).aggregate(t=Sum('credit_amount'))['t'] or 0,
-        'withdrawals_month': Withdrawal.objects.filter(
-            status=Withdrawal.Status.PAID, paid_at__gte=month_ago,
-        ).aggregate(t=Sum('amount'))['t'] or 0,
+        'invested_total': format_amount_for_code(invested_total, 'USD')['label'],
+        'revenue_month': revenue_month,
+        'revenue_month_label': format_amount_for_code(revenue_month, 'USD')['label'],
+        'withdrawals_month': withdrawals_month,
+        'withdrawals_month_label': format_amount_for_code(withdrawals_month, 'USD')['label'],
         'open_tickets': SupportTicket.objects.exclude(
             status__in=[SupportTicket.Status.CLOSED, SupportTicket.Status.RESOLVED]
         ).count(),
@@ -92,8 +108,14 @@ def dashboard(request):
     wmap = {str(r['day']): float(r['total'] or 0) for r in withdraw_daily}
     chart_withdrawals = [wmap.get(d, 0) for d in chart_labels]
 
-    recent_deposits = Deposit.objects.select_related('user', 'cryptocurrency').order_by('-created_at')[:8]
-    recent_withdrawals = Withdrawal.objects.select_related('user', 'cryptocurrency').order_by('-created_at')[:8]
+    recent_deposits = list(
+        Deposit.objects.select_related('user', 'cryptocurrency').order_by('-created_at')[:8]
+    )
+    recent_withdrawals = list(
+        Withdrawal.objects.select_related('user', 'cryptocurrency').order_by('-created_at')[:8]
+    )
+    annotate_deposits(recent_deposits, use_user_pref=True)
+    annotate_withdrawals(recent_withdrawals, use_user_pref=True)
     recent_activity = AdminActivityLog.objects.select_related('admin')[:10]
 
     return render(request, 'staffpanel/dashboard.html', {
@@ -138,6 +160,8 @@ def deposit_list(request):
         'rejected': Deposit.objects.filter(status=Deposit.Status.REJECTED).count(),
     }
     page = Paginator(qs, 25).get_page(request.GET.get('page'))
+    from wallets.display import annotate_deposits
+    annotate_deposits(page.object_list, use_user_pref=True)
     return render(request, 'staffpanel/deposits.html', {
         'page': page,
         'status': status_label if status != 'pending' else 'queue',
@@ -155,6 +179,12 @@ def deposit_approve(request, pk):
     try:
         dep.approve(request.user, notes=notes)
         credit = dep.credit_amount or dep.amount
+        from wallets.display import resolve_deposit_display_amounts
+        dep_disp = resolve_deposit_display_amounts(dep)
+        credit_label = dep_disp['amount_display']['label']
+        crypto_label = dep_disp.get('crypto_amount') and dep_disp.get('crypto_symbol') and (
+            f"{dep_disp['crypto_amount']} {dep_disp['crypto_symbol']}"
+        ) or f"{dep.amount} {dep.cryptocurrency.symbol}"
         # VIP deposit fee adjustment note (credit already = amount; fee handled at display)
         try:
             from core.vip import apply_deposit_fee
@@ -188,19 +218,23 @@ def deposit_approve(request, pk):
             from core.portfolio import record_snapshot
             alert_user(
                 dep.user, 'Deposit approved',
-                f'Your deposit of {dep.amount} {dep.cryptocurrency.symbol} was approved and credited.',
+                f'Your deposit of {crypto_label} (≈ {credit_label}) was approved and credited.',
                 level=Notification.Level.SUCCESS, category=Notification.Category.DEPOSIT,
                 link='/transactions/deposits/',
                 email=getattr(dep.user, 'email_alerts', True),
                 sms=getattr(dep.user, 'sms_alerts', False),
                 event_name='deposit.approved',
-                event_payload={'deposit_id': str(dep.id), 'amount': str(dep.amount)},
+                event_payload={
+                    'deposit_id': str(dep.id),
+                    'amount': str(dep.amount),
+                    'credit_label': credit_label,
+                },
             )
             record_snapshot(dep.user)
         except Exception:
             notify(
                 dep.user, 'Deposit approved',
-                f'Your deposit of {dep.amount} {dep.cryptocurrency.symbol} was approved.',
+                f'Your deposit of {crypto_label} (≈ {credit_label}) was approved.',
                 level=Notification.Level.SUCCESS, category=Notification.Category.DEPOSIT,
                 link='/transactions/deposits/',
             )
@@ -221,13 +255,13 @@ def deposit_approve(request, pk):
         create_audit_log(
             request=request, action=AuditLog.Action.DEPOSIT_APPROVE,
             message=(
-                f'Approved deposit {dep.id}: {dep.amount} {dep.cryptocurrency.symbol} '
-                f'→ credit {dep.credit_amount} (rate {dep.rate_usd})'
+                f'Approved deposit {dep.id}: {crypto_label} → {credit_label} '
+                f'(platform {dep.credit_amount}, rate {dep.rate_usd})'
             ),
             object_type='Deposit', object_id=dep.id,
         )
-        log_admin_activity(request, 'deposit_approve', f'Approved {dep.id}', 'Deposit', dep.id)
-        messages.success(request, 'Deposit approved and balance credited.')
+        log_admin_activity(request, 'deposit_approve', f'Approved {dep.id} → {credit_label}', 'Deposit', dep.id)
+        messages.success(request, f'Deposit approved and credited ({credit_label}).')
     except ValueError as e:
         messages.error(request, str(e))
     return redirect(request.META.get('HTTP_REFERER') or 'staffpanel:deposits')
@@ -278,6 +312,8 @@ def withdrawal_list(request):
             Q(user__email__icontains=q) | Q(wallet_address__icontains=q) | Q(id__icontains=q)
         )
     page = Paginator(qs, 25).get_page(request.GET.get('page'))
+    from wallets.display import annotate_withdrawals
+    annotate_withdrawals(page.object_list, use_user_pref=True)
     return render(request, 'staffpanel/withdrawals.html', {
         'page': page, 'status': status, 'q': q, 'statuses': Withdrawal.Status.choices,
     })
@@ -290,9 +326,11 @@ def withdrawal_approve(request, pk):
     notes = request.POST.get('notes', '')
     try:
         w.approve(request.user, notes=notes)
+        from wallets.display import resolve_withdrawal_display_amounts
+        amt_label = resolve_withdrawal_display_amounts(w)['amount_display']['label']
         notify(
             w.user, 'Withdrawal approved',
-            f'Your withdrawal of {w.amount} was approved and is being processed.',
+            f'Your withdrawal of {amt_label} was approved and is being processed.',
             level=Notification.Level.SUCCESS, category=Notification.Category.WITHDRAWAL,
         )
         create_audit_log(
@@ -314,12 +352,15 @@ def withdrawal_paid(request, pk):
     notes = request.POST.get('notes', '')
     try:
         w.mark_paid(request.user, tx_hash=tx_hash, notes=notes)
+        from wallets.display import resolve_withdrawal_display_amounts
+        amt_label = resolve_withdrawal_display_amounts(w)['amount_display']['label']
+        paid_msg = f'Your withdrawal of {amt_label} has been paid.' + (f' Tx: {tx_hash}' if tx_hash else '')
         try:
             from core.notify_service import alert_user
             from core.portfolio import record_snapshot
             alert_user(
                 w.user, 'Withdrawal paid',
-                f'Your withdrawal of {w.amount} has been paid.' + (f' Tx: {tx_hash}' if tx_hash else ''),
+                paid_msg,
                 level=Notification.Level.SUCCESS, category=Notification.Category.WITHDRAWAL,
                 email=True, sms=getattr(w.user, 'sms_alerts', False),
                 event_name='withdrawal.paid',
@@ -328,7 +369,7 @@ def withdrawal_paid(request, pk):
         except Exception:
             notify(
                 w.user, 'Withdrawal paid',
-                f'Your withdrawal of {w.amount} has been paid.' + (f' Tx: {tx_hash}' if tx_hash else ''),
+                paid_msg,
                 level=Notification.Level.SUCCESS, category=Notification.Category.WITHDRAWAL,
             )
         create_audit_log(
@@ -349,9 +390,11 @@ def withdrawal_reject(request, pk):
     reason = request.POST.get('reason', 'Rejected by administrator')
     try:
         w.reject(request.user, reason=reason)
+        from wallets.display import resolve_withdrawal_display_amounts
+        amt_label = resolve_withdrawal_display_amounts(w)['amount_display']['label']
         notify(
             w.user, 'Withdrawal rejected',
-            f'Your withdrawal of {w.amount} was rejected. Funds unlocked. {reason}',
+            f'Your withdrawal of {amt_label} was rejected. Funds unlocked. {reason}',
             level=Notification.Level.WARNING, category=Notification.Category.WITHDRAWAL,
         )
         create_audit_log(
@@ -385,14 +428,34 @@ def user_list(request):
 
 @staff_panel_required
 def user_detail(request, pk):
+    from wallets.display import (
+        annotate_deposits,
+        annotate_withdrawals,
+        format_amount_for_code,
+        get_default_display_code,
+    )
+
     user = get_object_or_404(User, pk=pk)
     wallet, _ = Wallet.objects.get_or_create(user=user)
+    code = get_default_display_code(user)
+    deposits = list(user.deposits.select_related('cryptocurrency').all()[:10])
+    withdrawals = list(user.withdrawals.select_related('cryptocurrency').all()[:10])
+    annotate_deposits(deposits, display_code=code, use_user_pref=False)
+    annotate_withdrawals(withdrawals, display_code=code, use_user_pref=False)
+    investments = list(user.investments.select_related('plan')[:10])
+    for inv in investments:
+        inv.amount_display = format_amount_for_code(inv.amount, code)
+        inv.earned_display = format_amount_for_code(inv.total_earned, code)
     return render(request, 'staffpanel/user_detail.html', {
         'target': user,
         'wallet': wallet,
-        'deposits': user.deposits.all()[:10],
-        'withdrawals': user.withdrawals.all()[:10],
-        'investments': user.investments.select_related('plan')[:10],
+        'bal_display': format_amount_for_code(wallet.balance, code),
+        'profit_display': format_amount_for_code(wallet.total_profit, code),
+        'referral_display': format_amount_for_code(user.referral_earnings or 0, code),
+        'display_currency': code,
+        'deposits': deposits,
+        'withdrawals': withdrawals,
+        'investments': investments,
         'logins': user.login_history.all()[:15],
         'kyc_docs': user.kyc_documents.all()[:5],
     })
@@ -596,6 +659,8 @@ def transaction_list(request):
     if status:
         qs = qs.filter(status=status)
     page = Paginator(qs, 40).get_page(request.GET.get('page'))
+    from wallets.display import annotate_transactions
+    annotate_transactions(page.object_list, use_user_pref=True)
     return render(request, 'staffpanel/transactions.html', {
         'page': page, 'q': q, 'tx_type': tx_type, 'status': status,
         'tx_types': Transaction.TxType.choices, 'statuses': Transaction.Status.choices,
@@ -645,11 +710,27 @@ def login_history(request):
 
 @staff_panel_required
 def wallets_overview(request):
-    wallets = Wallet.objects.select_related('user').order_by('-balance')[:100]
+    from wallets.display import format_amount_for_code, get_default_display_code
+
+    wallets = list(Wallet.objects.select_related('user').order_by('-balance')[:100])
+    for w in wallets:
+        code = get_default_display_code(w.user)
+        w.bal_display = format_amount_for_code(w.balance, code)
+        w.profit_display = format_amount_for_code(w.total_profit, code)
+        w.display_currency = code
     totals = Wallet.objects.aggregate(
         bal=Sum('balance'), profit=Sum('total_profit'), dep=Sum('total_deposited'),
     )
-    return render(request, 'staffpanel/wallets.html', {'wallets': wallets, 'totals': totals})
+    totals_fmt = {
+        'bal': format_amount_for_code(totals['bal'] or 0, 'USD')['label'],
+        'profit': format_amount_for_code(totals['profit'] or 0, 'USD')['label'],
+        'dep': format_amount_for_code(totals['dep'] or 0, 'USD')['label'],
+    }
+    return render(request, 'staffpanel/wallets.html', {
+        'wallets': wallets,
+        'totals': totals,
+        'totals_fmt': totals_fmt,
+    })
 
 
 @staff_panel_required

@@ -1,6 +1,7 @@
 {% extends "base_app.html" %}
 {% block title %}Deposits — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}Deposits{% endblock %}
+{% block page_subtitle %}Shown in {{ currency_symbol|default:display_currency|default:"USD" }} where credited{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between mb-3">
@@ -11,20 +12,33 @@
   <div class="table-responsive">
     <table class="table table-ci table-hover">
       <thead>
-        <tr><th>Date</th><th>Currency</th><th>Amount</th><th>Tx Hash</th><th>Status</th><th></th></tr>
+        <tr>
+          <th>Date</th>
+          <th>Asset</th>
+          <th>Credit ({{ currency_symbol|default:display_currency|default:"USD" }})</th>
+          <th>Crypto amount</th>
+          <th>Tx Hash</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
       </thead>
       <tbody>
         {% for d in page %}
         <tr>
           <td class="small text-muted">{{ d.created_at|when }}</td>
           <td>{{ d.cryptocurrency.symbol }}</td>
-          <td class="font-mono">{{ d.amount|money_trim:8 }} <span class="text-muted">{{ d.cryptocurrency.symbol }}</span></td>
+          <td class="font-mono">
+            {% if d.amount_display %}{{ d.amount_display.label }}{% else %}—{% endif %}
+          </td>
+          <td class="font-mono small text-muted">
+            {% if d.crypto_label %}{{ d.crypto_label }}{% else %}{{ d.amount|money_trim:8 }} {{ d.cryptocurrency.symbol }}{% endif %}
+          </td>
           <td class="font-mono small">{{ d.transaction_hash|truncatechars:16 }}</td>
           <td><span class="badge badge-status badge-{{ d.status }}">{{ d.get_status_display }}</span></td>
           <td><a href="{% url 'transactions:deposit_detail' d.pk %}" class="small">View</a></td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="py-5">
+        <tr><td colspan="7" class="py-5">
           {% url 'transactions:deposit_create' as deposit_url %}
           {% include "partials/ui_sticker.html" with kind="empty" size="md" title="No deposits yet" text="Make your first crypto deposit to fund investments." cta_url=deposit_url cta_label="New deposit" %}
         </td></tr>

@@ -109,12 +109,17 @@ def bulk_deposit_match(request):
 
 @staff_panel_required
 def withdrawal_sla_queue(request):
+    from wallets.display import annotate_withdrawals
+
     now = timezone.now()
-    qs = Withdrawal.objects.filter(
-        status__in=[Withdrawal.Status.PENDING, Withdrawal.Status.APPROVED, Withdrawal.Status.PROCESSING],
-    ).select_related('user', 'cryptocurrency').order_by('-priority', 'sla_deadline', 'created_at')
+    qs = list(
+        Withdrawal.objects.filter(
+            status__in=[Withdrawal.Status.PENDING, Withdrawal.Status.APPROVED, Withdrawal.Status.PROCESSING],
+        ).select_related('user', 'cryptocurrency').order_by('-priority', 'sla_deadline', 'created_at')[:100]
+    )
+    annotate_withdrawals(qs, use_user_pref=True)
     items = []
-    for w in qs[:100]:
+    for w in qs:
         overdue = bool(w.sla_deadline and w.sla_deadline < now)
         items.append({'w': w, 'overdue': overdue})
     return render(request, 'staffpanel/sla_queue.html', {'items': items, 'now': now})
