@@ -42,7 +42,23 @@ def _normalize_provider(provider: str) -> str | None:
 
 
 def _callback_url(request, provider: str) -> str:
-    return request.build_absolute_uri(reverse('accounts:oauth_callback', args=[provider]))
+    """
+    Absolute OAuth callback URL.
+
+    Prefer SITE_URL so PythonAnywhere (TLS terminated at proxy) does not
+    send http://… to Google/X while consoles are registered with https://…
+    """
+    from django.conf import settings
+
+    path = reverse('accounts:oauth_callback', args=[provider])
+    site = (getattr(settings, 'SITE_URL', '') or '').rstrip('/')
+    if site:
+        return f'{site}{path}'
+    # Fallback: force https when the request looks public
+    url = request.build_absolute_uri(path)
+    if url.startswith('http://') and not settings.DEBUG:
+        url = 'https://' + url[len('http://'):]
+    return url
 
 
 @require_GET
