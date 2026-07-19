@@ -276,6 +276,18 @@
       }
     });
   }
+  function leaveChat() {
+    post('leave').catch(function () {});
+  }
+  window.addEventListener('pagehide', leaveChat);
+  window.addEventListener('beforeunload', function () {
+    var fd = new FormData();
+    fd.append('csrfmiddlewaretoken', csrf);
+    fd.append('action', 'leave');
+    if (navigator.sendBeacon) navigator.sendBeacon(sendUrl, fd);
+    else leaveChat();
+  });
+
   setInterval(poll, 1200);
   poll();
 })();

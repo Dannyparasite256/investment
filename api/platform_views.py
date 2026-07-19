@@ -213,6 +213,15 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         return Response({'ok': True, 'presence': get_presence(ticket.id)})
 
     @action(detail=True, methods=['post'])
+    def leave(self, request, pk=None):
+        """Mark customer offline immediately when they leave the chat."""
+        from support.realtime import clear_presence, get_presence
+
+        ticket = self.get_object()
+        clear_presence(ticket.id, request.user, is_staff=False)
+        return Response({'ok': True, 'presence': get_presence(ticket.id)})
+
+    @action(detail=True, methods=['post'])
     def mark_read(self, request, pk=None):
         ticket = self.get_object()
         n = self._mark_peer_messages_read(ticket, is_staff=False)

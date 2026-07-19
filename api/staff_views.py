@@ -514,6 +514,11 @@ class StaffTicketDetailView(APIView):
                 'typing': get_typing(t.id, exclude_user_id=request.user.pk),
             })
 
+        if action == 'leave':
+            from support.realtime import clear_presence
+            clear_presence(t.id, request.user, is_staff=True)
+            return Response({'ok': True, 'presence': get_presence(t.id)})
+
         if action == 'poll':
             set_presence(t.id, request.user, is_staff=True)
             self._mark_user_messages_read(t)

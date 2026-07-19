@@ -4,9 +4,9 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.utils import timezone
 
 from support.realtime import (
+    clear_presence,
     get_presence,
     get_typing,
-    message_payload,
     set_presence,
     set_typing,
     staff_support_group,
@@ -37,9 +37,11 @@ class SupportChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def disconnect(self, close_code):
         if getattr(self, 'ticket_id', None):
+            await self._clear_presence()
             await self.channel_layer.group_discard(
                 ticket_group(self.ticket_id), self.channel_name,
             )
+            self.ticket_id = None
         if hasattr(self, 'user_group'):
             await self.channel_layer.group_discard(self.user_group, self.channel_name)
         if getattr(self, 'is_staff', False):
@@ -98,6 +100,7 @@ class SupportChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def _leave_ticket(self):
         if self.ticket_id:
+            await self._clear_presence()
             await self.channel_layer.group_discard(
                 ticket_group(self.ticket_id), self.channel_name,
             )
@@ -118,6 +121,11 @@ class SupportChatConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def _heartbeat(self):
         set_presence(self.ticket_id, self.user, is_staff=self.is_staff)
+
+    @database_sync_to_async
+    def _clear_presence(self):
+        if self.ticket_id:
+            clear_presence(self.ticket_id, self.user, is_staff=self.is_staff)
 
     @database_sync_to_async
     def _presence(self):

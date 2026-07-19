@@ -111,13 +111,21 @@ def get_typing(ticket_id, exclude_user_id=None) -> list[dict]:
 
 
 def set_presence(ticket_id, user, *, is_staff: bool = False) -> None:
+    """Mark side as online / in this chat (also refreshes last seen)."""
     from support.models import SupportTicket
 
-    field = 'staff_last_seen_at' if is_staff else 'user_last_seen_at'
-    SupportTicket.objects.filter(pk=ticket_id).update(**{field: timezone.now()})
+    now = timezone.now()
     if is_staff:
-        # Also claim assignment for typing name display
+        SupportTicket.objects.filter(pk=ticket_id).update(
+            staff_last_seen_at=now,
+            staff_in_chat=True,
+        )
         SupportTicket.objects.filter(pk=ticket_id, assigned_to__isnull=True).update(assigned_to=user)
+    else:
+        SupportTicket.objects.filter(pk=ticket_id).update(
+            user_last_seen_at=now,
+            user_in_chat=True,
+        )
 
     broadcast_ticket(ticket_id, {
         'type': 'presence',
@@ -126,7 +134,39 @@ def set_presence(ticket_id, user, *, is_staff: bool = False) -> None:
         'user_id': user.pk,
         'name': user.get_full_name() or user.email,
         'online': True,
-        'at': timezone.now().isoformat(),
+        'at': now.isoformat(),
+    })
+
+
+def clear_presence(ticket_id, user, *, is_staff: bool = False) -> None:
+    """
+    Leave chat immediately: offline for the other party, last seen = now,
+    clear typing for this side.
+    """
+    from support.models import SupportTicket
+
+    now = timezone.now()
+    if is_staff:
+        SupportTicket.objects.filter(pk=ticket_id).update(
+            staff_last_seen_at=now,
+            staff_in_chat=False,
+            staff_typing_at=None,
+        )
+    else:
+        SupportTicket.objects.filter(pk=ticket_id).update(
+            user_last_seen_at=now,
+            user_in_chat=False,
+            user_typing_at=None,
+        )
+
+    broadcast_ticket(ticket_id, {
+        'type': 'presence',
+        'ticket_id': str(ticket_id),
+        'role': 'staff' if is_staff else 'user',
+        'user_id': getattr(user, 'pk', None),
+        'name': (user.get_full_name() or user.email) if user else '',
+        'online': False,
+        'at': now.isoformat(),
     })
 
 
@@ -144,14 +184,21 @@ def get_presence(ticket_id) -> dict[str, Any]:
     staff_name = 'Support'
     if t.assigned_to_id:
         staff_name = t.assigned_to.get_full_name() or t.assigned_to.email or 'Support'
+
+    # Online only while actively in chat; last_seen always available for offline label
+    user_online = bool(getattr(t, 'user_in_chat', False)) and _is_fresh(t.user_last_seen_at, PRESENCE_TTL)
+    staff_online = bool(getattr(t, 'staff_in_chat', False)) and _is_fresh(t.staff_last_seen_at, PRESENCE_TTL)
+
     return {
-        'user_online': _is_fresh(t.user_last_seen_at, PRESENCE_TTL),
-        'staff_online': _is_fresh(t.staff_last_seen_at, PRESENCE_TTL),
+        'user_online': user_online,
+        'staff_online': staff_online,
         'user_name': t.user.get_full_name() or t.user.email,
         'staff_name': staff_name,
         'user_last_seen': t.user_last_seen_at.isoformat() if t.user_last_seen_at else None,
         'staff_last_seen': t.staff_last_seen_at.isoformat() if t.staff_last_seen_at else None,
     }
+
+
 
 
 def broadcast_ticket(ticket_id, payload: dict) -> None:

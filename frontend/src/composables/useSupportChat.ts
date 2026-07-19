@@ -248,6 +248,10 @@ export function useSupportChat(options: {
     }
   }
 
+  function onPageHide() {
+    if (activeTicketId) notifyLeave(activeTicketId)
+  }
+
   function join(ticketId: string, messages: Ref<TicketMessage[]>) {
     leave()
     destroyed = false
@@ -258,15 +262,59 @@ export function useSupportChat(options: {
     // Poll is primary; WS is optional
     startPoll()
     connectWs()
+    window.addEventListener('pagehide', onPageHide)
+    window.addEventListener('beforeunload', onPageHide)
+  }
+
+  function notifyLeave(ticketId: string) {
+    // Prefer sendBeacon so leave still fires on tab close / navigation
+    try {
+      const token = auth.token
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      }
+      if (token) headers.Authorization = `Token ${token}`
+      const csrf = document.cookie
+        .split(';')
+        .map((c) => c.trim())
+        .find((c) => c.startsWith('csrftoken='))
+      if (csrf) headers['X-CSRFToken'] = decodeURIComponent(csrf.split('=').slice(1).join('='))
+
+      if (options.isStaff) {
+        const body = JSON.stringify({ action: 'leave' })
+        if (navigator.sendBeacon) {
+          // sendBeacon can't set auth headers easily — fall through to fetch keepalive
+        }
+        fetch(`/api/v1/staff/tickets/${ticketId}/`, {
+          method: 'POST',
+          body,
+          headers,
+          credentials: 'same-origin',
+          keepalive: true,
+        }).catch(() => {})
+      } else {
+        fetch(`/api/v1/support/${ticketId}/leave/`, {
+          method: 'POST',
+          body: '{}',
+          headers,
+          credentials: 'same-origin',
+          keepalive: true,
+        }).catch(() => {})
+      }
+    } catch { /* */ }
   }
 
   function leave() {
+    const tid = activeTicketId
+    window.removeEventListener('pagehide', onPageHide)
+    window.removeEventListener('beforeunload', onPageHide)
     if (typingTimer) clearTimeout(typingTimer)
     if (typingPulse) {
       clearInterval(typingPulse)
       typingPulse = null
     }
-    if (lastTypingSent && activeTicketId) {
+    if (lastTypingSent && tid) {
       sendTyping(false)
     }
     lastTypingSent = false
@@ -274,6 +322,9 @@ export function useSupportChat(options: {
     if (heartbeatTimer) {
       clearInterval(heartbeatTimer)
       heartbeatTimer = null
+    }
+    if (tid) {
+      notifyLeave(tid)
     }
     if (ws) {
       try {

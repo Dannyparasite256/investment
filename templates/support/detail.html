@@ -8,6 +8,7 @@
      data-ticket-id="{{ ticket.pk }}"
      data-poll-url="{% url 'support:poll' ticket.pk %}"
      data-typing-url="{% url 'support:typing' ticket.pk %}"
+     data-leave-url="{% url 'support:leave' ticket.pk %}"
      data-send-url="{% url 'support:detail' ticket.pk %}">
   <aside class="wa-sidebar d-none d-lg-flex">
     <header class="wa-side-head">
@@ -152,6 +153,7 @@
   if (!root) return;
   var pollUrl = root.getAttribute('data-poll-url');
   var typingUrl = root.getAttribute('data-typing-url');
+  var leaveUrl = root.getAttribute('data-leave-url');
   var sendUrl = root.getAttribute('data-send-url');
   var messagesEl = document.getElementById('wa-messages');
   var typingRow = document.getElementById('wa-typing-row');
@@ -335,6 +337,19 @@
       });
     }
   }
+
+  function leaveChat() {
+    if (!leaveUrl) return;
+    var fd = new FormData();
+    fd.append('csrfmiddlewaretoken', csrf);
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(leaveUrl, fd);
+    } else {
+      fetch(leaveUrl, { method: 'POST', body: fd, credentials: 'same-origin', keepalive: true }).catch(function () {});
+    }
+  }
+  window.addEventListener('pagehide', leaveChat);
+  window.addEventListener('beforeunload', leaveChat);
 
   setInterval(poll, 1200);
   poll();

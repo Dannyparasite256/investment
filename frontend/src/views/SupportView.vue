@@ -66,11 +66,28 @@ const canReply = computed(() => {
   return !!activeTicket.value && !['closed', 'resolved'].includes(s)
 })
 
+function lastSeenLabel(iso?: string | null): string {
+  if (!iso) return ''
+  try {
+    const d = new Date(iso)
+    const secs = Math.floor((Date.now() - d.getTime()) / 1000)
+    if (secs < 45) return 'just now'
+    if (secs < 3600) return `${Math.max(1, Math.floor(secs / 60))} min ago`
+    if (secs < 86400) {
+      const h = Math.floor(secs / 3600)
+      return `${h} hour${h === 1 ? '' : 's'} ago`
+    }
+    return timeLabel(iso)
+  } catch {
+    return timeLabel(iso)
+  }
+}
+
 const statusLine = computed(() => {
   if (chat.peerTypingText.value) return chat.peerTypingText.value
   if (chat.presence.value.staff_online) return 'online'
   if (chat.presence.value.staff_last_seen) {
-    return `last seen ${timeLabel(chat.presence.value.staff_last_seen)}`
+    return `last seen ${lastSeenLabel(chat.presence.value.staff_last_seen)}`
   }
   return activeTicket.value ? `${activeTicket.value.category} · support chat` : ''
 })

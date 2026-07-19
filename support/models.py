@@ -36,6 +36,9 @@ class SupportTicket(UUIDModel, TimeStampedModel):
     staff_typing_at = models.DateTimeField(null=True, blank=True)
     user_last_seen_at = models.DateTimeField(null=True, blank=True)
     staff_last_seen_at = models.DateTimeField(null=True, blank=True)
+    # Explicit in-chat flags so online flips off immediately on leave
+    user_in_chat = models.BooleanField(default=False)
+    staff_in_chat = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['-updated_at', '-created_at']

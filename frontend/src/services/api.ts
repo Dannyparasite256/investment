@@ -298,6 +298,9 @@ export const api = {
   supportHeartbeat(id: string) {
     return http.post(`/api/v1/support/${id}/heartbeat/`)
   },
+  supportLeave(id: string) {
+    return http.post(`/api/v1/support/${id}/leave/`)
+  },
   supportMarkRead(id: string) {
     return http.post(`/api/v1/support/${id}/mark_read/`)
   },

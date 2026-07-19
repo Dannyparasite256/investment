@@ -10,6 +10,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from support.models import SupportTicket, TicketMessage
 from support.realtime import (
+    clear_presence,
     get_presence,
     get_typing,
     notify_new_message,
@@ -121,6 +122,14 @@ def ticket_typing(request, pk):
     is_typing = request.POST.get('is_typing', '1') in ('1', 'true', 'True', 'yes')
     set_typing(ticket.id, request.user, is_typing=is_typing, is_staff=False)
     return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def ticket_leave(request, pk):
+    ticket = get_object_or_404(SupportTicket, pk=pk, user=request.user)
+    clear_presence(ticket.id, request.user, is_staff=False)
+    return JsonResponse({'ok': True, 'presence': get_presence(ticket.id)})
 
 
 @login_required
