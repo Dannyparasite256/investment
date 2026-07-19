@@ -33,8 +33,23 @@ def _mark_staff_messages_read(ticket, user):
 
 @login_required
 def ticket_list(request):
-    qs = SupportTicket.objects.filter(user=request.user).prefetch_related('messages')
+    from support.services import mark_messages_delivered
+
+    qs = (
+        SupportTicket.objects.filter(user=request.user)
+        .prefetch_related('messages')
+        .order_by('-pinned_by_user', '-updated_at')
+    )
+    # Opening inbox marks staff messages delivered (double grey ticks)
+    for t in qs[:40]:
+        mark_messages_delivered(t, for_staff_messages=True)
     page = Paginator(qs, 30).get_page(request.GET.get('page'))
+    # Annotate unread staff message counts for badges
+    for t in page:
+        t.unread_staff = sum(
+            1 for m in t.messages.all()
+            if m.is_staff_reply and not m.read_at and not m.is_deleted
+        )
     return render(request, 'support/list.html', {'page': page})
 
 

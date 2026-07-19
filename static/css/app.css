@@ -5439,7 +5439,21 @@ html[data-theme="light"][data-ui-theme="premium"] body::before {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(37, 211, 102, 0.15);
 }
+.wa-chat-row.has-unread strong { font-weight: 800; }
+.wa-preview .wa-ticks {
+  display: inline-flex;
+  position: relative;
+  width: 1rem;
+  height: 0.75rem;
+  vertical-align: middle;
+  margin-right: 0.15rem;
+  color: #94a3b8;
+}
+.wa-preview .wa-ticks i { font-size: 0.65rem; position: absolute; left: 0; }
+.wa-preview .wa-ticks .wa-tick-2 { left: 0.25rem; }
+.wa-preview .wa-ticks-read { color: #53bdeb !important; }
 .wa-attach-btn {
   border: 0;
   padding: 0;

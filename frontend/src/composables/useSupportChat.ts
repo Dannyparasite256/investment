@@ -5,6 +5,7 @@
 import { onUnmounted, reactive, ref, type Ref } from 'vue'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import { playChatSound } from '@/utils/chatSound'
 import type {
   ChatPresence,
   ChatTyper,
@@ -38,6 +39,8 @@ function sameUser(a: unknown, b: unknown): boolean {
 export function useSupportChat(options: {
   isStaff?: boolean
   onMessage?: (m: TicketMessage) => void
+  /** Play soft ping for peer messages (default true) */
+  sound?: boolean
 }) {
   const auth = useAuthStore()
   const connected = ref(false)
@@ -78,6 +81,8 @@ export function useSupportChat(options: {
       if (pendingIdx >= 0) list.splice(pendingIdx, 1)
       list.push(m)
       list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      const fromPeer = options.isStaff ? !m.is_staff_reply : !!m.is_staff_reply
+      if (fromPeer && options.sound !== false) playChatSound()
       options.onMessage?.(m)
     }
     if (m.created_at && (!sinceIso || m.created_at > sinceIso)) {

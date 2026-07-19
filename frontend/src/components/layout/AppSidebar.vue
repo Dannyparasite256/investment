@@ -1,68 +1,89 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
+import { api } from '@/services/api'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const ui = useUiStore()
+const supportUnread = ref(0)
+let badgeTimer: ReturnType<typeof setInterval> | null = null
+
+async function refreshSupportBadge() {
+  try {
+    const { data } = await api.supportUnreadTotal()
+    supportUnread.value = data.unread_count || 0
+  } catch { /* ignore */ }
+}
+
+onMounted(() => {
+  refreshSupportBadge()
+  badgeTimer = setInterval(refreshSupportBadge, 20000)
+})
+onUnmounted(() => {
+  if (badgeTimer) clearInterval(badgeTimer)
+})
 
 const nav = computed(() => {
+  const supportBadge = supportUnread.value > 0
+    ? (supportUnread.value > 99 ? '99+' : String(supportUnread.value))
+    : ''
   const sections = [
     {
       label: 'Main',
       items: [
-        { to: '/dashboard', icon: 'pi pi-th-large', label: 'Dashboard' },
-        { to: '/plans', icon: 'pi pi-chart-line', label: 'Invest' },
-        { to: '/investments', icon: 'pi pi-briefcase', label: 'My Portfolio' },
-        { to: '/portfolio', icon: 'pi pi-chart-pie', label: 'Performance' },
-        { to: '/calculator', icon: 'pi pi-calculator', label: 'Calculator' },
-        { to: '/markets', icon: 'pi pi-chart-bar', label: 'Markets' },
+        { to: '/dashboard', icon: 'pi pi-th-large', label: 'Dashboard', badge: '' },
+        { to: '/plans', icon: 'pi pi-chart-line', label: 'Invest', badge: '' },
+        { to: '/investments', icon: 'pi pi-briefcase', label: 'My Portfolio', badge: '' },
+        { to: '/portfolio', icon: 'pi pi-chart-pie', label: 'Performance', badge: '' },
+        { to: '/calculator', icon: 'pi pi-calculator', label: 'Calculator', badge: '' },
+        { to: '/markets', icon: 'pi pi-chart-bar', label: 'Markets', badge: '' },
       ],
     },
     {
       label: 'Wallet',
       items: [
-        { to: '/wallet', icon: 'pi pi-wallet', label: 'Wallet' },
-        { to: '/deposits', icon: 'pi pi-download', label: 'Deposit' },
-        { to: '/withdrawals', icon: 'pi pi-upload', label: 'Withdraw' },
-        { to: '/transactions', icon: 'pi pi-history', label: 'History' },
-        { to: '/earnings', icon: 'pi pi-dollar', label: 'Earnings' },
-        { to: '/statements', icon: 'pi pi-file', label: 'Statements' },
+        { to: '/wallet', icon: 'pi pi-wallet', label: 'Wallet', badge: '' },
+        { to: '/deposits', icon: 'pi pi-download', label: 'Deposit', badge: '' },
+        { to: '/withdrawals', icon: 'pi pi-upload', label: 'Withdraw', badge: '' },
+        { to: '/transactions', icon: 'pi pi-history', label: 'History', badge: '' },
+        { to: '/earnings', icon: 'pi pi-dollar', label: 'Earnings', badge: '' },
+        { to: '/statements', icon: 'pi pi-file', label: 'Statements', badge: '' },
       ],
     },
     {
       label: 'Markets tools',
       items: [
-        { to: '/watchlist', icon: 'pi pi-star', label: 'Watchlist' },
-        { to: '/alerts', icon: 'pi pi-bell', label: 'Price alerts' },
-        { to: '/signals', icon: 'pi pi-bolt', label: 'Signals' },
+        { to: '/watchlist', icon: 'pi pi-star', label: 'Watchlist', badge: '' },
+        { to: '/alerts', icon: 'pi pi-bell', label: 'Price alerts', badge: '' },
+        { to: '/signals', icon: 'pi pi-bolt', label: 'Signals', badge: '' },
       ],
     },
     {
       label: 'Grow',
       items: [
-        { to: '/referrals', icon: 'pi pi-users', label: 'Referrals' },
-        { to: '/vip', icon: 'pi pi-crown', label: 'VIP' },
-        { to: '/goals', icon: 'pi pi-flag', label: 'Goals' },
-        { to: '/onboarding', icon: 'pi pi-compass', label: 'Get started' },
+        { to: '/referrals', icon: 'pi pi-users', label: 'Referrals', badge: '' },
+        { to: '/vip', icon: 'pi pi-crown', label: 'VIP', badge: '' },
+        { to: '/goals', icon: 'pi pi-flag', label: 'Goals', badge: '' },
+        { to: '/onboarding', icon: 'pi pi-compass', label: 'Get started', badge: '' },
       ],
     },
     {
       label: 'Account',
       items: [
-        { to: '/notifications', icon: 'pi pi-inbox', label: 'Notifications' },
-        { to: '/announcements', icon: 'pi pi-megaphone', label: 'Announcements' },
-        { to: '/activity', icon: 'pi pi-clock', label: 'Activity' },
-        { to: '/support', icon: 'pi pi-comments', label: 'Support chat' },
-        { to: '/trust', icon: 'pi pi-verified', label: 'Trust center' },
-        { to: '/kyc', icon: 'pi pi-id-card', label: 'KYC' },
-        { to: '/security', icon: 'pi pi-shield', label: 'Security' },
-        { to: '/profile', icon: 'pi pi-user', label: 'Profile' },
-        { to: '/faq', icon: 'pi pi-question-circle', label: 'FAQ' },
-        { to: '/risk-quiz', icon: 'pi pi-sliders-h', label: 'Risk profile' },
+        { to: '/notifications', icon: 'pi pi-inbox', label: 'Notifications', badge: '' },
+        { to: '/announcements', icon: 'pi pi-megaphone', label: 'Announcements', badge: '' },
+        { to: '/activity', icon: 'pi pi-clock', label: 'Activity', badge: '' },
+        { to: '/support', icon: 'pi pi-comments', label: 'Support chat', badge: supportBadge },
+        { to: '/trust', icon: 'pi pi-verified', label: 'Trust center', badge: '' },
+        { to: '/kyc', icon: 'pi pi-id-card', label: 'KYC', badge: '' },
+        { to: '/security', icon: 'pi pi-shield', label: 'Security', badge: '' },
+        { to: '/profile', icon: 'pi pi-user', label: 'Profile', badge: '' },
+        { to: '/faq', icon: 'pi pi-question-circle', label: 'FAQ', badge: '' },
+        { to: '/risk-quiz', icon: 'pi pi-sliders-h', label: 'Risk profile', badge: '' },
       ],
     },
   ]
@@ -70,14 +91,14 @@ const nav = computed(() => {
     sections.push({
       label: 'Admin',
       items: [
-        { to: '/admin', icon: 'pi pi-cog', label: 'Admin home' },
-        { to: '/admin/deposits', icon: 'pi pi-check-circle', label: 'Approve deposits' },
-        { to: '/admin/withdrawals', icon: 'pi pi-send', label: 'Payouts' },
-        { to: '/admin/kyc', icon: 'pi pi-id-card', label: 'KYC review' },
-        { to: '/admin/users', icon: 'pi pi-users', label: 'Users' },
-        { to: '/admin/tickets', icon: 'pi pi-headphones', label: 'Support chat' },
-        { to: '/admin/fraud', icon: 'pi pi-exclamation-triangle', label: 'Fraud signals' },
-        { to: '/admin/broadcast', icon: 'pi pi-megaphone', label: 'Bulk notify' },
+        { to: '/admin', icon: 'pi pi-cog', label: 'Admin home', badge: '' },
+        { to: '/admin/deposits', icon: 'pi pi-check-circle', label: 'Approve deposits', badge: '' },
+        { to: '/admin/withdrawals', icon: 'pi pi-send', label: 'Payouts', badge: '' },
+        { to: '/admin/kyc', icon: 'pi pi-id-card', label: 'KYC review', badge: '' },
+        { to: '/admin/users', icon: 'pi pi-users', label: 'Users', badge: '' },
+        { to: '/admin/tickets', icon: 'pi pi-headphones', label: 'Support chat', badge: '' },
+        { to: '/admin/fraud', icon: 'pi pi-exclamation-triangle', label: 'Fraud signals', badge: '' },
+        { to: '/admin/broadcast', icon: 'pi pi-megaphone', label: 'Bulk notify', badge: '' },
       ],
     })
   }
@@ -121,8 +142,12 @@ function logout() {
           :title="item.label"
           @click="go(item.to)"
         >
-          <i :class="item.icon" />
-          <span v-if="!ui.sidebarCollapsed">{{ item.label }}</span>
+          <span class="ico-wrap">
+            <i :class="item.icon" />
+            <span v-if="item.badge && ui.sidebarCollapsed" class="nav-badge coll">{{ item.badge }}</span>
+          </span>
+          <span v-if="!ui.sidebarCollapsed" class="lbl">{{ item.label }}</span>
+          <span v-if="item.badge && !ui.sidebarCollapsed" class="nav-badge">{{ item.badge }}</span>
         </button>
       </template>
     </nav>
@@ -215,6 +240,30 @@ function logout() {
   text-align: left;
 }
 .link i { font-size: 1.05rem; width: 1.25rem; text-align: center; }
+.ico-wrap { position: relative; display: inline-flex; }
+.lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-badge {
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.32rem;
+  border-radius: 999px;
+  background: #25D366;
+  color: #052e16;
+  font-size: 0.65rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.nav-badge.coll {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 0.95rem;
+  height: 0.95rem;
+  font-size: 0.55rem;
+}
 .link:hover { background: rgba(59, 130, 246, 0.1); color: var(--ci-text); }
 .link.active {
   background: linear-gradient(90deg, rgba(59, 130, 246, 0.22), rgba(124, 58, 237, 0.08));

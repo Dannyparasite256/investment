@@ -148,6 +148,15 @@ export const api = {
   staffTicketAction(id: string, payload: Record<string, unknown>) {
     return http.post(`/api/v1/staff/tickets/${id}/`, payload)
   },
+  staffTicketStatus(id: string, status: string) {
+    return http.post(`/api/v1/staff/tickets/${id}/`, { action: 'status', status })
+  },
+  staffTicketMute(id: string, muted: boolean) {
+    return http.post(`/api/v1/staff/tickets/${id}/`, { action: 'mute', muted })
+  },
+  staffTicketPin(id: string, pinned: boolean) {
+    return http.post(`/api/v1/staff/tickets/${id}/`, { action: 'pin', pinned })
+  },
   cryptocurrencies() {
     return http.get<Cryptocurrency[]>('/api/v1/cryptocurrencies/')
   },
@@ -376,6 +385,27 @@ export const api = {
       })
     }
     return http.post<TicketMessage>(`/api/v1/support/${id}/reply/`, { body })
+  },
+  supportUnreadTotal() {
+    return http.get<{ unread_count: number }>('/api/v1/support/unread_total/')
+  },
+  supportMute(id: string, muted: boolean) {
+    return http.post(`/api/v1/support/${id}/mute/`, { muted })
+  },
+  supportPin(id: string, pinned: boolean) {
+    return http.post(`/api/v1/support/${id}/pin/`, { pinned })
+  },
+  supportStarMessage(ticketId: string, msgId: string, starred: boolean) {
+    return http.post(`/api/v1/support/${ticketId}/messages/${msgId}/star/`, { starred })
+  },
+  supportEditMessage(ticketId: string, msgId: string, body: string) {
+    return http.post(`/api/v1/support/${ticketId}/messages/${msgId}/edit/`, { body })
+  },
+  supportDeleteMessage(ticketId: string, msgId: string) {
+    return http.post(`/api/v1/support/${ticketId}/messages/${msgId}/delete/`, {})
+  },
+  supportCsat(ticketId: string, score: number, comment?: string) {
+    return http.post(`/api/v1/support/${ticketId}/csat/`, { score, comment: comment || '' })
   },
   supportPoll(id: string, since?: string) {
     return http.get<ChatPollPayload>(`/api/v1/support/${id}/poll/`, {

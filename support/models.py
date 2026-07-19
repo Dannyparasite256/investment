@@ -39,6 +39,15 @@ class SupportTicket(UUIDModel, TimeStampedModel):
     # Explicit in-chat flags so online flips off immediately on leave
     user_in_chat = models.BooleanField(default=False)
     staff_in_chat = models.BooleanField(default=False)
+    # WhatsApp-style mute (per side)
+    muted_by_user = models.BooleanField(default=False)
+    muted_by_staff = models.BooleanField(default=False)
+    # SLA: first response deadline
+    sla_due_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    first_response_at = models.DateTimeField(null=True, blank=True)
+    # Pin ticket to top of list for user/staff
+    pinned_by_user = models.BooleanField(default=False)
+    pinned_by_staff = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['-updated_at', '-created_at']
@@ -66,6 +75,12 @@ class TicketMessage(UUIDModel, TimeStampedModel):
     )
     delivered_at = models.DateTimeField(null=True, blank=True, db_index=True)
     read_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    # Star / pin / edit / soft-delete
+    is_starred = models.BooleanField(default=False, db_index=True)
+    is_pinned = models.BooleanField(default=False)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['created_at']
@@ -81,6 +96,12 @@ class TicketMessage(UUIDModel, TimeStampedModel):
         if self.delivered_at:
             return 'delivered'
         return 'sent'
+
+    @property
+    def display_body(self) -> str:
+        if self.is_deleted:
+            return '🚫 This message was deleted'
+        return self.body or ''
 
     def mark_delivered(self, when=None):
         if self.delivered_at:

@@ -420,17 +420,20 @@ class StaffTicketListView(APIView):
     permission_classes = [IsAuthenticated, IsStaffPanel]
 
     def get(self, request):
+        from support.services import last_message_dict, mark_messages_delivered
+
         qs = (
-            SupportTicket.objects.select_related('user')
+            SupportTicket.objects.select_related('user', 'assigned_to')
             .prefetch_related('messages')
-            .order_by('-updated_at')[:80]
+            .order_by('-pinned_by_staff', '-updated_at')[:80]
         )
         results = []
         for t in qs:
+            # Inbox open = delivered (double grey) for customer messages
+            mark_messages_delivered(t, for_staff_messages=False)
             msgs = list(t.messages.all())
             last = msgs[-1] if msgs else None
-            unread = sum(1 for m in msgs if not m.is_staff_reply and not m.read_at)
-            has_att = bool(last and last.attachment)
+            unread = sum(1 for m in msgs if not m.is_staff_reply and not m.read_at and not m.is_deleted)
             results.append({
                 'id': str(t.id),
                 'subject': t.subject,
@@ -443,14 +446,14 @@ class StaffTicketListView(APIView):
                 'updated_at': t.updated_at,
                 'message_count': len(msgs),
                 'unread_count': unread,
-                'last_message': ({
-                    'id': str(last.id),
-                    'body': last.body,
-                    'is_staff_reply': last.is_staff_reply,
-                    'created_at': last.created_at,
-                    'receipt_status': last.receipt_status,
-                    'has_attachment': has_att,
-                } if last else None),
+                'muted': bool(t.muted_by_staff),
+                'pinned': bool(t.pinned_by_staff),
+                'sla_due_at': t.sla_due_at,
+                'first_response_at': t.first_response_at,
+                'assigned_to_name': (
+                    (t.assigned_to.get_full_name() or t.assigned_to.email) if t.assigned_to_id else ''
+                ),
+                'last_message': last_message_dict(last),
             })
         return Response({'results': results})
 
@@ -460,7 +463,7 @@ class StaffTicketDetailView(APIView):
 
     def _msg_dict(self, m):
         att_url = ''
-        if m.attachment:
+        if m.attachment and not m.is_deleted:
             try:
                 att_url = m.attachment.url
             except Exception:
@@ -469,7 +472,9 @@ class StaffTicketDetailView(APIView):
         parent = getattr(m, 'reply_to', None)
         if parent:
             body = parent.body or ''
-            if body == '(attachment)':
+            if getattr(parent, 'is_deleted', False):
+                body = '🚫 This message was deleted'
+            elif body == '(attachment)':
                 body = '📎 Attachment'
             reply_to = {
                 'id': str(parent.id),
@@ -477,9 +482,10 @@ class StaffTicketDetailView(APIView):
                 'is_staff_reply': parent.is_staff_reply,
                 'sender_name': parent.sender.get_full_name() or parent.sender.email,
             }
+        body = '🚫 This message was deleted' if m.is_deleted else m.body
         return {
             'id': str(m.id),
-            'body': m.body,
+            'body': body,
             'is_staff_reply': m.is_staff_reply,
             'sender_name': m.sender.get_full_name() or m.sender.email,
             'created_at': m.created_at,
@@ -490,27 +496,21 @@ class StaffTicketDetailView(APIView):
             'attachment_url': att_url,
             'reply_to_id': str(m.reply_to_id) if m.reply_to_id else None,
             'reply_to': reply_to,
+            'is_starred': m.is_starred,
+            'is_pinned': m.is_pinned,
+            'edited_at': m.edited_at,
+            'is_deleted': m.is_deleted,
         }
 
     def _mark_user_messages_read(self, ticket):
-        from support.realtime import notify_receipts
-
-        now = timezone.now()
-        qs = TicketMessage.objects.filter(
-            ticket=ticket, is_staff_reply=False, read_at__isnull=True,
-        )
-        ids = list(qs.values_list('id', flat=True))
-        if not ids:
-            return 0
-        n = qs.update(delivered_at=now, read_at=now, updated_at=now)
-        notify_receipts(ticket.id, ids, 'read', now.isoformat())
-        return n
+        from support.services import mark_messages_read
+        return len(mark_messages_read(ticket, peer_is_staff_replies=False))
 
     def get(self, request, pk):
         from support.realtime import get_presence, set_presence
 
         t = get_object_or_404(
-            SupportTicket.objects.prefetch_related(
+            SupportTicket.objects.select_related('user', 'assigned_to').prefetch_related(
                 'messages__sender', 'messages__reply_to', 'messages__reply_to__sender',
             ),
             pk=pk,
@@ -527,6 +527,13 @@ class StaffTicketDetailView(APIView):
             'user_name': t.user.get_full_name() or t.user.email,
             'updated_at': t.updated_at,
             'created_at': t.created_at,
+            'muted': bool(t.muted_by_staff),
+            'pinned': bool(t.pinned_by_staff),
+            'sla_due_at': t.sla_due_at,
+            'first_response_at': t.first_response_at,
+            'assigned_to_name': (
+                (t.assigned_to.get_full_name() or t.assigned_to.email) if t.assigned_to_id else ''
+            ),
             'messages': [self._msg_dict(m) for m in t.messages.all()],
             'presence': get_presence(t.id),
         })
@@ -580,6 +587,60 @@ class StaffTicketDetailView(APIView):
                 'server_time': timezone.now().isoformat(),
             })
 
+        if action == 'mute':
+            from support.realtime import as_bool
+            t.muted_by_staff = as_bool(request.data.get('muted', not t.muted_by_staff), default=True)
+            t.save(update_fields=['muted_by_staff', 'updated_at'])
+            return Response({'ok': True, 'muted': t.muted_by_staff})
+
+        if action == 'pin':
+            from support.realtime import as_bool
+            t.pinned_by_staff = as_bool(request.data.get('pinned', not t.pinned_by_staff), default=True)
+            t.save(update_fields=['pinned_by_staff', 'updated_at'])
+            return Response({'ok': True, 'pinned': t.pinned_by_staff})
+
+        if action == 'status':
+            new_status = (request.data.get('status') or '').strip()
+            if new_status not in dict(SupportTicket.Status.choices):
+                return Response({'detail': 'Invalid status'}, status=400)
+            t.status = new_status
+            t.save(update_fields=['status', 'updated_at'])
+            return Response({'ok': True, 'status': t.status})
+
+        if action == 'star':
+            from support.realtime import as_bool
+            msg_id = request.data.get('message_id')
+            m = TicketMessage.objects.filter(ticket=t, pk=msg_id).first()
+            if not m:
+                return Response({'detail': 'Not found'}, status=404)
+            m.is_starred = as_bool(request.data.get('starred', not m.is_starred), default=True)
+            m.save(update_fields=['is_starred', 'updated_at'])
+            return Response(self._msg_dict(m))
+
+        if action == 'edit':
+            msg_id = request.data.get('message_id')
+            m = TicketMessage.objects.filter(ticket=t, pk=msg_id, sender=request.user).first()
+            if not m or m.is_deleted:
+                return Response({'detail': 'Not found'}, status=404)
+            body_edit = (request.data.get('body') or '').strip()
+            if not body_edit:
+                return Response({'detail': 'body required'}, status=400)
+            m.body = body_edit
+            m.edited_at = timezone.now()
+            m.save(update_fields=['body', 'edited_at', 'updated_at'])
+            return Response(self._msg_dict(m))
+
+        if action == 'delete_message':
+            msg_id = request.data.get('message_id')
+            m = TicketMessage.objects.filter(ticket=t, pk=msg_id, sender=request.user).first()
+            if not m:
+                return Response({'detail': 'Not found'}, status=404)
+            m.is_deleted = True
+            m.deleted_at = timezone.now()
+            m.body = ''
+            m.save(update_fields=['is_deleted', 'deleted_at', 'body', 'updated_at'])
+            return Response(self._msg_dict(m))
+
         body = (request.data.get('body') or '').strip()
         attachment = request.FILES.get('attachment')
         if not body and not attachment:
@@ -595,7 +656,11 @@ class StaffTicketDetailView(APIView):
             is_staff_reply=True, attachment=attachment, reply_to=reply_parent,
         )
         t.status = SupportTicket.Status.WAITING
-        t.save(update_fields=['status', 'updated_at'])
+        if not t.assigned_to_id:
+            t.assigned_to = request.user
+            t.save(update_fields=['status', 'assigned_to', 'updated_at'])
+        else:
+            t.save(update_fields=['status', 'updated_at'])
         notify_new_message(t, msg)
-        # Customer inbox + push handled inside notify_new_message → notify_chat_parties
+        msg.refresh_from_db()
         return Response(self._msg_dict(msg), status=201)

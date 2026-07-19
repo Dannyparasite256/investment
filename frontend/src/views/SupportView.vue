@@ -40,10 +40,35 @@ const replyTarget = ref<TicketMessage | null>(null)
 const showJump = ref(false)
 const lightboxUrl = ref('')
 const menuMsgId = ref<string | null>(null)
+const chatSearch = ref('')
+const expandedMsgs = ref<Record<string, boolean>>({})
+const csatScore = ref(0)
+const csatBusy = ref(false)
+const editingId = ref<string | null>(null)
+const editBody = ref('')
 
 const chat = useSupportChat({
   isStaff: false,
-  onMessage: async () => {
+  sound: true,
+  onMessage: async (m) => {
+    // Refresh list preview / unread for peer messages
+    if (m.is_staff_reply && activeTicket.value) {
+      const idx = tickets.value.findIndex((t) => t.id === activeTicket.value!.id)
+      if (idx >= 0) {
+        tickets.value[idx] = {
+          ...tickets.value[idx],
+          last_message: {
+            id: m.id,
+            body: m.body,
+            is_staff_reply: true,
+            created_at: m.created_at,
+            receipt_status: m.receipt_status,
+            has_attachment: !!(m.attachment_url || m.attachment),
+          },
+          updated_at: m.created_at,
+        }
+      }
+    }
     await scrollToBottom()
   },
 })
@@ -65,7 +90,12 @@ type TimelineItem =
 const timeline = computed<TimelineItem[]>(() => {
   const items: TimelineItem[] = []
   let lastDay = ''
+  const q = chatSearch.value.trim().toLowerCase()
   for (const m of chatMessages.value) {
+    if (q) {
+      const hay = `${m.body || ''} ${m.sender_name || ''}`.toLowerCase()
+      if (!hay.includes(q)) continue
+    }
     const dk = dayKey(m.created_at)
     if (dk && dk !== lastDay) {
       lastDay = dk
@@ -78,12 +108,20 @@ const timeline = computed<TimelineItem[]>(() => {
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
-  if (!q) return tickets.value
-  return tickets.value.filter(
+  let list = [...tickets.value]
+  list.sort((a, b) => {
+    const pa = a.pinned ? 1 : 0
+    const pb = b.pinned ? 1 : 0
+    if (pa !== pb) return pb - pa
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+  })
+  if (!q) return list
+  return list.filter(
     (t) =>
       t.subject.toLowerCase().includes(q) ||
       t.category.toLowerCase().includes(q) ||
-      t.status.toLowerCase().includes(q),
+      t.status.toLowerCase().includes(q) ||
+      (t.last_message?.body || '').toLowerCase().includes(q),
   )
 })
 
@@ -91,6 +129,32 @@ const canReply = computed(() => {
   const s = (activeTicket.value?.status || '').toLowerCase()
   return !!activeTicket.value && !['closed', 'resolved'].includes(s)
 })
+
+const showCsat = computed(() => {
+  const s = (activeTicket.value?.status || '').toLowerCase()
+  return !!activeTicket.value && ['resolved', 'closed'].includes(s)
+})
+
+const slaLabel = computed(() => {
+  const iso = activeTicket.value?.sla_due_at
+  if (!iso) return ''
+  try {
+    const d = new Date(iso)
+    const mins = Math.round((d.getTime() - Date.now()) / 60000)
+    if (mins < 0) return `SLA overdue ${Math.abs(Math.round(mins / 60))}h`
+    if (mins < 60) return `SLA ${mins}m left`
+    return `SLA ${Math.round(mins / 60)}h left`
+  } catch {
+    return ''
+  }
+})
+
+const quickActions = [
+  { label: 'I deposited', text: 'I just submitted a deposit. Please check my wallet.' },
+  { label: 'Withdraw help', text: 'I need help with a withdrawal.' },
+  { label: 'Account issue', text: 'I have an issue with my account login or verification.' },
+  { label: 'Investment Q', text: 'I have a question about my investment plan / earnings.' },
+]
 
 function lastSeenLabel(iso?: string | null): string {
   if (!iso) return ''
@@ -126,19 +190,152 @@ const liveLabel = computed(() => {
 function unreadCount(t: SupportTicket): number {
   if (typeof t.unread_count === 'number') return t.unread_count
   const msgs = t.messages || []
-  return msgs.filter((m) => m.is_staff_reply && !m.read_at).length
+  return msgs.filter((m) => m.is_staff_reply && !m.read_at && !m.is_deleted).length
+}
+
+function lastMsg(t: SupportTicket) {
+  if (t.last_message) return t.last_message
+  const msgs = t.messages || []
+  if (!msgs.length) return null
+  const last = msgs[msgs.length - 1]
+  return {
+    id: last.id,
+    body: last.body,
+    is_staff_reply: last.is_staff_reply,
+    created_at: last.created_at,
+    receipt_status: last.receipt_status,
+    delivered_at: last.delivered_at,
+    read_at: last.read_at,
+    has_attachment: !!(last.attachment_url || last.attachment),
+    is_deleted: last.is_deleted,
+  }
 }
 
 function lastPreview(t: SupportTicket): string {
-  const msgs = t.messages || []
-  if (!msgs.length) return 'No messages yet'
-  const last = msgs[msgs.length - 1]
+  const last = lastMsg(t)
+  if (!last) return 'No messages yet'
   const who = last.is_staff_reply ? 'Support' : 'You'
-  const hasAtt = !!(last.attachment_url || last.attachment)
+  const hasAtt = !!last.has_attachment
   let text = (last.body || '').replace(/\s+/g, ' ').trim()
   if (!text || text === '(attachment)') text = hasAtt ? 'Photo' : 'Message'
   const clip = hasAtt ? '📎 ' : ''
   return `${who}: ${clip}${truncatePreview(text, 64)}`
+}
+
+function lastReceipt(t: SupportTicket): string {
+  const last = lastMsg(t)
+  if (!last || last.is_staff_reply) return ''
+  // Own last message ticks on list (WhatsApp-style)
+  if (last.read_at || last.receipt_status === 'read') return 'read'
+  if (last.delivered_at || last.receipt_status === 'delivered') return 'delivered'
+  return 'sent'
+}
+
+function displayBody(m: TicketMessage): string {
+  if (m.is_deleted) return '🚫 This message was deleted'
+  return m.body || ''
+}
+
+function isLong(m: TicketMessage): boolean {
+  return (displayBody(m) || '').length > 280
+}
+
+function bodySnippet(m: TicketMessage): string {
+  const t = displayBody(m)
+  if (!isLong(m) || expandedMsgs.value[m.id]) return t
+  return t.slice(0, 280) + '…'
+}
+
+function applyQuick(text: string) {
+  body.value = text
+  nextTick(() => {
+    const ta = document.querySelector('.wa-composer textarea') as HTMLTextAreaElement | null
+    ta?.focus()
+  })
+}
+
+async function toggleMute() {
+  if (!activeTicket.value) return
+  const next = !activeTicket.value.muted
+  try {
+    await api.supportMute(activeTicket.value.id, next)
+    activeTicket.value.muted = next
+    const idx = tickets.value.findIndex((t) => t.id === activeTicket.value!.id)
+    if (idx >= 0) tickets.value[idx] = { ...tickets.value[idx], muted: next }
+    ui.toast(next ? 'Muted' : 'Unmuted', next ? 'Notifications off for this chat' : 'Notifications on', 'info')
+  } catch {
+    ui.toast('Failed', 'Could not update mute', 'error')
+  }
+}
+
+async function togglePin() {
+  if (!activeTicket.value) return
+  const next = !activeTicket.value.pinned
+  try {
+    await api.supportPin(activeTicket.value.id, next)
+    activeTicket.value.pinned = next
+    const idx = tickets.value.findIndex((t) => t.id === activeTicket.value!.id)
+    if (idx >= 0) tickets.value[idx] = { ...tickets.value[idx], pinned: next }
+  } catch {
+    ui.toast('Failed', 'Could not pin chat', 'error')
+  }
+}
+
+async function starMsg(m: TicketMessage) {
+  if (!activeTicket.value || m.is_deleted) return
+  try {
+    const { data } = await api.supportStarMessage(activeTicket.value.id, m.id, !m.is_starred)
+    const i = chatMessages.value.findIndex((x) => x.id === m.id)
+    if (i >= 0) chatMessages.value[i] = { ...chatMessages.value[i], ...data }
+  } catch {
+    ui.toast('Failed', 'Could not star', 'error')
+  }
+}
+
+function startEdit(m: TicketMessage) {
+  if (m.is_staff_reply || m.is_deleted) return
+  editingId.value = m.id
+  editBody.value = m.body || ''
+  menuMsgId.value = null
+}
+
+async function saveEdit() {
+  if (!activeTicket.value || !editingId.value || !editBody.value.trim()) return
+  try {
+    const { data } = await api.supportEditMessage(activeTicket.value.id, editingId.value, editBody.value.trim())
+    const i = chatMessages.value.findIndex((x) => x.id === editingId.value)
+    if (i >= 0) chatMessages.value[i] = { ...chatMessages.value[i], ...data }
+    editingId.value = null
+    editBody.value = ''
+  } catch {
+    ui.toast('Failed', 'Could not edit message', 'error')
+  }
+}
+
+async function deleteMsg(m: TicketMessage) {
+  if (!activeTicket.value || m.is_staff_reply) return
+  try {
+    const { data } = await api.supportDeleteMessage(activeTicket.value.id, m.id)
+    const i = chatMessages.value.findIndex((x) => x.id === m.id)
+    if (i >= 0) chatMessages.value[i] = { ...chatMessages.value[i], ...data }
+    menuMsgId.value = null
+  } catch {
+    ui.toast('Failed', 'Could not delete', 'error')
+  }
+}
+
+async function submitCsat(score: number) {
+  if (!activeTicket.value || csatBusy.value) return
+  csatBusy.value = true
+  csatScore.value = score
+  try {
+    await api.supportCsat(activeTicket.value.id, score)
+    ui.toast('Thanks', 'Feedback recorded', 'success')
+  } catch {
+    ui.toast('Failed', 'Could not send rating', 'error')
+  } finally {
+    csatBusy.value = false
+  }
 }
 
 function initials(label: string): string {
@@ -384,7 +581,20 @@ async function reply() {
         messages: chatMessages.value,
         updated_at: activeTicket.value.updated_at,
         unread_count: 0,
+        last_message: {
+          id: msg.id,
+          body: msg.body,
+          is_staff_reply: false,
+          created_at: msg.created_at,
+          receipt_status: msg.receipt_status || 'sent',
+          delivered_at: msg.delivered_at,
+          read_at: msg.read_at,
+          has_attachment: !!(msg.attachment_url || msg.attachment),
+        },
       }
+      // Move active chat to top
+      const [row] = tickets.value.splice(idx, 1)
+      tickets.value.unshift(row)
     }
     await scrollToBottom(true)
   } catch (e: any) {
@@ -503,17 +713,33 @@ onUnmounted(() => chat.leave())
           <span class="wa-avatar support">{{ initials(t.subject) }}</span>
           <span class="wa-row-body">
             <span class="wa-row-top">
-              <strong class="truncate">{{ t.subject }}</strong>
+              <strong class="truncate">
+                <i v-if="t.pinned" class="pi pi-thumbtack pin-ico" />
+                <i v-if="t.muted" class="pi pi-volume-off mute-ico" />
+                {{ t.subject }}
+              </strong>
               <span class="wa-time" :class="{ unread: unreadCount(t) > 0 && activeId !== t.id }">
-                {{ timeLabel(t.updated_at) }}
+                {{ timeLabel(t.updated_at || lastMsg(t)?.created_at) }}
               </span>
             </span>
             <span class="wa-row-bot">
-              <span class="wa-preview truncate">{{ lastPreview(t) }}</span>
+              <span class="wa-preview truncate">
+                <span
+                  v-if="lastReceipt(t)"
+                  class="ticks list-ticks"
+                  :class="lastReceipt(t)"
+                  :title="lastReceipt(t)"
+                >
+                  <template v-if="lastReceipt(t) === 'sent'"><i class="pi pi-check" /></template>
+                  <template v-else>
+                    <i class="pi pi-check" /><i class="pi pi-check second" />
+                  </template>
+                </span>
+                {{ lastPreview(t) }}
+              </span>
               <span v-if="unreadCount(t) > 0 && activeId !== t.id" class="wa-unread-badge">
                 {{ unreadCount(t) > 99 ? '99+' : unreadCount(t) }}
               </span>
-              <Tag v-else :value="t.status" :severity="statusSeverity(t.status)" class="wa-status" />
             </span>
           </span>
         </button>
@@ -539,8 +765,31 @@ onUnmounted(() => chat.leave())
               {{ statusLine }}
             </p>
           </div>
-          <span class="live-pill" :class="{ on: chat.connected }">{{ liveLabel }}</span>
+          <div class="wa-head-actions">
+            <Button
+              :icon="activeTicket.muted ? 'pi pi-volume-off' : 'pi pi-volume-up'"
+              text
+              rounded
+              size="small"
+              v-tooltip.bottom="activeTicket.muted ? 'Unmute' : 'Mute'"
+              @click="toggleMute"
+            />
+            <Button
+              :icon="activeTicket.pinned ? 'pi pi-thumbtack' : 'pi pi-bookmark'"
+              text
+              rounded
+              size="small"
+              v-tooltip.bottom="activeTicket.pinned ? 'Unpin' : 'Pin'"
+              @click="togglePin"
+            />
+            <span class="live-pill" :class="{ on: chat.connected }">{{ liveLabel }}</span>
+          </div>
         </header>
+        <div v-if="slaLabel" class="wa-sla-bar">{{ slaLabel }}</div>
+        <div class="wa-chat-search">
+          <i class="pi pi-search" />
+          <input v-model="chatSearch" type="search" placeholder="Search in conversation" />
+        </div>
 
         <div class="wa-messages-wrap">
           <div
@@ -577,12 +826,28 @@ onUnmounted(() => chat.leave())
                   </button>
 
                   <div
-                    v-if="item.msg.body && item.msg.body !== '(attachment)'"
+                    v-if="displayBody(item.msg) && displayBody(item.msg) !== '(attachment)'"
                     class="wa-text"
-                    v-html="linkify(item.msg.body)"
+                    :class="{ deleted: item.msg.is_deleted }"
+                    v-html="linkify(bodySnippet(item.msg))"
                   />
+                  <button
+                    v-if="isLong(item.msg) && !item.msg.is_deleted"
+                    type="button"
+                    class="wa-readmore"
+                    @click.stop="expandedMsgs[item.msg.id] = !expandedMsgs[item.msg.id]"
+                  >
+                    {{ expandedMsgs[item.msg.id] ? 'Show less' : 'Read more' }}
+                  </button>
+                  <div v-if="editingId === item.msg.id" class="wa-edit-box" @click.stop>
+                    <textarea v-model="editBody" rows="2" />
+                    <div class="wa-edit-actions">
+                      <Button label="Save" size="small" @click="saveEdit" />
+                      <Button label="Cancel" size="small" text @click="editingId = null" />
+                    </div>
+                  </div>
 
-                  <div v-if="attachmentHref(item.msg)" class="wa-attach-wrap">
+                  <div v-if="attachmentHref(item.msg) && !item.msg.is_deleted" class="wa-attach-wrap">
                     <button
                       v-if="isImageAtt(item.msg)"
                       type="button"
@@ -603,9 +868,11 @@ onUnmounted(() => chat.leave())
                   </div>
 
                   <div class="wa-meta">
+                    <span v-if="item.msg.is_starred" class="star-hint">★</span>
+                    <span v-if="item.msg.edited_at" class="edited-hint">edited</span>
                     <span>{{ msgTime(item.msg.created_at) }}</span>
                     <span
-                      v-if="!item.msg.is_staff_reply"
+                      v-if="!item.msg.is_staff_reply && !item.msg.is_deleted"
                       class="ticks"
                       :class="receiptOf(item.msg)"
                       :title="tickTitle(item.msg)"
@@ -627,14 +894,38 @@ onUnmounted(() => chat.leave())
                     <button type="button" class="wa-act" title="Reply" @click.stop="setReply(item.msg)">
                       <i class="pi pi-reply" />
                     </button>
+                    <button type="button" class="wa-act" title="Star" @click.stop="starMsg(item.msg)">
+                      <i class="pi" :class="item.msg.is_starred ? 'pi-star-fill' : 'pi-star'" />
+                    </button>
                     <button type="button" class="wa-act" title="Copy" @click.stop="copyMessage(item.msg)">
                       <i class="pi pi-copy" />
+                    </button>
+                    <button
+                      v-if="!item.msg.is_staff_reply && !item.msg.is_deleted"
+                      type="button"
+                      class="wa-act"
+                      title="Edit"
+                      @click.stop="startEdit(item.msg)"
+                    >
+                      <i class="pi pi-pencil" />
+                    </button>
+                    <button
+                      v-if="!item.msg.is_staff_reply && !item.msg.is_deleted"
+                      type="button"
+                      class="wa-act"
+                      title="Delete"
+                      @click.stop="deleteMsg(item.msg)"
+                    >
+                      <i class="pi pi-trash" />
                     </button>
                   </div>
 
                   <div v-if="menuMsgId === item.msg.id" class="wa-ctx-menu" @click.stop>
                     <button type="button" @click="setReply(item.msg)"><i class="pi pi-reply" /> Reply</button>
+                    <button type="button" @click="starMsg(item.msg)"><i class="pi pi-star" /> Star</button>
                     <button type="button" @click="copyMessage(item.msg)"><i class="pi pi-copy" /> Copy</button>
+                    <button v-if="!item.msg.is_staff_reply" type="button" @click="startEdit(item.msg)"><i class="pi pi-pencil" /> Edit</button>
+                    <button v-if="!item.msg.is_staff_reply" type="button" @click="deleteMsg(item.msg)"><i class="pi pi-trash" /> Delete</button>
                   </div>
                 </div>
               </div>
@@ -663,7 +954,31 @@ onUnmounted(() => chat.leave())
           </button>
         </div>
 
+        <div v-if="showCsat" class="wa-csat">
+          <span>Rate this support chat</span>
+          <div class="wa-csat-stars">
+            <button
+              v-for="n in 5"
+              :key="n"
+              type="button"
+              class="star-btn"
+              :class="{ on: csatScore >= n }"
+              :disabled="csatBusy"
+              @click="submitCsat(n)"
+            >★</button>
+          </div>
+        </div>
+
         <footer v-if="canReply" class="wa-composer-wrap">
+          <div class="wa-quick">
+            <button
+              v-for="q in quickActions"
+              :key="q.label"
+              type="button"
+              class="wa-quick-chip"
+              @click="applyQuick(q.text)"
+            >{{ q.label }}</button>
+          </div>
           <div v-if="replyTarget" class="wa-reply-chip">
             <span class="wa-reply-bar" />
             <span class="wa-reply-meta">
@@ -897,7 +1212,83 @@ onUnmounted(() => chat.leave())
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(37, 211, 102, 0.15);
 }
+.list-ticks {
+  display: inline-flex !important;
+  position: relative;
+  width: 1rem;
+  height: 0.75rem;
+  vertical-align: middle;
+  margin-right: 0.15rem;
+  color: var(--ci-muted);
+}
+.list-ticks i { font-size: 0.65rem; position: absolute; left: 0; }
+.list-ticks .second { left: 0.25rem; }
+.list-ticks.read { color: #53bdeb !important; }
+.list-ticks.delivered { color: #94a3b8 !important; }
+.pin-ico, .mute-ico { font-size: 0.7rem; margin-right: 0.25rem; opacity: 0.85; }
+.wa-head-actions { display: flex; align-items: center; gap: 0.15rem; }
+.wa-sla-bar {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 0.25rem 0.5rem;
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.wa-chat-search {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.35rem 0.65rem 0;
+  padding: 0.35rem 0.65rem;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--ci-border);
+}
+.wa-chat-search i { color: var(--ci-muted); font-size: 0.8rem; }
+.wa-chat-search input {
+  flex: 1; border: 0; outline: 0; background: transparent; color: inherit; font-size: 0.85rem;
+}
+.wa-text.deleted { opacity: 0.7; font-style: italic; }
+.wa-readmore {
+  border: 0; background: transparent; color: #53bdeb; font-size: 0.78rem; font-weight: 700;
+  cursor: pointer; padding: 0.15rem 0 0; margin: 0;
+}
+.wa-edit-box { margin-top: 0.35rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.wa-edit-box textarea {
+  width: 100%; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.25); color: inherit; padding: 0.4rem; font: inherit;
+}
+.wa-edit-actions { display: flex; gap: 0.35rem; }
+.edited-hint, .star-hint { opacity: 0.75; font-size: 0.65rem; margin-right: 0.15rem; }
+.star-hint { color: #fbbf24; }
+.wa-csat {
+  display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+  padding: 0.55rem; background: rgba(17,27,33,0.95); border-top: 1px solid var(--ci-border);
+  font-size: 0.85rem;
+}
+.wa-csat-stars { display: flex; gap: 0.2rem; }
+.star-btn {
+  border: 0; background: transparent; color: #64748b; font-size: 1.35rem; cursor: pointer; line-height: 1;
+}
+.star-btn.on { color: #fbbf24; }
+.wa-quick {
+  display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.4rem;
+}
+.wa-quick-chip {
+  border: 1px solid rgba(37,211,102,0.25);
+  background: rgba(37,211,102,0.08);
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.wa-quick-chip:hover { background: rgba(37,211,102,0.16); }
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;

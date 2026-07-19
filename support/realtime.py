@@ -272,10 +272,13 @@ def message_payload(msg) -> dict:
             att_url = msg.attachment.url
         except Exception:
             att_url = ''
+    body = msg.body
+    if getattr(msg, 'is_deleted', False):
+        body = '🚫 This message was deleted'
     return {
         'id': str(msg.id),
         'ticket_id': str(msg.ticket_id),
-        'body': msg.body,
+        'body': body,
         'is_staff_reply': msg.is_staff_reply,
         'created_at': msg.created_at.isoformat() if msg.created_at else None,
         'delivered_at': msg.delivered_at.isoformat() if msg.delivered_at else None,
@@ -286,6 +289,10 @@ def message_payload(msg) -> dict:
         'attachment_url': att_url,
         'reply_to_id': str(msg.reply_to_id) if getattr(msg, 'reply_to_id', None) else None,
         'reply_to': _reply_preview(msg),
+        'is_starred': bool(getattr(msg, 'is_starred', False)),
+        'is_pinned': bool(getattr(msg, 'is_pinned', False)),
+        'edited_at': msg.edited_at.isoformat() if getattr(msg, 'edited_at', None) else None,
+        'is_deleted': bool(getattr(msg, 'is_deleted', False)),
     }
 
 
@@ -324,7 +331,7 @@ def _staff_notification_recipients(ticket, exclude_user_id=None):
 def notify_chat_parties(ticket, msg) -> None:
     """
     In-app (+ optional browser push) when support or customer sends a message.
-    - Staff reply → notify the ticket customer
+    - Staff reply → notify the ticket customer (unless muted)
     - Customer message / new ticket → notify assigned agent or all staff
     """
     from notifications.models import Notification, notify
@@ -333,8 +340,8 @@ def notify_chat_parties(ticket, msg) -> None:
     tid = str(ticket.id)
 
     if msg.is_staff_reply:
-        # Don't spam if customer is actively viewing this chat (still mark for badge later optional)
-        # Always create inbox item so they see it in the bell even after leaving.
+        if getattr(ticket, 'muted_by_user', False):
+            return
         if ticket.user_id and ticket.user_id != msg.sender_id:
             notify(
                 ticket.user,
@@ -346,6 +353,9 @@ def notify_chat_parties(ticket, msg) -> None:
                 ticket_id=tid,
                 message_id=str(msg.id),
             )
+        return
+
+    if getattr(ticket, 'muted_by_staff', False):
         return
 
     # Customer → staff
@@ -372,6 +382,16 @@ def notify_chat_parties(ticket, msg) -> None:
 
 def notify_new_message(ticket, msg) -> None:
     from support.models import SupportTicket
+    from support.services import maybe_email_support_message, on_message_created
+
+    # SLA / assign / instant delivered
+    try:
+        on_message_created(ticket, msg)
+        msg.refresh_from_db()
+        ticket.refresh_from_db()
+    except Exception:
+        import logging
+        logging.getLogger('support').exception('on_message_created failed')
 
     # Clear typing for the sender side when they send
     if msg.is_staff_reply:
@@ -402,9 +422,14 @@ def notify_new_message(ticket, msg) -> None:
     try:
         notify_chat_parties(ticket, msg)
     except Exception:
-        # Never fail the chat send path because of notifications
         import logging
         logging.getLogger('support').exception('notify_chat_parties failed')
+
+    try:
+        maybe_email_support_message(ticket, msg)
+    except Exception:
+        import logging
+        logging.getLogger('support').exception('email support message failed')
 
 
 def notify_receipts(ticket_id, message_ids: list, status: str, at_iso: str) -> None:

@@ -21,27 +21,43 @@
 
     <div class="wa-chat-list">
       {% for t in page %}
-      <a href="{% url 'support:detail' t.pk %}" class="wa-chat-row">
+      {% with last=t.messages.last %}
+      <a href="{% url 'support:detail' t.pk %}" class="wa-chat-row {% if t.unread_staff %}has-unread{% endif %}">
         <span class="wa-avatar">{{ t.subject|slice:":1"|upper }}</span>
         <span class="wa-row-body">
           <span class="wa-row-top">
-            <strong class="wa-truncate">{{ t.subject }}</strong>
-            <span class="wa-time">{{ t.updated_at|when }}</span>
+            <strong class="wa-truncate">
+              {% if t.pinned_by_user %}<i class="bi bi-pin-angle-fill me-1"></i>{% endif %}
+              {% if t.muted_by_user %}<i class="bi bi-volume-mute me-1"></i>{% endif %}
+              {{ t.subject }}
+            </strong>
+            <span class="wa-time {% if t.unread_staff %}text-success fw-bold{% endif %}">{{ t.updated_at|when }}</span>
           </span>
           <span class="wa-row-bot">
             <span class="wa-preview wa-truncate">
-              {% with last=t.messages.last %}
-                {% if last %}
-                  {% if last.is_staff_reply %}Support{% else %}You{% endif %}: {{ last.body|truncatechars:60 }}
-                {% else %}
-                  No messages yet
+              {% if last %}
+                {% if not last.is_staff_reply %}
+                  {% if last.receipt_status == 'read' %}
+                  <span class="wa-ticks wa-ticks-read" title="Read"><i class="bi bi-check2"></i><i class="bi bi-check2 wa-tick-2"></i></span>
+                  {% elif last.receipt_status == 'delivered' %}
+                  <span class="wa-ticks" title="Delivered"><i class="bi bi-check2"></i><i class="bi bi-check2 wa-tick-2"></i></span>
+                  {% else %}
+                  <span class="wa-ticks" title="Sent"><i class="bi bi-check2"></i></span>
+                  {% endif %}
                 {% endif %}
-              {% endwith %}
+                {% if last.is_staff_reply %}Support{% else %}You{% endif %}:
+                {% if last.is_deleted %}Deleted message{% elif last.body == '(attachment)' %}📎 Attachment{% else %}{{ last.body|truncatechars:60 }}{% endif %}
+              {% else %}
+                No messages yet
+              {% endif %}
             </span>
-            <span class="badge badge-status badge-info wa-status">{{ t.get_status_display }}</span>
+            {% if t.unread_staff %}
+            <span class="wa-unread-badge">{{ t.unread_staff }}</span>
+            {% endif %}
           </span>
         </span>
       </a>
+      {% endwith %}
       {% empty %}
       <div class="wa-empty-side">
         <i class="bi bi-chat-dots"></i>
@@ -56,7 +72,7 @@
     <div class="wa-placeholder-card">
       <div class="wa-placeholder-icon"><i class="bi bi-whatsapp"></i></div>
       <h2>CryptoInvest Support</h2>
-      <p class="text-muted mb-3">Select a conversation or start a new chat about deposits, withdrawals, KYC, or investments.</p>
+      <p class="text-muted mb-3">See message previews, delivery ticks, and unread counts — open a chat to reply.</p>
       <a href="{% url 'support:create' %}" class="btn btn-ci">
         <i class="bi bi-plus-lg me-1"></i> New conversation
       </a>

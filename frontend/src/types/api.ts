@@ -212,6 +212,18 @@ export interface AppNotification {
   created_at: string
 }
 
+export interface TicketLastMessage {
+  id: string
+  body: string
+  is_staff_reply: boolean
+  created_at?: string | null
+  receipt_status?: ReceiptStatus | string
+  delivered_at?: string | null
+  read_at?: string | null
+  has_attachment?: boolean
+  is_deleted?: boolean
+}
+
 export interface SupportTicket {
   id: string
   subject: string
@@ -222,6 +234,12 @@ export interface SupportTicket {
   updated_at: string
   message_count?: number
   unread_count?: number
+  last_message?: TicketLastMessage | null
+  muted?: boolean
+  pinned?: boolean
+  sla_due_at?: string | null
+  first_response_at?: string | null
+  assigned_to_name?: string
   messages?: TicketMessage[]
 }
 
@@ -248,6 +266,10 @@ export interface TicketMessage {
   attachment_url?: string | null
   reply_to_id?: string | null
   reply_to?: TicketReplyPreview | null
+  is_starred?: boolean
+  is_pinned?: boolean
+  edited_at?: string | null
+  is_deleted?: boolean
   /** Local optimistic flag before server ack */
   _pending?: boolean
   _failed?: boolean

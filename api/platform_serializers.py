@@ -44,6 +44,7 @@ class TicketMessageSerializer(serializers.ModelSerializer):
     attachment_url = serializers.SerializerMethodField()
     reply_to_id = serializers.SerializerMethodField()
     reply_to = serializers.SerializerMethodField()
+    body = serializers.SerializerMethodField()
 
     class Meta:
         model = TicketMessage
@@ -51,10 +52,18 @@ class TicketMessageSerializer(serializers.ModelSerializer):
             'id', 'body', 'is_staff_reply', 'created_at', 'sender', 'sender_name',
             'delivered_at', 'read_at', 'receipt_status', 'attachment', 'attachment_url',
             'reply_to_id', 'reply_to',
+            'is_starred', 'is_pinned', 'edited_at', 'is_deleted',
         )
         read_only_fields = fields
 
+    def get_body(self, obj):
+        if obj.is_deleted:
+            return '🚫 This message was deleted'
+        return obj.body
+
     def get_attachment_url(self, obj):
+        if obj.is_deleted:
+            return ''
         if obj.attachment:
             try:
                 return obj.attachment.url
@@ -77,7 +86,9 @@ class TicketMessageSerializer(serializers.ModelSerializer):
         u = parent.sender
         name = f'{u.first_name} {u.last_name}'.strip() or u.email
         body = parent.body or ''
-        if body == '(attachment)':
+        if getattr(parent, 'is_deleted', False):
+            body = '🚫 This message was deleted'
+        elif body == '(attachment)':
             body = '📎 Attachment'
         return {
             'id': str(parent.id),
@@ -89,26 +100,53 @@ class TicketMessageSerializer(serializers.ModelSerializer):
 
 class SupportTicketSerializer(serializers.ModelSerializer):
     messages = TicketMessageSerializer(many=True, read_only=True)
-    message_count = serializers.IntegerField(source='messages.count', read_only=True)
+    message_count = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
+    last_message = serializers.SerializerMethodField()
+    muted = serializers.SerializerMethodField()
+    pinned = serializers.SerializerMethodField()
+    sla_due_at = serializers.DateTimeField(read_only=True)
+    first_response_at = serializers.DateTimeField(read_only=True)
+    assigned_to_name = serializers.SerializerMethodField()
 
     class Meta:
         model = SupportTicket
         fields = (
             'id', 'subject', 'category', 'status', 'priority', 'created_at', 'updated_at',
-            'messages', 'message_count', 'unread_count',
+            'messages', 'message_count', 'unread_count', 'last_message',
+            'muted', 'pinned', 'sla_due_at', 'first_response_at', 'assigned_to_name',
         )
-        read_only_fields = (
-            'status', 'priority', 'created_at', 'updated_at',
-            'messages', 'message_count', 'unread_count',
-        )
+        read_only_fields = fields
+
+    def _msgs(self, obj):
+        cache = getattr(obj, '_prefetched_objects_cache', None) or {}
+        if 'messages' in cache:
+            return list(cache['messages'])
+        return list(obj.messages.all())
+
+    def get_message_count(self, obj):
+        return len(self._msgs(obj))
 
     def get_unread_count(self, obj):
         # Customer view: unread staff replies
-        msgs = getattr(obj, '_prefetched_objects_cache', {}).get('messages')
-        if msgs is not None:
-            return sum(1 for m in msgs if m.is_staff_reply and not m.read_at)
-        return obj.messages.filter(is_staff_reply=True, read_at__isnull=True).count()
+        return sum(1 for m in self._msgs(obj) if m.is_staff_reply and not m.read_at and not m.is_deleted)
+
+    def get_last_message(self, obj):
+        from support.services import last_message_dict
+        msgs = self._msgs(obj)
+        return last_message_dict(msgs[-1] if msgs else None)
+
+    def get_muted(self, obj):
+        return bool(obj.muted_by_user)
+
+    def get_pinned(self, obj):
+        return bool(obj.pinned_by_user)
+
+    def get_assigned_to_name(self, obj):
+        if not obj.assigned_to_id:
+            return ''
+        u = obj.assigned_to
+        return (u.get_full_name() or u.email) if u else ''
 
 
 class SupportTicketCreateSerializer(serializers.Serializer):

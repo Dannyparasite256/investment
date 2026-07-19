@@ -110,23 +110,38 @@ class ChangePasswordView(APIView):
 
 class SupportTicketViewSet(viewsets.ModelViewSet):
     """User support chat: messages, typing, presence, read receipts, poll sync."""
-    http_method_names = ['get', 'post', 'head', 'options']
+    http_method_names = ['get', 'post', 'patch', 'head', 'options']
 
     def get_queryset(self):
-        return SupportTicket.objects.filter(user=self.request.user).prefetch_related('messages__sender')
+        return (
+            SupportTicket.objects.filter(user=self.request.user)
+            .select_related('assigned_to')
+            .prefetch_related('messages__sender', 'messages__reply_to', 'messages__reply_to__sender')
+        )
 
     def get_serializer_class(self):
         if self.action == 'create':
             return SupportTicketCreateSerializer
         return SupportTicketSerializer
 
+    def list(self, request, *args, **kwargs):
+        from support.services import mark_messages_delivered
+
+        # Listing inbox = messages delivered (double grey) without opening chat
+        for t in self.get_queryset()[:40]:
+            mark_messages_delivered(t, for_staff_messages=True)
+        return super().list(request, *args, **kwargs)
+
     def retrieve(self, request, *args, **kwargs):
+        from support.services import mark_messages_read
+
         ticket = self.get_object()
-        self._mark_peer_messages_read(ticket, is_staff=False)
+        mark_messages_read(ticket, peer_is_staff_replies=True)
         return Response(SupportTicketSerializer(ticket).data)
 
     def create(self, request, *args, **kwargs):
         from support.realtime import notify_new_message
+        from support.services import set_sla_on_open
 
         ser = SupportTicketCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -135,6 +150,7 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
             subject=ser.validated_data['subject'],
             category=ser.validated_data.get('category') or 'general',
         )
+        set_sla_on_open(ticket)
         msg = TicketMessage.objects.create(
             ticket=ticket, sender=request.user, body=ser.validated_data['body'],
         )
@@ -170,16 +186,18 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         else:
             ticket.save(update_fields=['updated_at'])
         notify_new_message(ticket, msg)
+        msg.refresh_from_db()
         return Response(TicketMessageSerializer(msg).data, status=201)
 
     @action(detail=True, methods=['get'])
     def poll(self, request, pk=None):
         """Near-realtime sync when WebSockets are unavailable (e.g. PythonAnywhere)."""
         from support.realtime import get_presence, get_typing, set_presence
+        from support.services import mark_messages_read
 
         ticket = self.get_object()
         set_presence(ticket.id, request.user, is_staff=False)
-        self._mark_peer_messages_read(ticket, is_staff=False)
+        mark_messages_read(ticket, peer_is_staff_replies=True)
 
         since = request.query_params.get('since')
         qs = ticket.messages.select_related('sender', 'reply_to', 'reply_to__sender').all()
@@ -192,7 +210,6 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
             except (ValueError, TypeError):
                 pass
 
-        # Receipt updates for own messages (staff may have read them)
         own = ticket.messages.filter(is_staff_reply=False).select_related('sender')
         return Response({
             'ticket_id': str(ticket.id),
@@ -217,10 +234,11 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def heartbeat(self, request, pk=None):
         from support.realtime import get_presence, set_presence
+        from support.services import mark_messages_read
 
         ticket = self.get_object()
         set_presence(ticket.id, request.user, is_staff=False)
-        self._mark_peer_messages_read(ticket, is_staff=False)
+        mark_messages_read(ticket, peer_is_staff_replies=True)
         return Response({'ok': True, 'presence': get_presence(ticket.id)})
 
     @action(detail=True, methods=['post'])
@@ -234,25 +252,80 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def mark_read(self, request, pk=None):
+        from support.services import mark_messages_read
+
         ticket = self.get_object()
-        n = self._mark_peer_messages_read(ticket, is_staff=False)
-        return Response({'ok': True, 'updated': n})
+        ids = mark_messages_read(ticket, peer_is_staff_replies=True)
+        return Response({'ok': True, 'updated': len(ids)})
 
-    def _mark_peer_messages_read(self, ticket, *, is_staff: bool) -> int:
-        from support.realtime import notify_receipts
+    @action(detail=True, methods=['post'])
+    def mute(self, request, pk=None):
+        from support.realtime import as_bool
 
-        now = timezone.now()
-        qs = TicketMessage.objects.filter(ticket=ticket, read_at__isnull=True)
-        if is_staff:
-            qs = qs.filter(is_staff_reply=False)
-        else:
-            qs = qs.filter(is_staff_reply=True)
-        ids = list(qs.values_list('id', flat=True))
-        if not ids:
-            return 0
-        updated = qs.update(delivered_at=now, read_at=now, updated_at=now)
-        notify_receipts(ticket.id, ids, 'read', now.isoformat())
-        return updated
+        ticket = self.get_object()
+        muted = as_bool(request.data.get('muted', not ticket.muted_by_user), default=True)
+        ticket.muted_by_user = muted
+        ticket.save(update_fields=['muted_by_user', 'updated_at'])
+        return Response({'ok': True, 'muted': ticket.muted_by_user})
+
+    @action(detail=True, methods=['post'])
+    def pin(self, request, pk=None):
+        from support.realtime import as_bool
+
+        ticket = self.get_object()
+        pinned = as_bool(request.data.get('pinned', not ticket.pinned_by_user), default=True)
+        ticket.pinned_by_user = pinned
+        ticket.save(update_fields=['pinned_by_user', 'updated_at'])
+        return Response({'ok': True, 'pinned': ticket.pinned_by_user})
+
+    @action(detail=True, methods=['post'], url_path=r'messages/(?P<msg_id>[^/.]+)/star')
+    def star_message(self, request, pk=None, msg_id=None):
+        from support.realtime import as_bool
+
+        ticket = self.get_object()
+        m = TicketMessage.objects.filter(ticket=ticket, pk=msg_id).first()
+        if not m:
+            return Response({'detail': 'Not found'}, status=404)
+        m.is_starred = as_bool(request.data.get('starred', not m.is_starred), default=True)
+        m.save(update_fields=['is_starred', 'updated_at'])
+        return Response(TicketMessageSerializer(m).data)
+
+    @action(detail=True, methods=['post'], url_path=r'messages/(?P<msg_id>[^/.]+)/edit')
+    def edit_message(self, request, pk=None, msg_id=None):
+        ticket = self.get_object()
+        m = TicketMessage.objects.filter(ticket=ticket, pk=msg_id, sender=request.user).first()
+        if not m or m.is_deleted:
+            return Response({'detail': 'Not found'}, status=404)
+        body = (request.data.get('body') or '').strip()
+        if not body:
+            return Response({'detail': 'body required'}, status=400)
+        m.body = body
+        m.edited_at = timezone.now()
+        m.save(update_fields=['body', 'edited_at', 'updated_at'])
+        return Response(TicketMessageSerializer(m).data)
+
+    @action(detail=True, methods=['post'], url_path=r'messages/(?P<msg_id>[^/.]+)/delete')
+    def delete_message(self, request, pk=None, msg_id=None):
+        ticket = self.get_object()
+        m = TicketMessage.objects.filter(ticket=ticket, pk=msg_id, sender=request.user).first()
+        if not m:
+            return Response({'detail': 'Not found'}, status=404)
+        m.is_deleted = True
+        m.deleted_at = timezone.now()
+        m.body = ''
+        m.save(update_fields=['is_deleted', 'deleted_at', 'body', 'updated_at'])
+        return Response(TicketMessageSerializer(m).data)
+
+    @action(detail=False, methods=['get'])
+    def unread_total(self, request):
+        """Total unread support messages for nav badge."""
+        n = TicketMessage.objects.filter(
+            ticket__user=request.user,
+            is_staff_reply=True,
+            read_at__isnull=True,
+            is_deleted=False,
+        ).count()
+        return Response({'unread_count': n})
 
 
 class ReferralsView(APIView):

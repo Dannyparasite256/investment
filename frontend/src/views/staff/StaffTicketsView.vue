@@ -34,8 +34,13 @@ interface StaffTicketRow {
     is_staff_reply: boolean
     created_at: string
     receipt_status?: string
+    delivered_at?: string | null
+    read_at?: string | null
     has_attachment?: boolean
   } | null
+  muted?: boolean
+  pinned?: boolean
+  sla_due_at?: string | null
   messages?: TicketMessage[]
 }
 
@@ -75,6 +80,7 @@ const statusOptions = [
 
 const chat = useSupportChat({
   isStaff: true,
+  sound: true,
   onMessage: async () => {
     await scrollToBottom()
     await loadTickets(false)
@@ -169,6 +175,14 @@ function lastPreview(t: StaffTicketRow): string {
   let text = (last.body || '').replace(/\s+/g, ' ').trim()
   if (!text || text === '(attachment)') text = hasAtt ? 'Photo' : 'Message'
   return `${who}: ${hasAtt ? '📎 ' : ''}${truncatePreview(text, 64)}`
+}
+
+function lastReceipt(t: StaffTicketRow): string {
+  const last = t.last_message
+  if (!last || !last.is_staff_reply) return ''
+  if (last.read_at || last.receipt_status === 'read') return 'read'
+  if (last.delivered_at || last.receipt_status === 'delivered') return 'delivered'
+  return 'sent'
 }
 
 function initials(t: StaffTicketRow): string {
@@ -561,7 +575,19 @@ onUnmounted(() => chat.leave())
             </span>
             <span class="wa-row-sub truncate muted">{{ t.subject }}</span>
             <span class="wa-row-bot">
-              <span class="wa-preview truncate">{{ lastPreview(t) }}</span>
+              <span class="wa-preview truncate">
+                <span
+                  v-if="lastReceipt(t)"
+                  class="ticks list-ticks"
+                  :class="lastReceipt(t)"
+                >
+                  <template v-if="lastReceipt(t) === 'sent'"><i class="pi pi-check" /></template>
+                  <template v-else>
+                    <i class="pi pi-check" /><i class="pi pi-check second" />
+                  </template>
+                </span>
+                {{ lastPreview(t) }}
+              </span>
               <span v-if="unreadCount(t) > 0 && activeId !== t.id" class="wa-unread-badge">
                 {{ unreadCount(t) > 99 ? '99+' : unreadCount(t) }}
               </span>
@@ -969,7 +995,21 @@ onUnmounted(() => chat.leave())
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(37, 211, 102, 0.15);
 }
+.list-ticks {
+  display: inline-flex !important;
+  position: relative;
+  width: 1rem;
+  height: 0.75rem;
+  vertical-align: middle;
+  margin-right: 0.15rem;
+  color: #94a3b8;
+}
+.list-ticks i { font-size: 0.65rem; position: absolute; left: 0; }
+.list-ticks .second { left: 0.25rem; }
+.list-ticks.read { color: #53bdeb !important; }
+.list-ticks.delivered { color: #94a3b8 !important; }
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
