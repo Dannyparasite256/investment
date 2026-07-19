@@ -224,6 +224,11 @@ class StaffDepositActionView(APIView):
                     level=Notification.Level.SUCCESS, category=Notification.Category.DEPOSIT,
                     link='/app/deposits',
                 )
+                try:
+                    from support.services import maybe_notify_vip_upgrade
+                    maybe_notify_vip_upgrade(dep.user)
+                except Exception:
+                    pass
                 create_audit_log(
                     request=request, action=AuditLog.Action.DEPOSIT_APPROVE,
                     message=f'Approved deposit {dep.id}', object_type='Deposit', object_id=dep.id,
@@ -420,6 +425,29 @@ class StaffTicketListView(APIView):
     permission_classes = [IsAuthenticated, IsStaffPanel]
 
     def get(self, request):
+        # @mention directory: ?mentions=1&q=
+        if str(request.query_params.get('mentions') or '') in ('1', 'true', 'yes'):
+            from django.contrib.auth import get_user_model
+            from django.db.models import Q
+            User = get_user_model()
+            q = (request.query_params.get('q') or '').strip()
+            qs_u = User.objects.filter(is_active=True).filter(
+                Q(is_staff=True) | Q(is_superuser=True) | Q(role__in=['support', 'manager', 'admin']),
+            )
+            if q:
+                qs_u = qs_u.filter(
+                    Q(email__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q),
+                )
+            results = []
+            for u in qs_u.order_by('email')[:30]:
+                results.append({
+                    'id': u.pk,
+                    'handle': (u.email or '').split('@')[0],
+                    'name': u.get_full_name() or u.email,
+                    'email': u.email,
+                })
+            return Response({'results': results})
+
         from support.services import last_message_dict, mark_messages_delivered
 
         qs = (
@@ -500,6 +528,10 @@ class StaffTicketDetailView(APIView):
             'is_pinned': m.is_pinned,
             'edited_at': m.edited_at,
             'is_deleted': m.is_deleted,
+            'is_voice': bool(getattr(m, 'is_voice', False)),
+            'is_forwarded': bool(getattr(m, 'is_forwarded', False)),
+            'forwarded_from_id': str(m.forwarded_from_id) if getattr(m, 'forwarded_from_id', None) else None,
+            'mentioned_user_ids': list(getattr(m, 'mentioned_user_ids', None) or []),
         }
 
     def _mark_user_messages_read(self, ticket):
@@ -641,19 +673,68 @@ class StaffTicketDetailView(APIView):
             m.save(update_fields=['is_deleted', 'deleted_at', 'body', 'updated_at'])
             return Response(self._msg_dict(m))
 
+        if action == 'forward':
+            from support.services import forward_message
+            msg_id = request.data.get('message_id')
+            target_id = request.data.get('target_ticket_id') or request.data.get('ticket_id')
+            source = TicketMessage.objects.filter(ticket=t, pk=msg_id).first()
+            target = SupportTicket.objects.filter(pk=target_id).first()
+            if not source or not target:
+                return Response({'detail': 'Message or target not found'}, status=404)
+            if str(target.id) == str(t.id):
+                return Response({'detail': 'Pick a different conversation'}, status=400)
+            msg = forward_message(
+                source_msg=source, target_ticket=target,
+                sender=request.user, is_staff_reply=True,
+            )
+            return Response(self._msg_dict(msg), status=201)
+
+        if action == 'staff_directory':
+            # @mention autocomplete
+            from django.contrib.auth import get_user_model
+            from django.db.models import Q
+            User = get_user_model()
+            q = (request.data.get('q') or request.query_params.get('q') or '').strip().lower()
+            qs = User.objects.filter(is_active=True).filter(
+                Q(is_staff=True) | Q(is_superuser=True) | Q(role__in=['support', 'manager', 'admin']),
+            )
+            if q:
+                qs = qs.filter(
+                    Q(email__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q),
+                )
+            results = []
+            for u in qs.order_by('email')[:30]:
+                handle = (u.email or '').split('@')[0]
+                results.append({
+                    'id': u.pk,
+                    'handle': handle,
+                    'name': u.get_full_name() or u.email,
+                    'email': u.email,
+                })
+            return Response({'results': results})
+
         body = (request.data.get('body') or '').strip()
         attachment = request.FILES.get('attachment')
         if not body and not attachment:
             return Response({'detail': 'Message or attachment required'}, status=400)
+        from support.services import (
+            is_voice_file, notify_mentioned_staff, resolve_staff_mentions,
+        )
         reply_parent = None
         reply_to_raw = request.data.get('reply_to') or request.data.get('reply_to_id')
         if reply_to_raw:
             reply_parent = TicketMessage.objects.filter(
                 ticket=t, pk=reply_to_raw,
             ).select_related('sender').first()
+        voice = is_voice_file(attachment)
+        explicit_voice = str(request.data.get('is_voice') or '').lower() in ('1', 'true', 'yes')
+        mentioned = resolve_staff_mentions(body, exclude_user_id=request.user.pk) if body else []
         msg = TicketMessage.objects.create(
-            ticket=t, sender=request.user, body=body or '(attachment)',
+            ticket=t, sender=request.user,
+            body=body or ('🎤 Voice message' if (voice or explicit_voice) else '(attachment)'),
             is_staff_reply=True, attachment=attachment, reply_to=reply_parent,
+            is_voice=voice or explicit_voice,
+            mentioned_user_ids=[u.pk for u in mentioned],
         )
         t.status = SupportTicket.Status.WAITING
         if not t.assigned_to_id:
@@ -662,5 +743,9 @@ class StaffTicketDetailView(APIView):
         else:
             t.save(update_fields=['status', 'updated_at'])
         notify_new_message(t, msg)
+        try:
+            notify_mentioned_staff(t, msg, mentioned)
+        except Exception:
+            pass
         msg.refresh_from_db()
         return Response(self._msg_dict(msg), status=201)

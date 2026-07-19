@@ -132,8 +132,13 @@ def create_investment(user, plan: InvestmentPlan, amount, auto_reinvest=False, d
         f'You invested {amount} in {plan.name}. Maturity: {inv.matures_at.date()}.',
         level=Notification.Level.SUCCESS,
         category=Notification.Category.INVESTMENT,
-        link=f'/investments/{inv.id}/',
+        link=f'/app/investments/{inv.id}',
     )
+    try:
+        from support.services import maybe_notify_vip_upgrade
+        maybe_notify_vip_upgrade(user)
+    except Exception:
+        pass
 
     create_audit_log(
         request=request,

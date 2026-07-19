@@ -33,6 +33,9 @@ const form = ref({
   preferred_currency: '',
   email_alerts: true,
   sms_alerts: false,
+  dnd_enabled: false,
+  dnd_start: '22:00',
+  dnd_end: '07:00',
 })
 
 const themes = [
@@ -164,6 +167,12 @@ async function disablePush() {
   }
 }
 
+function timeToInput(v?: string | null): string {
+  if (!v) return ''
+  // "22:00:00" or "22:00"
+  return String(v).slice(0, 5)
+}
+
 onMounted(() => {
   const u = auth.user
   if (u) {
@@ -175,6 +184,9 @@ onMounted(() => {
       preferred_currency: u.preferred_currency || '',
       email_alerts: u.email_alerts !== false,
       sms_alerts: !!u.sms_alerts,
+      dnd_enabled: !!u.dnd_enabled,
+      dnd_start: timeToInput(u.dnd_start) || '22:00',
+      dnd_end: timeToInput(u.dnd_end) || '07:00',
     }
   }
   loadPushState()
@@ -183,7 +195,19 @@ onMounted(() => {
 async function save() {
   saving.value = true
   try {
-    await api.updateProfile(form.value)
+    const payload: Record<string, unknown> = {
+      first_name: form.value.first_name,
+      last_name: form.value.last_name,
+      phone: form.value.phone,
+      country: form.value.country,
+      preferred_currency: form.value.preferred_currency,
+      email_alerts: form.value.email_alerts,
+      sms_alerts: form.value.sms_alerts,
+      dnd_enabled: form.value.dnd_enabled,
+      dnd_start: form.value.dnd_enabled && form.value.dnd_start ? form.value.dnd_start : null,
+      dnd_end: form.value.dnd_enabled && form.value.dnd_end ? form.value.dnd_end : null,
+    }
+    await api.updateProfile(payload)
     await auth.fetchMe()
     ui.toast('Saved', 'Profile updated', 'success')
   } catch (e: any) {
@@ -247,6 +271,23 @@ async function save() {
             <div class="switch-row">
               <span>SMS alerts</span>
               <ToggleSwitch v-model="form.sms_alerts" />
+            </div>
+            <div class="dnd-block">
+              <div class="switch-row">
+                <span>Do Not Disturb</span>
+                <ToggleSwitch v-model="form.dnd_enabled" />
+              </div>
+              <p class="muted dnd-hint">
+                Quiet hours silence browser push / live pings. In-app inbox still stores alerts (deposits, support, VIP, referrals).
+              </p>
+              <div v-if="form.dnd_enabled" class="dnd-times">
+                <label>From
+                  <input v-model="form.dnd_start" type="time" class="time-input" />
+                </label>
+                <label>To
+                  <input v-model="form.dnd_end" type="time" class="time-input" />
+                </label>
+              </div>
             </div>
             <Button label="Save profile" icon="pi pi-check" :loading="saving" @click="save" />
           </div>
@@ -346,6 +387,35 @@ async function save() {
   display: block;
 }
 .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.75rem 0; }
+.dnd-block {
+  margin-top: 0.35rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--ci-border);
+  background: rgba(0,0,0,0.12);
+}
+.dnd-hint { font-size: 0.8rem; margin: 0.35rem 0 0.55rem; line-height: 1.4; }
+.dnd-times {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+.dnd-times label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ci-muted);
+}
+.time-input {
+  border: 1px solid var(--ci-border);
+  border-radius: 10px;
+  padding: 0.45rem 0.55rem;
+  background: rgba(255,255,255,0.06);
+  color: inherit;
+  font: inherit;
+}
 ul { list-style: none; padding: 0; margin: 0 0 1rem; }
 li { display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.45rem 0; border-bottom: 1px solid var(--ci-border); font-size: 0.9rem; }
 .actions { display: grid; gap: 0.45rem; }
@@ -364,4 +434,33 @@ li { display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.45re
 .push-card h3 { margin-bottom: 0.35rem; }
 .push-desc { font-size: 0.88rem; margin: 0 0 0.85rem; }
 .push-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem; }
+.dnd-block {
+  margin-top: 0.35rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--ci-border);
+  background: rgba(0,0,0,0.12);
+}
+.dnd-hint { font-size: 0.8rem; margin: 0.35rem 0 0.55rem; line-height: 1.4; }
+.dnd-times {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+.dnd-times label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ci-muted);
+}
+.time-input {
+  border: 1px solid var(--ci-border);
+  border-radius: 10px;
+  padding: 0.45rem 0.55rem;
+  background: rgba(255,255,255,0.06);
+  color: inherit;
+  font: inherit;
+}
 </style>

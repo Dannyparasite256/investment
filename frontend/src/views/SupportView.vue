@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/auth'
 import { receiptOf, useSupportChat } from '@/composables/useSupportChat'
 import { linkify } from '@/utils/linkify'
 import { copyText, dayKey, dayLabel, isImageUrl, truncatePreview } from '@/utils/chat'
+import { createVoiceRecorder, isVoiceUrl } from '@/utils/voiceNote'
 import type { SupportTicket, TicketMessage, TicketReplyPreview } from '@/types/api'
 
 const route = useRoute()
@@ -46,6 +47,14 @@ const csatScore = ref(0)
 const csatBusy = ref(false)
 const editingId = ref<string | null>(null)
 const editBody = ref('')
+const recording = ref(false)
+const recordSecs = ref(0)
+const voiceBusy = ref(false)
+const forwardMsg = ref<TicketMessage | null>(null)
+const forwardTargetId = ref<string | null>(null)
+const forwardBusy = ref(false)
+let voiceRec = createVoiceRecorder()
+let recordTimer: ReturnType<typeof setInterval> | null = null
 
 const chat = useSupportChat({
   isStaff: false,
@@ -474,6 +483,84 @@ function isImageAtt(m: TicketMessage) {
   return isImageUrl(attachmentHref(m))
 }
 
+function isVoiceAtt(m: TicketMessage) {
+  return !!m.is_voice || isVoiceUrl(attachmentHref(m), m.is_voice)
+}
+
+async function toggleRecord() {
+  if (!activeTicket.value || !canReply.value) return
+  if (recording.value) {
+    try {
+      voiceBusy.value = true
+      const { blob } = await voiceRec.stop()
+      recording.value = false
+      if (recordTimer) { clearInterval(recordTimer); recordTimer = null }
+      if (blob.size < 200) {
+        ui.toast('Too short', 'Hold a bit longer for a voice note', 'warn')
+        return
+      }
+      const { data } = await api.supportReplyVoice(activeTicket.value.id, blob)
+      const msg = data as TicketMessage
+      chatMessages.value.push({ ...msg, is_voice: true })
+      await scrollToBottom(true)
+      // refresh list preview
+      const idx = tickets.value.findIndex((t) => t.id === activeTicket.value!.id)
+      if (idx >= 0) {
+        tickets.value[idx] = {
+          ...tickets.value[idx],
+          last_message: {
+            id: msg.id,
+            body: '🎤 Voice message',
+            is_staff_reply: false,
+            created_at: msg.created_at,
+            receipt_status: msg.receipt_status || 'sent',
+            has_attachment: true,
+          },
+          updated_at: msg.created_at,
+        }
+      }
+    } catch (e: any) {
+      ui.toast('Voice failed', e?.response?.data?.detail || e?.message || 'Could not send voice note', 'error')
+      try { voiceRec.cancel() } catch { /* */ }
+      recording.value = false
+    } finally {
+      voiceBusy.value = false
+      recordSecs.value = 0
+      voiceRec = createVoiceRecorder()
+    }
+    return
+  }
+  try {
+    await voiceRec.start()
+    recording.value = true
+    recordSecs.value = 0
+    recordTimer = setInterval(() => { recordSecs.value += 1 }, 1000)
+  } catch {
+    ui.toast('Mic blocked', 'Allow microphone access to send voice notes', 'error')
+  }
+}
+
+async function doForward() {
+  if (!activeTicket.value || !forwardMsg.value || !forwardTargetId.value || forwardBusy.value) return
+  forwardBusy.value = true
+  try {
+    await api.supportForwardMessage(activeTicket.value.id, forwardMsg.value.id, forwardTargetId.value)
+    ui.toast('Forwarded', 'Message sent to the other chat', 'success')
+    forwardMsg.value = null
+    forwardTargetId.value = null
+  } catch (e: any) {
+    ui.toast('Failed', e?.response?.data?.detail || 'Could not forward', 'error')
+  } finally {
+    forwardBusy.value = false
+  }
+}
+
+const forwardOptions = computed(() =>
+  tickets.value
+    .filter((t) => t.id !== activeId.value)
+    .map((t) => ({ label: t.subject, value: t.id })),
+)
+
 function setReply(m: TicketMessage) {
   replyTarget.value = m
   menuMsgId.value = null
@@ -847,6 +934,7 @@ onUnmounted(() => chat.leave())
                     </div>
                   </div>
 
+                  <div v-if="item.msg.is_forwarded" class="wa-fwd-label">↪️ Forwarded</div>
                   <div v-if="attachmentHref(item.msg) && !item.msg.is_deleted" class="wa-attach-wrap">
                     <button
                       v-if="isImageAtt(item.msg)"
@@ -856,6 +944,10 @@ onUnmounted(() => chat.leave())
                     >
                       <img :src="attachmentHref(item.msg)" alt="Attachment" class="wa-attach-img" />
                     </button>
+                    <div v-else-if="isVoiceAtt(item.msg)" class="wa-voice">
+                      <i class="pi pi-microphone" />
+                      <audio controls preload="metadata" :src="attachmentHref(item.msg)" />
+                    </div>
                     <a
                       v-else
                       class="wa-attach"
@@ -917,6 +1009,14 @@ onUnmounted(() => chat.leave())
                       @click.stop="deleteMsg(item.msg)"
                     >
                       <i class="pi pi-trash" />
+                    </button>
+                    <button
+                      type="button"
+                      class="wa-act"
+                      title="Forward"
+                      @click.stop="forwardMsg = item.msg; forwardTargetId = null"
+                    >
+                      <i class="pi pi-share-alt" />
                     </button>
                   </div>
 
@@ -993,12 +1093,23 @@ onUnmounted(() => chat.leave())
             <button type="button" class="chip-x" @click="clearFile" aria-label="Remove file">×</button>
           </div>
           <div class="wa-composer">
-            <input ref="fileInput" type="file" class="hidden-file" accept="image/*,.pdf,.doc,.docx,.txt" @change="onPickFile" />
+            <input ref="fileInput" type="file" class="hidden-file" accept="image/*,audio/*,.pdf,.doc,.docx,.txt" @change="onPickFile" />
             <Button icon="pi pi-paperclip" text rounded aria-label="Attach" @click="fileInput?.click()" />
+            <Button
+              :icon="recording ? 'pi pi-stop' : 'pi pi-microphone'"
+              text
+              rounded
+              :severity="recording ? 'danger' : 'secondary'"
+              :loading="voiceBusy"
+              :aria-label="recording ? 'Stop & send' : 'Voice note'"
+              v-tooltip.top="recording ? `Stop (${recordSecs}s)` : 'Voice note'"
+              @click="toggleRecord"
+            />
             <textarea
               v-model="body"
               rows="1"
-              placeholder="Type a message"
+              :placeholder="recording ? `Recording… ${recordSecs}s` : 'Type a message'"
+              :disabled="recording"
               @keydown="onKeydown"
               @input="onInput"
             />
@@ -1007,7 +1118,7 @@ onUnmounted(() => chat.leave())
               rounded
               severity="success"
               :loading="sending"
-              :disabled="!body.trim() && !pendingFile"
+              :disabled="recording || (!body.trim() && !pendingFile)"
               aria-label="Send"
               @click="reply"
             />
@@ -1046,6 +1157,35 @@ onUnmounted(() => chat.leave())
           <Textarea v-model="form.body" rows="5" class="w-full" placeholder="Describe your issue…" />
         </label>
         <Button label="Start chat" icon="pi pi-send" :loading="saving" @click="create" />
+      </div>
+    </Dialog>
+
+    <Dialog
+      :visible="!!forwardMsg"
+      modal
+      header="Forward message"
+      class="w-dialog"
+      @update:visible="(v: boolean) => { if (!v) forwardMsg = null }"
+    >
+      <div class="form">
+        <p class="muted small truncate">{{ forwardMsg?.body || 'Attachment' }}</p>
+        <label>Send to chat
+          <Select
+            v-model="forwardTargetId"
+            :options="forwardOptions"
+            option-label="label"
+            option-value="value"
+            placeholder="Choose conversation"
+            class="w-full"
+          />
+        </label>
+        <Button
+          label="Forward"
+          icon="pi pi-share-alt"
+          :loading="forwardBusy"
+          :disabled="!forwardTargetId"
+          @click="doForward"
+        />
       </div>
     </Dialog>
 
@@ -1289,6 +1429,24 @@ onUnmounted(() => chat.leave())
   cursor: pointer;
 }
 .wa-quick-chip:hover { background: rgba(37,211,102,0.16); }
+.wa-voice {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.18);
+}
+.wa-voice i { color: #25D366; }
+.wa-voice audio { max-width: min(240px, 60vw); height: 32px; }
+.wa-fwd-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  opacity: 0.75;
+  margin-bottom: 0.2rem;
+}
+.small { font-size: 0.82rem; }
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;

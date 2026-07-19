@@ -186,6 +186,8 @@ def last_message_dict(msg) -> dict | None:
     body = msg.display_body if hasattr(msg, 'display_body') else (msg.body or '')
     if getattr(msg, 'is_deleted', False):
         body = '🚫 This message was deleted'
+    elif getattr(msg, 'is_voice', False):
+        body = '🎤 Voice message'
     elif body == '(attachment)':
         body = '📎 Attachment'
     has_att = bool(getattr(msg, 'attachment', None))
@@ -199,4 +201,157 @@ def last_message_dict(msg) -> dict | None:
         'read_at': msg.read_at.isoformat() if msg.read_at else None,
         'has_attachment': has_att,
         'is_deleted': bool(getattr(msg, 'is_deleted', False)),
+        'is_voice': bool(getattr(msg, 'is_voice', False)),
+        'is_forwarded': bool(getattr(msg, 'is_forwarded', False)),
     }
+
+
+def is_voice_file(file_obj) -> bool:
+    if not file_obj:
+        return False
+    name = (getattr(file_obj, 'name', '') or '').lower()
+    ctype = (getattr(file_obj, 'content_type', '') or '').lower()
+    if ctype.startswith('audio/'):
+        return True
+    return any(name.endswith(ext) for ext in ('.webm', '.ogg', '.mp3', '.m4a', '.wav', '.aac', '.opus'))
+
+
+def parse_mention_handles(body: str) -> list[str]:
+    """Extract @handles from message body (email local-part or first name)."""
+    import re
+    if not body:
+        return []
+    return list({m.group(1).lower() for m in re.finditer(r'@([A-Za-z0-9._+-]{2,40})', body)})
+
+
+def resolve_staff_mentions(body: str, exclude_user_id=None) -> list:
+    """Match @handles against staff-panel users (email local-part or first name)."""
+    from django.contrib.auth import get_user_model
+    from django.db.models import Q
+
+    handles = parse_mention_handles(body)
+    if not handles:
+        return []
+    User = get_user_model()
+    qs = User.objects.filter(is_active=True).filter(
+        Q(is_staff=True) | Q(is_superuser=True) | Q(role__in=['support', 'manager', 'admin']),
+    )
+    if exclude_user_id:
+        qs = qs.exclude(pk=exclude_user_id)
+    found = []
+    for u in qs[:100]:
+        local = (u.email or '').split('@')[0].lower()
+        first = (u.first_name or '').strip().lower()
+        full = (u.get_full_name() or '').replace(' ', '').lower()
+        for h in handles:
+            if h == local or h == first or h == full or h in local:
+                found.append(u)
+                break
+    # unique by pk
+    by_id = {u.pk: u for u in found}
+    return list(by_id.values())
+
+
+def notify_mentioned_staff(ticket, msg, mentioned_users) -> None:
+    from notifications.models import Notification, notify
+
+    if not mentioned_users:
+        return
+    preview = (msg.body or '')[:140]
+    for u in mentioned_users:
+        if u.pk == msg.sender_id:
+            continue
+        notify(
+            u,
+            f'You were mentioned · {ticket.subject[:50]}',
+            preview or 'Mentioned in support chat',
+            level=Notification.Level.INFO,
+            category=Notification.Category.SUPPORT,
+            link=f'/app/admin/tickets/{ticket.id}',
+            ticket_id=str(ticket.id),
+            message_id=str(msg.id),
+            mention=True,
+        )
+
+
+def forward_message(*, source_msg, target_ticket, sender, is_staff_reply: bool):
+    """Create a forwarded copy of source_msg on target_ticket."""
+    from support.models import TicketMessage
+    from support.realtime import notify_new_message
+
+    body = source_msg.body or ''
+    if source_msg.is_deleted:
+        body = '(deleted message)'
+    elif source_msg.is_voice:
+        body = '🎤 Forwarded voice message'
+    elif body == '(attachment)' or source_msg.attachment:
+        body = f'📎 Forwarded attachment\n{body}' if body and body != '(attachment)' else '📎 Forwarded attachment'
+    prefix = '↪️ Forwarded message:\n'
+    msg = TicketMessage.objects.create(
+        ticket=target_ticket,
+        sender=sender,
+        body=prefix + (body[:1800] if body else '(empty)'),
+        is_staff_reply=is_staff_reply,
+        is_forwarded=True,
+        forwarded_from=source_msg,
+        reply_to=None,
+    )
+    # Copy file if present (reference same file path carefully — re-save content)
+    if source_msg.attachment and not source_msg.is_deleted:
+        try:
+            src = source_msg.attachment
+            src.open('rb')
+            from django.core.files.base import ContentFile
+            content = src.read()
+            src.close()
+            name = src.name.split('/')[-1]
+            msg.attachment.save(name, ContentFile(content), save=True)
+            if source_msg.is_voice:
+                msg.is_voice = True
+                msg.save(update_fields=['is_voice', 'updated_at'])
+        except Exception:
+            pass
+    if is_staff_reply:
+        target_ticket.status = target_ticket.Status.WAITING
+        target_ticket.save(update_fields=['status', 'updated_at'])
+    else:
+        target_ticket.save(update_fields=['updated_at'])
+    notify_new_message(target_ticket, msg)
+    return msg
+
+
+def maybe_notify_vip_upgrade(user) -> None:
+    """If user reached a higher VIP tier than last notified, send VIP toast notification."""
+    from core.vip import get_user_tier
+    from notifications.models import Notification, notify
+
+    tier = get_user_tier(user)
+    if not tier:
+        return
+    slug = (getattr(tier, 'slug', None) or getattr(tier, 'name', '') or '').strip().lower()
+    if not slug:
+        return
+    prev = (getattr(user, 'last_vip_tier_slug', None) or '').strip().lower()
+    if prev == slug:
+        return
+    # Only notify on upgrade (higher min_total_invested)
+    upgraded = True
+    if prev:
+        from core.platform_models import VIPTier
+        old = VIPTier.objects.filter(slug=prev).first() or VIPTier.objects.filter(name__icontains=prev).first()
+        if old and tier.min_total_invested <= old.min_total_invested:
+            upgraded = False
+    if not upgraded and prev:
+        # still update slug if same/down without toast
+        type(user).objects.filter(pk=user.pk).update(last_vip_tier_slug=slug)
+        return
+    name = getattr(tier, 'name', None) or slug.title()
+    notify(
+        user,
+        f'VIP upgraded · {name}',
+        f'Congratulations! You reached {name}. Enjoy your new benefits.',
+        level=Notification.Level.SUCCESS,
+        category=Notification.Category.VIP,
+        link='/app/vip',
+    )
+    type(user).objects.filter(pk=user.pk).update(last_vip_tier_slug=slug)

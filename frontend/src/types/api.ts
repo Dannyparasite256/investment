@@ -27,6 +27,9 @@ export interface User {
   is_staff_panel?: boolean
   avatar_url?: string
   display_name?: string
+  dnd_enabled?: boolean
+  dnd_start?: string | null
+  dnd_end?: string | null
 }
 
 export interface BalanceMoney {
@@ -270,6 +273,10 @@ export interface TicketMessage {
   is_pinned?: boolean
   edited_at?: string | null
   is_deleted?: boolean
+  is_voice?: boolean
+  is_forwarded?: boolean
+  forwarded_from_id?: string | null
+  mentioned_user_ids?: number[]
   /** Local optimistic flag before server ack */
   _pending?: boolean
   _failed?: boolean

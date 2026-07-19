@@ -170,15 +170,21 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         attachment = ser.validated_data.get('attachment')
         if not body and not attachment:
             return Response({'detail': 'Message or attachment required'}, status=400)
+        from support.services import is_voice_file
+
         reply_parent = None
         reply_to_id = ser.validated_data.get('reply_to')
         if reply_to_id:
             reply_parent = TicketMessage.objects.filter(
                 ticket=ticket, pk=reply_to_id,
             ).select_related('sender').first()
+        voice = is_voice_file(attachment)
+        explicit_voice = str(request.data.get('is_voice') or '').lower() in ('1', 'true', 'yes')
         msg = TicketMessage.objects.create(
-            ticket=ticket, sender=request.user, body=body or '(attachment)',
+            ticket=ticket, sender=request.user,
+            body=body or ('🎤 Voice message' if (voice or explicit_voice) else '(attachment)'),
             attachment=attachment, reply_to=reply_parent,
+            is_voice=voice or explicit_voice,
         )
         if ticket.status == SupportTicket.Status.WAITING:
             ticket.status = SupportTicket.Status.OPEN
@@ -326,6 +332,26 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
             is_deleted=False,
         ).count()
         return Response({'unread_count': n})
+
+    @action(detail=True, methods=['post'], url_path=r'messages/(?P<msg_id>[^/.]+)/forward')
+    def forward_message(self, request, pk=None, msg_id=None):
+        from support.services import forward_message
+
+        ticket = self.get_object()
+        source = TicketMessage.objects.filter(ticket=ticket, pk=msg_id).first()
+        if not source:
+            return Response({'detail': 'Message not found'}, status=404)
+        target_id = request.data.get('target_ticket_id') or request.data.get('ticket_id')
+        target = SupportTicket.objects.filter(user=request.user, pk=target_id).first()
+        if not target:
+            return Response({'detail': 'Target ticket not found'}, status=404)
+        if str(target.id) == str(ticket.id):
+            return Response({'detail': 'Pick a different conversation'}, status=400)
+        msg = forward_message(
+            source_msg=source, target_ticket=target,
+            sender=request.user, is_staff_reply=False,
+        )
+        return Response(TicketMessageSerializer(msg).data, status=201)
 
 
 class ReferralsView(APIView):

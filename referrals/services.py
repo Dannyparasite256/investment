@@ -213,6 +213,7 @@ def process_referral_commission(
                     f'You earned {amount} from {referred_user.email}.',
                     level=Notification.Level.SUCCESS,
                     category=Notification.Category.REFERRAL,
+                    link='/app/referrals',
                 )
             except Exception:
                 pass

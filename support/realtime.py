@@ -293,6 +293,10 @@ def message_payload(msg) -> dict:
         'is_pinned': bool(getattr(msg, 'is_pinned', False)),
         'edited_at': msg.edited_at.isoformat() if getattr(msg, 'edited_at', None) else None,
         'is_deleted': bool(getattr(msg, 'is_deleted', False)),
+        'is_voice': bool(getattr(msg, 'is_voice', False)),
+        'is_forwarded': bool(getattr(msg, 'is_forwarded', False)),
+        'forwarded_from_id': str(msg.forwarded_from_id) if getattr(msg, 'forwarded_from_id', None) else None,
+        'mentioned_user_ids': list(getattr(msg, 'mentioned_user_ids', None) or []),
     }
 
 

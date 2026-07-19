@@ -81,6 +81,15 @@ class TicketMessage(UUIDModel, TimeStampedModel):
     edited_at = models.DateTimeField(null=True, blank=True)
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    # Voice / forward / mentions
+    is_voice = models.BooleanField(default=False)
+    is_forwarded = models.BooleanField(default=False)
+    forwarded_from = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='forwards',
+    )
+    # JSON list of mentioned user IDs (staff @mentions)
+    mentioned_user_ids = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ['created_at']

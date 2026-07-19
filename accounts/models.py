@@ -132,6 +132,21 @@ class User(AbstractUser):
         default=False,
         help_text='Require email code or Google confirmation before withdrawals',
     )
+    # Do Not Disturb schedule (local to preferred_timezone)
+    dnd_enabled = models.BooleanField(
+        default=False,
+        help_text='Silence push/desktop alerts during DND hours',
+    )
+    dnd_start = models.TimeField(
+        null=True, blank=True,
+        help_text='DND start time (local), e.g. 22:00',
+    )
+    dnd_end = models.TimeField(
+        null=True, blank=True,
+        help_text='DND end time (local), e.g. 07:00',
+    )
+    # Track last VIP tier we notified about (slug)
+    last_vip_tier_slug = models.CharField(max_length=50, blank=True, default='')
 
     objects = UserManager()
 

@@ -242,13 +242,18 @@ def deposit_approve(request, pk):
                 dep.user, 'Deposit approved',
                 f'Your deposit of {crypto_label} (≈ {credit_label}) was approved.',
                 level=Notification.Level.SUCCESS, category=Notification.Category.DEPOSIT,
-                link='/transactions/deposits/',
+                link='/app/deposits',
             )
         try:
             from referrals.services import process_referral_commission
             process_referral_commission(
                 dep.user, credit, source='deposit', reference_type='deposit', reference_id=dep.id,
             )
+        except Exception:
+            pass
+        try:
+            from support.services import maybe_notify_vip_upgrade
+            maybe_notify_vip_upgrade(dep.user)
         except Exception:
             pass
         # Do not wipe permanent display currency (e.g. UGX) on approve

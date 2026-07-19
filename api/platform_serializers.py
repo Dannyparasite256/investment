@@ -18,6 +18,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'country', 'country_code', 'date_joined', 'preferred_theme', 'preferred_ui_theme',
             'preferred_language', 'preferred_currency', 'preferred_timezone',
             'email_alerts', 'sms_alerts', 'tour_completed',
+            'dnd_enabled', 'dnd_start', 'dnd_end',
         )
         read_only_fields = (
             'id', 'email', 'email_verified', 'is_kyc_verified', 'two_factor_enabled',
@@ -45,6 +46,7 @@ class TicketMessageSerializer(serializers.ModelSerializer):
     reply_to_id = serializers.SerializerMethodField()
     reply_to = serializers.SerializerMethodField()
     body = serializers.SerializerMethodField()
+    forwarded_from_id = serializers.SerializerMethodField()
 
     class Meta:
         model = TicketMessage
@@ -53,6 +55,7 @@ class TicketMessageSerializer(serializers.ModelSerializer):
             'delivered_at', 'read_at', 'receipt_status', 'attachment', 'attachment_url',
             'reply_to_id', 'reply_to',
             'is_starred', 'is_pinned', 'edited_at', 'is_deleted',
+            'is_voice', 'is_forwarded', 'forwarded_from_id', 'mentioned_user_ids',
         )
         read_only_fields = fields
 
@@ -60,6 +63,9 @@ class TicketMessageSerializer(serializers.ModelSerializer):
         if obj.is_deleted:
             return '🚫 This message was deleted'
         return obj.body
+
+    def get_forwarded_from_id(self, obj):
+        return str(obj.forwarded_from_id) if obj.forwarded_from_id else None
 
     def get_attachment_url(self, obj):
         if obj.is_deleted:

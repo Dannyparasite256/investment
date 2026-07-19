@@ -138,10 +138,15 @@ function showDesktopNotification(n: AppNotification) {
 }
 
 function announceNew(n: AppNotification) {
-  const isSupport = (n.category || '').toLowerCase() === 'support'
-  const severity = isSupport ? 'info' : n.level === 'danger' ? 'error' : n.level === 'warning' ? 'warn' : 'info'
-  ui.toast(n.title, n.message, severity as any)
-  if (isSupport || document.hidden) showDesktopNotification(n)
+  const cat = (n.category || '').toLowerCase()
+  const hot = ['support', 'deposit', 'referral', 'vip', 'withdrawal', 'investment', 'earning'].includes(cat)
+  let severity: 'success' | 'info' | 'warn' | 'error' = 'info'
+  if (n.level === 'danger') severity = 'error'
+  else if (n.level === 'warning') severity = 'warn'
+  else if (n.level === 'success' || ['deposit', 'referral', 'vip', 'earning'].includes(cat)) severity = 'success'
+  // Always toast so deposits / VIP / referrals pop in-app (DND only suppresses device push server-side)
+  ui.toast(n.title, n.message, severity)
+  if (hot || document.hidden) showDesktopNotification(n)
 }
 
 async function loadNotifications(opts?: { silent?: boolean }) {

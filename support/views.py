@@ -138,13 +138,18 @@ def ticket_detail(request, pk):
             if wants_json:
                 return JsonResponse({'detail': 'Conversation closed'}, status=400)
             return redirect('support:detail', pk=pk)
+        from support.services import is_voice_file
+
         reply_parent = _resolve_reply_to(ticket, request.POST.get('reply_to') or request.POST.get('reply_to_id'))
+        voice = is_voice_file(attachment)
+        explicit_voice = request.POST.get('is_voice') in ('1', 'true', 'True', 'yes')
         msg = TicketMessage.objects.create(
             ticket=ticket,
             sender=request.user,
-            body=body or '(attachment)',
+            body=body or ('🎤 Voice message' if (voice or explicit_voice) else '(attachment)'),
             attachment=attachment,
             reply_to=reply_parent,
+            is_voice=voice or explicit_voice,
         )
         if ticket.status == SupportTicket.Status.WAITING:
             ticket.status = SupportTicket.Status.OPEN

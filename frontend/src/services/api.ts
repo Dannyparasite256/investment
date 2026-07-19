@@ -157,6 +157,28 @@ export const api = {
   staffTicketPin(id: string, pinned: boolean) {
     return http.post(`/api/v1/staff/tickets/${id}/`, { action: 'pin', pinned })
   },
+  staffTicketForward(ticketId: string, messageId: string, targetTicketId: string) {
+    return http.post(`/api/v1/staff/tickets/${ticketId}/`, {
+      action: 'forward',
+      message_id: messageId,
+      target_ticket_id: targetTicketId,
+    })
+  },
+  staffDirectory(q?: string) {
+    return http.get<{ results: { id: number; handle: string; name: string; email: string }[] }>(
+      '/api/v1/staff/tickets/',
+      { params: { mentions: 1, q: q || '' } },
+    )
+  },
+  staffReplyVoice(ticketId: string, blob: Blob, filename = 'voice.webm') {
+    const fd = new FormData()
+    fd.append('body', '🎤 Voice message')
+    fd.append('is_voice', '1')
+    fd.append('attachment', blob, filename)
+    return http.post(`/api/v1/staff/tickets/${ticketId}/`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
   cryptocurrencies() {
     return http.get<Cryptocurrency[]>('/api/v1/cryptocurrencies/')
   },
@@ -406,6 +428,20 @@ export const api = {
   },
   supportCsat(ticketId: string, score: number, comment?: string) {
     return http.post(`/api/v1/support/${ticketId}/csat/`, { score, comment: comment || '' })
+  },
+  supportForwardMessage(ticketId: string, msgId: string, targetTicketId: string) {
+    return http.post(`/api/v1/support/${ticketId}/messages/${msgId}/forward/`, {
+      target_ticket_id: targetTicketId,
+    })
+  },
+  supportReplyVoice(ticketId: string, blob: Blob, filename = 'voice.webm') {
+    const fd = new FormData()
+    fd.append('body', '🎤 Voice message')
+    fd.append('is_voice', '1')
+    fd.append('attachment', blob, filename)
+    return http.post(`/api/v1/support/${ticketId}/reply/`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
   },
   supportPoll(id: string, since?: string) {
     return http.get<ChatPollPayload>(`/api/v1/support/${id}/poll/`, {

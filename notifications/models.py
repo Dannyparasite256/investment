@@ -27,6 +27,7 @@ class Notification(UUIDModel, TimeStampedModel):
         REFERRAL = 'referral', 'Referral'
         ANNOUNCEMENT = 'announcement', 'Announcement'
         SUPPORT = 'support', 'Support'
+        VIP = 'vip', 'VIP'
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications',
@@ -140,6 +141,10 @@ def send_web_push(user, title: str, body: str, url: str = '') -> int:
 
 
 def notify(user, title, message, level=Notification.Level.INFO, category=Notification.Category.SYSTEM, link='', **meta):
+    """
+    Create inbox notification. Realtime/web push are suppressed during user DND
+    (inbox row is always kept so they see it after quiet hours).
+    """
     n = Notification.objects.create(
         user=user,
         title=title,
@@ -150,9 +155,19 @@ def notify(user, title, message, level=Notification.Level.INFO, category=Notific
         metadata=meta or {},
     )
     payload = n.to_payload()
-    push_notification_ws(user.pk, payload)
+    in_dnd = False
     try:
-        send_web_push(user, title, message, url=link or '/app/notifications')
-    except Exception as exc:
-        logger.debug('Web push outer skip: %s', exc)
+        from accounts.dnd import user_in_dnd
+        in_dnd = user_in_dnd(user)
+    except Exception:
+        in_dnd = False
+    payload['dnd'] = in_dnd
+    if not in_dnd:
+        push_notification_ws(user.pk, payload)
+        try:
+            send_web_push(user, title, message, url=link or '/app/notifications')
+        except Exception as exc:
+            logger.debug('Web push outer skip: %s', exc)
+    else:
+        logger.debug('DND active for user %s — skipped live push', getattr(user, 'pk', None))
     return n

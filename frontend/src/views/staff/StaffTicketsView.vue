@@ -5,6 +5,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import { api } from '@/services/api'
@@ -14,6 +15,7 @@ import { useAuthStore } from '@/stores/auth'
 import { receiptOf, useSupportChat } from '@/composables/useSupportChat'
 import { linkify } from '@/utils/linkify'
 import { copyText, dayKey, dayLabel, isImageUrl, truncatePreview } from '@/utils/chat'
+import { createVoiceRecorder, isVoiceUrl } from '@/utils/voiceNote'
 import type { TicketMessage, TicketReplyPreview } from '@/types/api'
 
 interface StaffTicketRow {
@@ -68,6 +70,17 @@ const replyTarget = ref<TicketMessage | null>(null)
 const showJump = ref(false)
 const lightboxUrl = ref('')
 const menuMsgId = ref<string | null>(null)
+const recording = ref(false)
+const recordSecs = ref(0)
+const voiceBusy = ref(false)
+const forwardMsg = ref<TicketMessage | null>(null)
+const forwardTargetId = ref<string | null>(null)
+const forwardBusy = ref(false)
+const mentionHits = ref<{ id: number; handle: string; name: string; email: string }[]>([])
+const showMentions = ref(false)
+let voiceRec = createVoiceRecorder()
+let recordTimer: ReturnType<typeof setInterval> | null = null
+let mentionTimer: ReturnType<typeof setTimeout> | null = null
 
 const statusOptions = [
   { label: 'All statuses', value: '' },
@@ -350,6 +363,106 @@ function attachmentHref(m: TicketMessage) {
 }
 function isImageAtt(m: TicketMessage) {
   return isImageUrl(attachmentHref(m))
+}
+function isVoiceAtt(m: TicketMessage) {
+  return !!m.is_voice || isVoiceUrl(attachmentHref(m), m.is_voice)
+}
+
+async function toggleRecord() {
+  if (!activeTicket.value) return
+  if (recording.value) {
+    try {
+      voiceBusy.value = true
+      const { blob } = await voiceRec.stop()
+      recording.value = false
+      if (recordTimer) { clearInterval(recordTimer); recordTimer = null }
+      if (blob.size < 200) {
+        ui.toast('Too short', 'Hold longer for a voice note', 'warn')
+        return
+      }
+      const { data } = await api.staffReplyVoice(activeTicket.value.id, blob)
+      const msg = { ...(data as TicketMessage), is_staff_reply: true, is_voice: true }
+      chatMessages.value.push(msg)
+      await scrollToBottom(true)
+      await loadTickets(false)
+    } catch (e: any) {
+      ui.toast('Voice failed', e?.response?.data?.detail || e?.message || 'Could not send', 'error')
+      try { voiceRec.cancel() } catch { /* */ }
+      recording.value = false
+    } finally {
+      voiceBusy.value = false
+      recordSecs.value = 0
+      voiceRec = createVoiceRecorder()
+    }
+    return
+  }
+  try {
+    await voiceRec.start()
+    recording.value = true
+    recordSecs.value = 0
+    recordTimer = setInterval(() => { recordSecs.value += 1 }, 1000)
+  } catch {
+    ui.toast('Mic blocked', 'Allow microphone access', 'error')
+  }
+}
+
+async function doForward() {
+  if (!activeTicket.value || !forwardMsg.value || !forwardTargetId.value) return
+  forwardBusy.value = true
+  try {
+    await api.staffTicketForward(activeTicket.value.id, forwardMsg.value.id, forwardTargetId.value)
+    ui.toast('Forwarded', 'Message copied to the other ticket', 'success')
+    forwardMsg.value = null
+    forwardTargetId.value = null
+  } catch (e: any) {
+    ui.toast('Failed', e?.response?.data?.detail || 'Could not forward', 'error')
+  } finally {
+    forwardBusy.value = false
+  }
+}
+
+const forwardOptions = computed(() =>
+  tickets.value
+    .filter((t) => t.id !== activeId.value)
+    .map((t) => ({
+      label: `${t.user_name || t.user_email} · ${t.subject}`,
+      value: t.id,
+    })),
+)
+
+function onBodyInput() {
+  if (body.value.trim()) chat.onComposerInput()
+  else chat.sendTyping(false)
+  // @mention autocomplete
+  const m = body.value.match(/(?:^|\s)@([A-Za-z0-9._+-]{0,40})$/)
+  if (!m) {
+    showMentions.value = false
+    return
+  }
+  const q = m[1]
+  if (mentionTimer) clearTimeout(mentionTimer)
+  mentionTimer = setTimeout(async () => {
+    try {
+      const { data } = await api.staffDirectory(q)
+      mentionHits.value = data.results || []
+      showMentions.value = mentionHits.value.length > 0
+    } catch {
+      showMentions.value = false
+    }
+  }, 180)
+}
+
+function pickMention(h: { handle: string }) {
+  body.value = body.value.replace(/(?:^|\s)@([A-Za-z0-9._+-]{0,40})$/, (all) => {
+    const lead = all.startsWith(' ') || all.startsWith('\n') ? all[0] : ''
+    return `${lead}@${h.handle} `
+  })
+  showMentions.value = false
+}
+
+function richBody(m: TicketMessage): string {
+  const html = linkify(m.body || '')
+  return html.replace(/@([A-Za-z0-9._+-]{2,40})/g, '<span class="wa-mention">@$1</span>')
 }
 
 function setReply(m: TicketMessage) {
@@ -660,13 +773,15 @@ onUnmounted(() => chat.leave())
                     </span>
                   </button>
 
+                  <div v-if="item.msg.is_forwarded" class="wa-fwd-label">↪️ Forwarded</div>
                   <div
-                    v-if="item.msg.body && item.msg.body !== '(attachment)'"
+                    v-if="item.msg.body && item.msg.body !== '(attachment)' && !item.msg.is_deleted"
                     class="wa-text"
-                    v-html="linkify(item.msg.body)"
+                    v-html="richBody(item.msg)"
                   />
+                  <div v-else-if="item.msg.is_deleted" class="wa-text deleted">🚫 This message was deleted</div>
 
-                  <div v-if="attachmentHref(item.msg)" class="wa-attach-wrap">
+                  <div v-if="attachmentHref(item.msg) && !item.msg.is_deleted" class="wa-attach-wrap">
                     <button
                       v-if="isImageAtt(item.msg)"
                       type="button"
@@ -675,6 +790,10 @@ onUnmounted(() => chat.leave())
                     >
                       <img :src="attachmentHref(item.msg)" alt="Attachment" class="wa-attach-img" />
                     </button>
+                    <div v-else-if="isVoiceAtt(item.msg)" class="wa-voice">
+                      <i class="pi pi-microphone" />
+                      <audio controls preload="metadata" :src="attachmentHref(item.msg)" />
+                    </div>
                     <a
                       v-else
                       class="wa-attach"
@@ -713,6 +832,9 @@ onUnmounted(() => chat.leave())
                     </button>
                     <button type="button" class="wa-act" title="Copy" @click.stop="copyMessage(item.msg)">
                       <i class="pi pi-copy" />
+                    </button>
+                    <button type="button" class="wa-act" title="Forward" @click.stop="forwardMsg = item.msg">
+                      <i class="pi pi-share-alt" />
                     </button>
                   </div>
 
@@ -773,31 +895,53 @@ onUnmounted(() => chat.leave())
             <span class="truncate">{{ pendingFile.name }}</span>
             <button type="button" class="chip-x" @click="clearFile" aria-label="Remove file">×</button>
           </div>
-          <div class="wa-composer">
-            <input
-              ref="fileInput"
-              type="file"
-              class="hidden-file"
-              accept="image/*,.pdf,.doc,.docx,.txt"
-              @change="onPickFile"
-            />
-            <Button icon="pi pi-paperclip" text rounded aria-label="Attach" @click="fileInput?.click()" />
-            <textarea
-              v-model="body"
-              rows="1"
-              placeholder="Type a reply as support…"
-              @keydown="onKeydown"
-              @input="body.trim() ? chat.onComposerInput() : chat.sendTyping(false)"
-            />
-            <Button
-              icon="pi pi-send"
-              rounded
-              severity="success"
-              :loading="sending"
-              :disabled="!body.trim() && !pendingFile"
-              aria-label="Send"
-              @click="reply"
-            />
+          <div class="wa-composer-rel">
+            <div v-if="showMentions" class="wa-mention-menu">
+              <button
+                v-for="h in mentionHits"
+                :key="h.id"
+                type="button"
+                @click="pickMention(h)"
+              >
+                <strong>@{{ h.handle }}</strong>
+                <span class="muted">{{ h.name }}</span>
+              </button>
+            </div>
+            <div class="wa-composer">
+              <input
+                ref="fileInput"
+                type="file"
+                class="hidden-file"
+                accept="image/*,audio/*,.pdf,.doc,.docx,.txt"
+                @change="onPickFile"
+              />
+              <Button icon="pi pi-paperclip" text rounded aria-label="Attach" @click="fileInput?.click()" />
+              <Button
+                :icon="recording ? 'pi pi-stop' : 'pi pi-microphone'"
+                text
+                rounded
+                :severity="recording ? 'danger' : 'secondary'"
+                :loading="voiceBusy"
+                @click="toggleRecord"
+              />
+              <textarea
+                v-model="body"
+                rows="1"
+                :placeholder="recording ? `Recording… ${recordSecs}s` : 'Type a reply… use @name to mention staff'"
+                :disabled="recording"
+                @keydown="onKeydown"
+                @input="onBodyInput"
+              />
+              <Button
+                icon="pi pi-send"
+                rounded
+                severity="success"
+                :loading="sending"
+                :disabled="recording || (!body.trim() && !pendingFile)"
+                aria-label="Send"
+                @click="reply"
+              />
+            </div>
           </div>
         </footer>
       </template>
@@ -814,6 +958,25 @@ onUnmounted(() => chat.leave())
         </div>
       </div>
     </section>
+
+    <Dialog
+      :visible="!!forwardMsg"
+      modal
+      header="Forward to ticket"
+      @update:visible="(v: boolean) => { if (!v) forwardMsg = null }"
+    >
+      <div class="form" style="min-width:min(360px,80vw);display:flex;flex-direction:column;gap:.75rem">
+        <Select
+          v-model="forwardTargetId"
+          :options="forwardOptions"
+          option-label="label"
+          option-value="value"
+          placeholder="Choose ticket"
+          class="w-full"
+        />
+        <Button label="Forward" icon="pi pi-share-alt" :loading="forwardBusy" :disabled="!forwardTargetId" @click="doForward" />
+      </div>
+    </Dialog>
 
     <Teleport to="body">
       <div v-if="lightboxUrl" class="wa-lightbox" @click="closeLightbox">
@@ -1010,6 +1173,26 @@ onUnmounted(() => chat.leave())
 .list-ticks .second { left: 0.25rem; }
 .list-ticks.read { color: #53bdeb !important; }
 .list-ticks.delivered { color: #94a3b8 !important; }
+.wa-voice {
+  display: flex; align-items: center; gap: 0.45rem; margin-top: 0.35rem;
+  padding: 0.35rem 0.5rem; border-radius: 10px; background: rgba(0,0,0,0.18);
+}
+.wa-voice audio { max-width: min(240px, 60vw); height: 32px; }
+.wa-fwd-label { font-size: 0.7rem; font-weight: 700; opacity: 0.75; margin-bottom: 0.2rem; }
+.wa-composer-rel { position: relative; }
+.wa-mention-menu {
+  position: absolute; left: 0; right: 0; bottom: 100%;
+  margin-bottom: 0.35rem; max-height: 180px; overflow: auto;
+  background: rgba(17,27,33,0.98); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px; z-index: 20; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.wa-mention-menu button {
+  width: 100%; display: flex; gap: 0.5rem; border: 0; background: transparent;
+  color: inherit; padding: 0.5rem 0.75rem; text-align: left; cursor: pointer; font-size: 0.85rem;
+}
+.wa-mention-menu button:hover { background: rgba(59,130,246,0.15); }
+.wa-text :deep(.wa-mention) { color: #93c5fd; font-weight: 700; }
+.wa-text.deleted { opacity: 0.7; font-style: italic; }
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
