@@ -133,7 +133,15 @@ export const api = {
   staffTicket(id: string) {
     return http.get(`/api/v1/staff/tickets/${id}/`)
   },
-  staffTicketReply(id: string, body: string) {
+  staffTicketReply(id: string, body: string, file?: File | null) {
+    if (file) {
+      const fd = new FormData()
+      if (body) fd.append('body', body)
+      fd.append('attachment', file)
+      return http.post(`/api/v1/staff/tickets/${id}/`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    }
     return http.post(`/api/v1/staff/tickets/${id}/`, { body })
   },
   staffTicketAction(id: string, payload: Record<string, unknown>) {
@@ -209,8 +217,18 @@ export const api = {
   earnings() {
     return http.get<Paginated<Earning>>('/api/v1/earnings/')
   },
-  statements() {
-    return http.get('/api/v1/statements/')
+  statements(params?: { format?: 'json' | 'csv' | 'pdf'; from?: string; to?: string }) {
+    const fmt = params?.format || 'json'
+    if (fmt === 'pdf' || fmt === 'csv') {
+      return http.get('/api/v1/statements/', {
+        params,
+        responseType: 'blob' as any,
+      })
+    }
+    return http.get('/api/v1/statements/', { params })
+  },
+  pushUnsubscribe(endpoint: string) {
+    return http.delete('/api/v1/push/subscribe/', { data: { endpoint } })
   },
 
   // Notifications
@@ -346,7 +364,15 @@ export const api = {
   createTicket(payload: { subject: string; body: string; category?: string }) {
     return http.post<SupportTicket>('/api/v1/support/', payload)
   },
-  replyTicket(id: string, body: string) {
+  replyTicket(id: string, body: string, file?: File | null) {
+    if (file) {
+      const fd = new FormData()
+      if (body) fd.append('body', body)
+      fd.append('attachment', file)
+      return http.post<TicketMessage>(`/api/v1/support/${id}/reply/`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    }
     return http.post<TicketMessage>(`/api/v1/support/${id}/reply/`, { body })
   },
   supportPoll(id: string, since?: string) {

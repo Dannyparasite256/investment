@@ -52,6 +52,10 @@ const sending = ref(false)
 const search = ref('')
 const statusFilter = ref('')
 const messagesEl = ref<HTMLElement | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
+const pendingFile = ref<File | null>(null)
+const canned = ref<{ id: string; title: string; body: string; category: string }[]>([])
+const cannedId = ref<string | null>(null)
 
 const statusOptions = [
   { label: 'All statuses', value: '' },
@@ -255,29 +259,52 @@ function closeChat() {
   router.push('/admin/tickets')
 }
 
+function onPickFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  pendingFile.value = input.files?.[0] || null
+}
+function clearFile() {
+  pendingFile.value = null
+  if (fileInput.value) fileInput.value.value = ''
+}
+function applyCanned() {
+  const row = canned.value.find((c) => c.id === cannedId.value)
+  if (row) body.value = row.body
+}
+function attachmentHref(m: TicketMessage) {
+  return m.attachment_url || m.attachment || m._localPreview || ''
+}
+function isImageAtt(m: TicketMessage) {
+  const u = attachmentHref(m).toLowerCase()
+  return /\.(png|jpe?g|gif|webp|bmp)(\?|$)/i.test(u) || (m._localPreview || '').startsWith('blob:')
+}
+
 async function reply() {
-  if (!body.value.trim() || !activeTicket.value || sending.value) return
+  if ((!body.value.trim() && !pendingFile.value) || !activeTicket.value || sending.value) return
   const text = body.value.trim()
+  const file = pendingFile.value
   body.value = ''
+  clearFile()
   chat.sendTyping(false)
   sending.value = true
 
   const tempId = `tmp-${Date.now()}`
   const optimistic: TicketMessage = {
     id: tempId,
-    body: text,
+    body: text || (file ? file.name : ''),
     is_staff_reply: true,
     created_at: new Date().toISOString(),
     sender: auth.user?.id || 0,
     sender_name: auth.displayName || 'Staff',
     receipt_status: 'pending',
     _pending: true,
+    _localPreview: file && file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
   }
   chatMessages.value.push(optimistic)
   await scrollToBottom(true)
 
   try {
-    const { data } = await api.staffTicketReply(activeTicket.value.id, text)
+    const { data } = await api.staffTicketReply(activeTicket.value.id, text, file)
     const msg = { ...(data as TicketMessage), is_staff_reply: true }
     const i = chatMessages.value.findIndex((m) => m.id === tempId)
     if (i >= 0) chatMessages.value[i] = { ...msg, _pending: false }
@@ -337,6 +364,10 @@ watch(
 
 onMounted(async () => {
   await loadTickets()
+  try {
+    const { data } = await api.staffCannedReplies()
+    canned.value = (data as any).results || []
+  } catch { /* optional */ }
   const id = route.params.id
   if (typeof id === 'string' && id) await openTicket(id, true)
 })
@@ -452,7 +483,17 @@ onUnmounted(() => chat.leave())
               <div class="wa-sender">
                 {{ m.is_staff_reply ? 'You (support)' : (m.sender_name || 'Customer') }}
               </div>
-              <div class="wa-text" v-html="linkify(m.body)" />
+              <div v-if="m.body" class="wa-text" v-html="linkify(m.body)" />
+              <a
+                v-if="attachmentHref(m)"
+                class="wa-attach"
+                :href="attachmentHref(m)"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <img v-if="isImageAtt(m)" :src="attachmentHref(m)" alt="Attachment" class="wa-attach-img" />
+                <span v-else class="wa-attach-file"><i class="pi pi-paperclip" /> Open attachment</span>
+              </a>
               <div class="wa-meta">
                 <span>{{ msgTime(m.created_at) }}</span>
                 <span
@@ -487,23 +528,50 @@ onUnmounted(() => chat.leave())
           </div>
         </div>
 
-        <footer class="wa-composer">
-          <textarea
-            v-model="body"
-            rows="1"
-            placeholder="Type a reply as support…"
-            @keydown="onKeydown"
-            @input="chat.onComposerInput()"
-          />
-          <Button
-            icon="pi pi-send"
-            rounded
-            severity="success"
-            :loading="sending"
-            :disabled="!body.trim()"
-            aria-label="Send"
-            @click="reply"
-          />
+        <footer class="wa-composer-wrap">
+          <div v-if="canned.length" class="wa-canned">
+            <Select
+              v-model="cannedId"
+              :options="canned"
+              option-label="title"
+              option-value="id"
+              placeholder="Canned reply…"
+              class="canned-select"
+              show-clear
+              @update:model-value="applyCanned"
+            />
+          </div>
+          <div v-if="pendingFile" class="wa-file-chip">
+            <i class="pi pi-paperclip" />
+            <span class="truncate">{{ pendingFile.name }}</span>
+            <button type="button" class="chip-x" @click="clearFile" aria-label="Remove file">×</button>
+          </div>
+          <div class="wa-composer">
+            <input
+              ref="fileInput"
+              type="file"
+              class="hidden-file"
+              accept="image/*,.pdf,.doc,.docx,.txt"
+              @change="onPickFile"
+            />
+            <Button icon="pi pi-paperclip" text rounded aria-label="Attach" @click="fileInput?.click()" />
+            <textarea
+              v-model="body"
+              rows="1"
+              placeholder="Type a reply as support…"
+              @keydown="onKeydown"
+              @input="chat.onComposerInput()"
+            />
+            <Button
+              icon="pi pi-send"
+              rounded
+              severity="success"
+              :loading="sending"
+              :disabled="!body.trim() && !pendingFile"
+              aria-label="Send"
+              @click="reply"
+            />
+          </div>
         </footer>
       </template>
 
@@ -867,13 +935,58 @@ onUnmounted(() => chat.leave())
 
 .wa-empty-msgs { text-align: center; margin: auto; padding: 2rem; }
 
+.wa-composer-wrap {
+  background: rgba(17, 27, 33, 0.96);
+  border-top: 1px solid var(--ci-border);
+  padding: 0.45rem 0.75rem 0.7rem;
+}
+.wa-canned {
+  margin-bottom: 0.4rem;
+}
+.canned-select {
+  width: 100%;
+  max-width: 280px;
+}
+.wa-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  margin-bottom: 0.4rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.15);
+  font-size: 0.78rem;
+}
+.chip-x {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+.hidden-file { display: none; }
+.wa-attach {
+  display: block;
+  margin-top: 0.4rem;
+  text-decoration: none;
+  color: #93c5fd;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.wa-attach-img {
+  max-width: min(220px, 70vw);
+  max-height: 180px;
+  border-radius: 8px;
+  display: block;
+  object-fit: cover;
+}
+.wa-attach-file { display: inline-flex; align-items: center; gap: 0.35rem; }
 .wa-composer {
   display: flex;
   align-items: flex-end;
-  gap: 0.55rem;
-  padding: 0.55rem 0.75rem 0.7rem;
-  background: rgba(17, 27, 33, 0.96);
-  border-top: 1px solid var(--ci-border);
+  gap: 0.35rem;
 }
 .wa-composer textarea {
   flex: 1;

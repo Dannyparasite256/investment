@@ -11,6 +11,7 @@ import { useUiStore } from '@/stores/ui'
 
 const ui = useUiStore()
 const loading = ref(true)
+const exporting = ref<'csv' | 'pdf' | null>(null)
 const txs = ref<any[]>([])
 const generated = ref('')
 
@@ -24,26 +25,63 @@ onMounted(async () => {
   }
 })
 
-function exportCsv() {
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function exportCsvLocal() {
   const header = 'Date,Type,Amount,Status,Description\n'
   const rows = txs.value.map((t) =>
     [t.created_at, t.tx_type, t.amount, t.status, `"${(t.description || '').replace(/"/g, '""')}"`].join(','),
   ).join('\n')
-  const blob = new Blob([header + rows], { type: 'text/csv' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'statement.csv'
-  a.click()
-  URL.revokeObjectURL(url)
+  downloadBlob(new Blob([header + rows], { type: 'text/csv' }), 'statement.csv')
   ui.toast('Exported', 'CSV downloaded', 'success')
+}
+
+async function exportServer(fmt: 'csv' | 'pdf') {
+  exporting.value = fmt
+  try {
+    const { data } = await api.statements({ format: fmt })
+    const blob = data instanceof Blob
+      ? data
+      : new Blob([data as any], { type: fmt === 'pdf' ? 'application/pdf' : 'text/csv' })
+    downloadBlob(blob, fmt === 'pdf' ? 'statement.pdf' : 'statement.csv')
+    ui.toast('Exported', `${fmt.toUpperCase()} downloaded`, 'success')
+  } catch (e: any) {
+    if (fmt === 'csv') {
+      exportCsvLocal()
+      return
+    }
+    ui.toast('Export failed', e?.response?.data?.detail || 'Could not generate PDF', 'error')
+  } finally {
+    exporting.value = null
+  }
 }
 </script>
 
 <template>
   <div>
     <PageHeader title="Statements" :subtitle="generated ? `Generated ${shortDate(generated)}` : 'Account statement export'">
-      <Button label="Export CSV" icon="pi pi-download" @click="exportCsv" :disabled="!txs.length" />
+      <Button
+        label="Export CSV"
+        icon="pi pi-download"
+        outlined
+        :loading="exporting === 'csv'"
+        :disabled="loading || !!exporting"
+        @click="exportServer('csv')"
+      />
+      <Button
+        label="Export PDF"
+        icon="pi pi-file-pdf"
+        :loading="exporting === 'pdf'"
+        :disabled="loading || !!exporting"
+        @click="exportServer('pdf')"
+      />
     </PageHeader>
     <div class="glass card">
       <DataTable :value="txs" :loading="loading" paginator :rows="15" class="p-datatable-sm">

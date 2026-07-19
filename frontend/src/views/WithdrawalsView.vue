@@ -12,6 +12,7 @@ import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import CryptoIcon from '@/components/ui/CryptoIcon.vue'
 import { api, unwrapList } from '@/services/api'
 import { formatMoney, shortDate, statusSeverity } from '@/utils/money'
 import type { Cryptocurrency, Withdrawal } from '@/types/api'
@@ -78,7 +79,14 @@ onMounted(load)
         <Column field="created_at" header="Date">
           <template #body="{ data }">{{ shortDate(data.created_at) }}</template>
         </Column>
-        <Column field="crypto_symbol" header="Network" />
+        <Column field="crypto_symbol" header="Asset">
+          <template #body="{ data }">
+            <span class="asset-cell">
+              <CryptoIcon :symbol="data.crypto_symbol" size="sm" />
+              <span>{{ data.crypto_symbol }}</span>
+            </span>
+          </template>
+        </Column>
         <Column field="amount" header="Amount">
           <template #body="{ data }"><span class="mono">{{ formatMoney(data.amount) }}</span></template>
         </Column>
@@ -104,7 +112,26 @@ onMounted(load)
       <div class="form">
         <label>
           <span>Cryptocurrency</span>
-          <Select v-model="cryptoId" :options="cryptos" option-label="symbol" option-value="id" placeholder="Select asset" class="w-full" />
+          <Select v-model="cryptoId" :options="cryptos" option-label="symbol" option-value="id" placeholder="Select asset" class="w-full">
+            <template #value="{ value }">
+              <span v-if="value" class="asset-cell">
+                <CryptoIcon
+                  :symbol="cryptos.find((c) => c.id === value)?.symbol"
+                  :icon="cryptos.find((c) => c.id === value)?.icon"
+                  size="sm"
+                />
+                <span>{{ cryptos.find((c) => c.id === value)?.symbol || value }}</span>
+              </span>
+              <span v-else class="muted">Select asset</span>
+            </template>
+            <template #option="{ option }">
+              <span class="asset-cell">
+                <CryptoIcon :symbol="option.symbol" :icon="option.icon" size="sm" />
+                <span>{{ option.symbol }}</span>
+                <span class="muted net">{{ option.network }}</span>
+              </span>
+            </template>
+          </Select>
         </label>
         <label>
           <span>Amount (platform units)</span>
@@ -124,7 +151,13 @@ onMounted(load)
 .panel { padding: 0.75rem; }
 .form { display: grid; gap: 0.85rem; }
 .form label { display: grid; gap: 0.35rem; }
-.form span { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ci-muted); font-weight: 600; }
+.form > label > span { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ci-muted); font-weight: 600; }
+.asset-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.asset-cell .net { font-size: 0.75rem; margin-left: 0.1rem; }
 .w-full { width: 100%; }
 .mb { margin-bottom: 0.75rem; }
 .small { font-size: 0.78rem; }

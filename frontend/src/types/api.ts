@@ -103,6 +103,10 @@ export interface Cryptocurrency {
   withdrawal_fee: string
   deposit_address: string
   is_active: boolean
+  /** Emoji / glyph from backend (fallback when CDN image fails). */
+  icon?: string
+  /** Data URI or media URL for deposit address QR (when available). */
+  qr?: string
 }
 
 export interface InvestmentPlan {
@@ -232,9 +236,12 @@ export interface TicketMessage {
   receipt_status?: ReceiptStatus | string
   sender: number
   sender_name: string
+  attachment?: string | null
+  attachment_url?: string | null
   /** Local optimistic flag before server ack */
   _pending?: boolean
   _failed?: boolean
+  _localPreview?: string
 }
 
 export interface ChatPresence {

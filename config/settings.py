@@ -234,6 +234,11 @@ EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='CryptoInvest <noreply@cryptoinvest.local>')
 
+# Web Push (optional — set VAPID keys to enable browser push prompts)
+VAPID_PUBLIC_KEY = env('VAPID_PUBLIC_KEY', default='')
+VAPID_PRIVATE_KEY = env('VAPID_PRIVATE_KEY', default='')
+VAPID_ADMIN_EMAIL = env('VAPID_ADMIN_EMAIL', default='mailto:admin@localhost')
+
 # ---------------------------------------------------------------------------
 # Cache & Redis
 # ---------------------------------------------------------------------------

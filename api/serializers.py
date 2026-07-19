@@ -49,12 +49,35 @@ class WalletSerializer(serializers.ModelSerializer):
 
 
 class CryptocurrencySerializer(serializers.ModelSerializer):
+    qr = serializers.SerializerMethodField()
+
     class Meta:
         model = Cryptocurrency
         fields = (
             'id', 'symbol', 'name', 'network', 'decimals', 'min_deposit',
-            'min_withdrawal', 'max_withdrawal', 'withdrawal_fee', 'deposit_address', 'is_active',
+            'min_withdrawal', 'max_withdrawal', 'withdrawal_fee', 'deposit_address',
+            'is_active', 'icon', 'qr',
         )
+
+    def get_qr(self, obj):
+        address = (obj.deposit_address or '').strip()
+        if obj.qr_code:
+            try:
+                return obj.qr_code.url
+            except Exception:
+                pass
+        if not address:
+            return ''
+        try:
+            import base64
+            import io
+            import qrcode
+            img = qrcode.make(address)
+            buf = io.BytesIO()
+            img.save(buf, format='PNG')
+            return 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode('ascii')
+        except Exception:
+            return ''
 
 
 class InvestmentPlanSerializer(serializers.ModelSerializer):

@@ -550,6 +550,68 @@ class StatementsView(APIView):
             resp = HttpResponse(buf.getvalue(), content_type='text/csv')
             resp['Content-Disposition'] = 'attachment; filename="statement.csv"'
             return resp
+        if fmt == 'pdf':
+            from io import BytesIO
+            from reportlab.lib.pagesizes import A4
+            from reportlab.pdfgen import canvas
+
+            bio = BytesIO()
+            c = canvas.Canvas(bio, pagesize=A4)
+            width, height = A4
+            y = height - 50
+            c.setFont('Helvetica-Bold', 14)
+            c.drawString(40, y, 'Account statement')
+            y -= 20
+            c.setFont('Helvetica', 9)
+            c.drawString(40, y, f'Generated {timezone.now().isoformat()} · {request.user.email}')
+            y -= 28
+            c.setFont('Helvetica-Bold', 10)
+            c.drawString(40, y, 'Recent transactions')
+            y -= 16
+            c.setFont('Helvetica', 8)
+            for t in list(txs)[:80]:
+                if y < 50:
+                    c.showPage()
+                    y = height - 40
+                    c.setFont('Helvetica', 8)
+                line = f"{t.created_at.date()}  {t.tx_type:12}  {t.amount}  {t.status}  {(t.description or '')[:50]}"
+                c.drawString(40, y, line[:110])
+                y -= 12
+            y -= 16
+            if y < 80:
+                c.showPage()
+                y = height - 40
+            c.setFont('Helvetica-Bold', 10)
+            c.drawString(40, y, 'Deposits')
+            y -= 14
+            c.setFont('Helvetica', 8)
+            for d in list(deposits)[:40]:
+                if y < 50:
+                    c.showPage()
+                    y = height - 40
+                    c.setFont('Helvetica', 8)
+                c.drawString(40, y, f"{d.created_at.date()}  {d.cryptocurrency.symbol}  {d.amount}  {d.status}"[:110])
+                y -= 12
+            y -= 16
+            if y < 80:
+                c.showPage()
+                y = height - 40
+            c.setFont('Helvetica-Bold', 10)
+            c.drawString(40, y, 'Withdrawals')
+            y -= 14
+            c.setFont('Helvetica', 8)
+            for x in list(withdrawals)[:40]:
+                if y < 50:
+                    c.showPage()
+                    y = height - 40
+                    c.setFont('Helvetica', 8)
+                c.drawString(40, y, f"{x.created_at.date()}  {x.cryptocurrency.symbol}  {x.amount}  {x.status}"[:110])
+                y -= 12
+            c.save()
+            pdf = bio.getvalue()
+            resp = HttpResponse(pdf, content_type='application/pdf')
+            resp['Content-Disposition'] = 'attachment; filename="statement.pdf"'
+            return resp
         return Response({
             'generated_at': timezone.now().isoformat(),
             'transactions': [

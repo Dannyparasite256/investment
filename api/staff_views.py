@@ -454,6 +454,12 @@ class StaffTicketDetailView(APIView):
     permission_classes = [IsAuthenticated, IsStaffPanel]
 
     def _msg_dict(self, m):
+        att_url = ''
+        if m.attachment:
+            try:
+                att_url = m.attachment.url
+            except Exception:
+                att_url = ''
         return {
             'id': str(m.id),
             'body': m.body,
@@ -464,6 +470,7 @@ class StaffTicketDetailView(APIView):
             'read_at': m.read_at,
             'receipt_status': m.receipt_status,
             'sender': m.sender_id,
+            'attachment_url': att_url,
         }
 
     def _mark_user_messages_read(self, ticket):
@@ -550,10 +557,12 @@ class StaffTicketDetailView(APIView):
             })
 
         body = (request.data.get('body') or '').strip()
-        if not body:
-            return Response({'detail': 'Message required'}, status=400)
+        attachment = request.FILES.get('attachment')
+        if not body and not attachment:
+            return Response({'detail': 'Message or attachment required'}, status=400)
         msg = TicketMessage.objects.create(
-            ticket=t, sender=request.user, body=body, is_staff_reply=True,
+            ticket=t, sender=request.user, body=body or '(attachment)',
+            is_staff_reply=True, attachment=attachment,
         )
         t.status = SupportTicket.Status.WAITING
         t.save(update_fields=['status', 'updated_at'])

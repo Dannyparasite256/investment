@@ -18,6 +18,12 @@ const theme = useThemeStore()
 const ui = useUiStore()
 const router = useRouter()
 const saving = ref(false)
+const pushBusy = ref(false)
+const pushSupported = ref(false)
+const pushPermission = ref<NotificationPermission | 'unsupported'>('default')
+const pushEnabled = ref(false)
+const vapidKey = ref('')
+const pushReady = ref(false)
 
 const form = ref({
   first_name: '',
@@ -41,18 +47,137 @@ const themeMode = computed({
   set: (v: ThemeMode) => theme.apply(v),
 })
 
+const pushStatusLabel = computed(() => {
+  if (!pushSupported.value) return 'Not supported in this browser'
+  if (!vapidKey.value) return 'Server push keys not configured yet'
+  if (pushPermission.value === 'denied') return 'Blocked in browser settings'
+  if (pushEnabled.value) return 'Enabled on this device'
+  return 'Optional browser notifications for deposits, support, and alerts'
+})
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = atob(base64)
+  const out = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i)
+  return out
+}
+
+async function loadPushState() {
+  pushSupported.value =
+    typeof window !== 'undefined' &&
+    'Notification' in window &&
+    'serviceWorker' in navigator &&
+    'PushManager' in window
+  if (!pushSupported.value) {
+    pushPermission.value = 'unsupported'
+    return
+  }
+  pushPermission.value = Notification.permission
+  try {
+    let boot: any = null
+    try {
+      boot = JSON.parse(localStorage.getItem('ci_bootstrap') || 'null')
+    } catch { /* */ }
+    if (!boot?.vapid_public_key) {
+      const { data } = await api.bootstrap()
+      boot = data
+      try { localStorage.setItem('ci_bootstrap', JSON.stringify(data)) } catch { /* */ }
+    }
+    vapidKey.value = (boot?.vapid_public_key || '').trim()
+    pushReady.value = Boolean(boot?.push_enabled !== false && vapidKey.value)
+
+    if (Notification.permission === 'granted' && navigator.serviceWorker) {
+      const reg = await navigator.serviceWorker.ready
+      const sub = await reg.pushManager.getSubscription()
+      pushEnabled.value = !!sub
+    }
+  } catch {
+    pushReady.value = false
+  }
+}
+
+async function enablePush() {
+  if (!pushSupported.value) {
+    ui.toast('Unavailable', 'This browser does not support Web Push', 'warn')
+    return
+  }
+  if (!vapidKey.value) {
+    ui.toast(
+      'Not configured',
+      'Ask an admin to set VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY on the server',
+      'warn',
+    )
+    return
+  }
+  pushBusy.value = true
+  try {
+    const perm = await Notification.requestPermission()
+    pushPermission.value = perm
+    if (perm !== 'granted') {
+      ui.toast('Permission denied', 'Enable notifications in browser settings to continue', 'warn')
+      return
+    }
+    const reg = await navigator.serviceWorker.ready
+    let sub = await reg.pushManager.getSubscription()
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey.value),
+      })
+    }
+    const json = sub.toJSON()
+    await api.pushSubscribe({
+      endpoint: sub.endpoint,
+      keys: {
+        p256dh: json.keys?.p256dh,
+        auth: json.keys?.auth,
+      },
+    })
+    pushEnabled.value = true
+    ui.toast('Push enabled', 'You will get browser alerts on this device', 'success')
+  } catch (e: any) {
+    ui.toast('Push failed', e?.response?.data?.detail || e?.message || 'Could not subscribe', 'error')
+  } finally {
+    pushBusy.value = false
+  }
+}
+
+async function disablePush() {
+  pushBusy.value = true
+  try {
+    const reg = await navigator.serviceWorker.ready
+    const sub = await reg.pushManager.getSubscription()
+    if (sub) {
+      try {
+        await api.pushUnsubscribe(sub.endpoint)
+      } catch { /* best effort */ }
+      await sub.unsubscribe()
+    }
+    pushEnabled.value = false
+    ui.toast('Push disabled', 'Browser alerts turned off on this device', 'info')
+  } catch (e: any) {
+    ui.toast('Failed', e?.message || 'Could not unsubscribe', 'error')
+  } finally {
+    pushBusy.value = false
+  }
+}
+
 onMounted(() => {
   const u = auth.user
-  if (!u) return
-  form.value = {
-    first_name: u.first_name || '',
-    last_name: u.last_name || '',
-    phone: u.phone || '',
-    country: u.country || '',
-    preferred_currency: u.preferred_currency || '',
-    email_alerts: u.email_alerts !== false,
-    sms_alerts: !!u.sms_alerts,
+  if (u) {
+    form.value = {
+      first_name: u.first_name || '',
+      last_name: u.last_name || '',
+      phone: u.phone || '',
+      country: u.country || '',
+      preferred_currency: u.preferred_currency || '',
+      email_alerts: u.email_alerts !== false,
+      sms_alerts: !!u.sms_alerts,
+    }
   }
+  loadPushState()
 })
 
 async function save() {
@@ -138,6 +263,50 @@ async function save() {
             <div class="mini short" />
           </div>
         </div>
+
+        <div class="glass card push-card">
+          <h3>Browser push</h3>
+          <p class="muted push-desc">{{ pushStatusLabel }}</p>
+          <div class="push-row">
+            <Tag
+              v-if="pushEnabled"
+              value="On"
+              severity="success"
+            />
+            <Tag
+              v-else-if="pushPermission === 'denied'"
+              value="Blocked"
+              severity="danger"
+            />
+            <Tag
+              v-else-if="!vapidKey"
+              value="Setup needed"
+              severity="warn"
+            />
+            <Tag
+              v-else
+              value="Off"
+              severity="secondary"
+            />
+            <Button
+              v-if="!pushEnabled"
+              label="Enable push alerts"
+              icon="pi pi-bell"
+              :loading="pushBusy"
+              :disabled="!pushSupported || pushPermission === 'denied'"
+              @click="enablePush"
+            />
+            <Button
+              v-else
+              label="Disable on this device"
+              icon="pi pi-bell-slash"
+              severity="secondary"
+              outlined
+              :loading="pushBusy"
+              @click="disablePush"
+            />
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -176,4 +345,7 @@ li { display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.45re
 }
 .mini { height: 10px; border-radius: 99px; background: linear-gradient(90deg, #3B82F6, #7C3AED); width: 70%; }
 .mini.short { width: 40%; opacity: 0.5; }
+.push-card h3 { margin-bottom: 0.35rem; }
+.push-desc { font-size: 0.88rem; margin: 0 0 0.85rem; }
+.push-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem; }
 </style>

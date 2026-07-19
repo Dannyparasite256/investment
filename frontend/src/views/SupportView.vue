@@ -32,6 +32,8 @@ const showNew = ref(false)
 const saving = ref(false)
 const search = ref('')
 const messagesEl = ref<HTMLElement | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
+const pendingFile = ref<File | null>(null)
 const form = ref({ subject: '', body: '', category: 'general' })
 
 const chat = useSupportChat({
@@ -203,29 +205,51 @@ function closeChat() {
   router.push('/support')
 }
 
+function onPickFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  pendingFile.value = input.files?.[0] || null
+}
+
+function clearFile() {
+  pendingFile.value = null
+  if (fileInput.value) fileInput.value.value = ''
+}
+
+function attachmentHref(m: TicketMessage) {
+  return m.attachment_url || m.attachment || m._localPreview || ''
+}
+
+function isImageAtt(m: TicketMessage) {
+  const u = attachmentHref(m).toLowerCase()
+  return /\.(png|jpe?g|gif|webp|bmp)(\?|$)/i.test(u) || (m._localPreview || '').startsWith('blob:')
+}
+
 async function reply() {
-  if (!body.value.trim() || !activeTicket.value || !canReply.value || sending.value) return
+  if ((!body.value.trim() && !pendingFile.value) || !activeTicket.value || !canReply.value || sending.value) return
   const text = body.value.trim()
+  const file = pendingFile.value
   body.value = ''
+  clearFile()
   chat.sendTyping(false)
   sending.value = true
 
   const tempId = `tmp-${Date.now()}`
   const optimistic: TicketMessage = {
     id: tempId,
-    body: text,
+    body: text || (file ? file.name : ''),
     is_staff_reply: false,
     created_at: new Date().toISOString(),
     sender: auth.user?.id || 0,
     sender_name: auth.displayName,
     receipt_status: 'pending',
     _pending: true,
+    _localPreview: file && file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
   }
   chatMessages.value.push(optimistic)
   await scrollToBottom(true)
 
   try {
-    const { data } = await api.replyTicket(activeTicket.value.id, text)
+    const { data } = await api.replyTicket(activeTicket.value.id, text, file)
     const msg = data as TicketMessage
     const i = chatMessages.value.findIndex((m) => m.id === tempId)
     if (i >= 0) chatMessages.value[i] = { ...msg, _pending: false }
@@ -393,7 +417,17 @@ onUnmounted(() => chat.leave())
           >
             <div class="wa-bubble">
               <div v-if="m.is_staff_reply" class="wa-sender">Support</div>
-              <div class="wa-text" v-html="linkify(m.body)" />
+              <div v-if="m.body" class="wa-text" v-html="linkify(m.body)" />
+              <a
+                v-if="attachmentHref(m)"
+                class="wa-attach"
+                :href="attachmentHref(m)"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <img v-if="isImageAtt(m)" :src="attachmentHref(m)" alt="Attachment" class="wa-attach-img" />
+                <span v-else class="wa-attach-file"><i class="pi pi-paperclip" /> Open attachment</span>
+              </a>
               <div class="wa-meta">
                 <span>{{ msgTime(m.created_at) }}</span>
                 <span
@@ -428,23 +462,32 @@ onUnmounted(() => chat.leave())
           </div>
         </div>
 
-        <footer v-if="canReply" class="wa-composer">
-          <textarea
-            v-model="body"
-            rows="1"
-            placeholder="Type a message"
-            @keydown="onKeydown"
-            @input="onInput"
-          />
-          <Button
-            icon="pi pi-send"
-            rounded
-            severity="success"
-            :loading="sending"
-            :disabled="!body.trim()"
-            aria-label="Send"
-            @click="reply"
-          />
+        <footer v-if="canReply" class="wa-composer-wrap">
+          <div v-if="pendingFile" class="wa-file-chip">
+            <i class="pi pi-paperclip" />
+            <span class="truncate">{{ pendingFile.name }}</span>
+            <button type="button" class="chip-x" @click="clearFile" aria-label="Remove file">×</button>
+          </div>
+          <div class="wa-composer">
+            <input ref="fileInput" type="file" class="hidden-file" accept="image/*,.pdf,.doc,.docx,.txt" @change="onPickFile" />
+            <Button icon="pi pi-paperclip" text rounded aria-label="Attach" @click="fileInput?.click()" />
+            <textarea
+              v-model="body"
+              rows="1"
+              placeholder="Type a message"
+              @keydown="onKeydown"
+              @input="onInput"
+            />
+            <Button
+              icon="pi pi-send"
+              rounded
+              severity="success"
+              :loading="sending"
+              :disabled="!body.trim() && !pendingFile"
+              aria-label="Send"
+              @click="reply"
+            />
+          </div>
         </footer>
         <footer v-else class="wa-composer closed">
           <span class="muted">This conversation is closed. Open a new chat if you need more help.</span>
@@ -805,13 +848,51 @@ onUnmounted(() => chat.leave())
 
 .wa-empty-msgs { text-align: center; margin: auto; padding: 2rem; }
 
+.wa-composer-wrap {
+  background: rgba(17, 27, 33, 0.96);
+  border-top: 1px solid var(--ci-border);
+  padding: 0.45rem 0.75rem 0.7rem;
+}
+.wa-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  margin-bottom: 0.4rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(37, 211, 102, 0.12);
+  font-size: 0.78rem;
+}
+.chip-x {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+.hidden-file { display: none; }
+.wa-attach {
+  display: block;
+  margin-top: 0.4rem;
+  text-decoration: none;
+  color: #53bdeb;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.wa-attach-img {
+  max-width: min(220px, 70vw);
+  max-height: 180px;
+  border-radius: 8px;
+  display: block;
+  object-fit: cover;
+}
+.wa-attach-file { display: inline-flex; align-items: center; gap: 0.35rem; }
 .wa-composer {
   display: flex;
   align-items: flex-end;
-  gap: 0.55rem;
-  padding: 0.55rem 0.75rem 0.7rem;
-  background: rgba(17, 27, 33, 0.96);
-  border-top: 1px solid var(--ci-border);
+  gap: 0.35rem;
 }
 .wa-composer.closed {
   justify-content: space-between;

@@ -65,6 +65,11 @@ class BootstrapView(APIView):
             'large_withdraw_threshold': str(cfg.large_withdraw_threshold),
             'support_sla_hours': cfg.support_sla_hours,
             'push_enabled': bool(cfg.push_enabled),
+            'vapid_public_key': getattr(
+                __import__('django.conf', fromlist=['settings']).settings,
+                'VAPID_PUBLIC_KEY',
+                '',
+            ) or '',
             'feature_flags': flags,
             'min_withdrawal': str(cfg.min_withdrawal),
             'max_withdrawal': str(cfg.max_withdrawal),
@@ -290,6 +295,18 @@ class CannedRepliesView(APIView):
     permission_classes = [IsStaffPanel]
 
     def get(self, request):
+        if not CannedReply.objects.exists():
+            defaults = [
+                ('Greeting', 'Hello! Thanks for contacting support. How can we help you today?', 'general', 1),
+                ('Deposit pending', 'Your deposit is being reviewed by our team. We will notify you as soon as it is approved.', 'deposit', 2),
+                ('Withdrawal update', 'Your withdrawal request is being processed. Network confirmation times can vary.', 'withdrawal', 3),
+                ('Need more info', 'Could you please share a screenshot or transaction hash so we can investigate further?', 'general', 4),
+                ('Resolved', 'This issue has been resolved on our side. Please reply if you need anything else — happy to help!', 'general', 5),
+            ]
+            for title, body, cat, order in defaults:
+                CannedReply.objects.create(
+                    title=title, body=body, category=cat, sort_order=order, is_active=True,
+                )
         rows = CannedReply.objects.filter(is_active=True)
         return Response({
             'results': [{
