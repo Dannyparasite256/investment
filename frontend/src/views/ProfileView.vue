@@ -314,9 +314,25 @@ async function save() {
 
 <style scoped>
 .grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 1rem; }
-@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; gap: 0.75rem; }
+}
 .stack { display: flex; flex-direction: column; gap: 1rem; }
 .card { padding: 1.25rem; }
+@media (max-width: 640px) {
+  .card { padding: 1rem 0.85rem; }
+  .avatar { width: 56px; height: 56px; font-size: 1.2rem; }
+  h2 { font-size: 1.15rem; word-break: break-word; }
+  li {
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+  }
+  .push-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .push-row :deep(.p-button) { width: 100%; justify-content: center; }
+}
 .avatar {
   width: 64px; height: 64px; border-radius: 18px;
   display: grid; place-items: center; font-weight: 800; font-size: 1.4rem;

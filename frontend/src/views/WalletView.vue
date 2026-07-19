@@ -254,7 +254,8 @@ async function copyAddress() {
   grid-template-columns: repeat(4, 1fr);
   gap: 0.75rem;
 }
-@media (max-width: 900px) { .grid-stats { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 900px) { .grid-stats { grid-template-columns: 1fr 1fr; gap: 0.55rem; } }
+@media (max-width: 380px) { .grid-stats { grid-template-columns: 1fr; } }
 .panel { margin-top: 1rem; padding: 1.15rem; }
 h3 { margin-bottom: 0.35rem; font-size: 1rem; }
 .small { font-size: 0.85rem; margin-bottom: 0.75rem; }
@@ -329,8 +330,29 @@ li span { color: var(--ci-muted); }
 }
 @media (max-width: 640px) {
   .qr-body { grid-template-columns: 1fr; justify-items: center; text-align: center; }
-  .qr-actions { justify-content: center; }
+  .qr-actions { justify-content: center; width: 100%; }
+  .qr-actions :deep(.p-button) { flex: 1; }
   .asset-title { justify-content: center; }
+  .crypto-chips {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem;
+  }
+  .crypto-chip {
+    min-width: 0;
+    width: 100%;
+  }
+  .qr-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .asset-select { width: 100%; min-width: 0; }
+  .panel { padding: 0.9rem 0.8rem; }
+  li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
 }
 .qr-frame {
   width: 168px;

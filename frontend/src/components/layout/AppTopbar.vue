@@ -236,7 +236,7 @@ onMounted(async () => {
   min-width: 0;
 }
 .crypto-ticker {
-  display: inline-flex !important;
+  display: inline-flex;
   align-items: center;
   gap: 0.3rem;
   padding: 0.28rem 0.5rem;
@@ -250,11 +250,21 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  min-width: 0;
+}
+.fx-val span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .title {
   font-weight: 700;
   letter-spacing: -0.02em;
   font-size: 1.02rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: min(42vw, 14rem);
 }
 .sub {
   font-size: 0.75rem;
@@ -263,7 +273,7 @@ onMounted(async () => {
   text-overflow: ellipsis;
   max-width: 220px;
 }
-.fx-wrap { min-width: 0; }
+.fx-wrap { min-width: 0; flex-shrink: 1; }
 .fx-select {
   min-width: 7.5rem;
   max-width: 11rem;
@@ -295,7 +305,7 @@ onMounted(async () => {
 .balance:hover {
   border-color: rgba(59, 130, 246, 0.4);
 }
-.notif-wrap { position: relative; }
+.notif-wrap { position: relative; flex-shrink: 0; }
 .badge {
   position: absolute;
   top: 2px;
@@ -303,6 +313,7 @@ onMounted(async () => {
 }
 .collapse-btn { display: none; }
 .collapse-btn.rotated { transform: rotate(180deg); }
+.titles { min-width: 0; }
 @media (min-width: 992px) {
   .menu-btn { display: none; }
   .collapse-btn { display: inline-flex; }
@@ -312,9 +323,36 @@ onMounted(async () => {
   .topbar {
     top: 0;
     border-radius: 0;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0;
+    padding: 0.45rem 0.55rem;
+    padding-top: calc(0.45rem + env(safe-area-inset-top, 0px));
+    min-height: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
+    gap: 0.35rem;
+    position: sticky;
+    z-index: 40;
+  }
+  .left { gap: 0.15rem; flex: 1; min-width: 0; }
+  .right {
+    gap: 0.1rem;
+    flex-shrink: 0;
   }
   .sub { display: none; }
-  .fx-select { min-width: 5.5rem; max-width: 7.5rem; }
+  .crypto-ticker { display: none !important; }
+  .fx-select {
+    min-width: 4.6rem;
+    max-width: 6.2rem;
+  }
+  .title {
+    font-size: 0.95rem;
+    max-width: min(36vw, 9.5rem);
+  }
+  :deep(.p-button.p-button-icon-only) {
+    width: 2.35rem;
+    height: 2.35rem;
+  }
+}
+@media (max-width: 420px) {
+  .fx-wrap { display: none; }
+  .title { max-width: min(48vw, 11rem); }
 }
 </style>

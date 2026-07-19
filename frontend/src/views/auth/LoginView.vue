@@ -68,10 +68,21 @@ async function submit() {
 <style scoped>
 .auth {
   min-height: 100dvh;
+  min-height: 100svh;
   display: grid;
   place-items: center;
   padding: 1.5rem;
+  padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   position: relative;
+}
+@media (max-width: 480px) {
+  .auth { padding: 1rem; align-items: flex-start; padding-top: 3.5rem; }
+  .card {
+    width: 100%;
+    max-width: 100%;
+    padding: 1.25rem 1rem;
+  }
 }
 .theme-btn {
   position: absolute;

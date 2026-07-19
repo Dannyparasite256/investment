@@ -39,15 +39,20 @@ function active(to: string) {
   .bottom {
     display: flex;
     position: fixed;
-    left: 0; right: 0; bottom: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: 50;
     justify-content: space-around;
     align-items: flex-end;
-    padding: 0.4rem 0.35rem calc(0.4rem + env(safe-area-inset-bottom));
+    padding: 0.35rem 0.2rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
     border-radius: 0;
     border-left: 0;
     border-right: 0;
     border-bottom: 0;
+    background: color-mix(in srgb, var(--ci-bg-elevated) 88%, transparent);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
   }
   .item {
     flex: 1;
@@ -57,15 +62,24 @@ function active(to: string) {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.15rem;
-    font-size: 0.62rem;
-    font-weight: 600;
+    justify-content: flex-end;
+    gap: 0.12rem;
+    font-size: 0.6rem;
+    font-weight: 650;
     cursor: pointer;
-    padding: 0.25rem;
+    padding: 0.3rem 0.15rem;
+    min-width: 0;
+    -webkit-tap-highlight-color: transparent;
   }
-  .item i { font-size: 1.15rem; }
+  .item > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  .item i { font-size: 1.18rem; }
   .item.active { color: var(--ci-primary); }
-  .item.fab { position: relative; top: -12px; }
+  .item.fab { position: relative; top: -10px; }
   .fab-circle {
     width: 48px;
     height: 48px;
@@ -78,5 +92,9 @@ function active(to: string) {
     box-shadow: 0 10px 24px rgba(59, 130, 246, 0.45);
   }
   .fab-circle i { font-size: 1.2rem; }
+}
+@media (max-width: 360px) {
+  .item { font-size: 0.55rem; }
+  .fab-circle { width: 44px; height: 44px; }
 }
 </style>

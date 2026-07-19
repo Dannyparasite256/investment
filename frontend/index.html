@@ -20,7 +20,7 @@
         // Bust stale service-worker / Cache Storage after SPA deploys (PythonAnywhere)
         try {
           var KEY = 'ci_cache_bust'
-          var VER = 'typing-fix-attach-v1'
+          var VER = 'mobile-ui-v1'
           if (localStorage.getItem(KEY) !== VER) {
             localStorage.setItem(KEY, VER)
             var done = function () { location.reload() }

@@ -265,6 +265,37 @@ onMounted(async () => {
   border-color: rgba(59, 130, 246, 0.6);
   background: rgba(59, 130, 246, 0.12);
 }
+@media (max-width: 640px) {
+  .crypto-hero { padding: 0.85rem 0.75rem; }
+  .crypto-hero-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+  .crypto-hero-chip {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.82rem;
+  }
+  .hero {
+    padding: 1rem 0.9rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .hero-val { font-size: 1.65rem; }
+  .actions { width: 100%; }
+  .actions :deep(.p-button) { flex: 1; justify-content: center; }
+  .ticker {
+    padding: 0.55rem 0.65rem;
+    gap: 0.4rem;
+  }
+  .chip {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.5rem;
+  }
+  .panel { padding: 0.85rem 0.75rem; }
+}
 .hero {
   margin-top: 1rem;
   padding: 1.35rem 1.4rem;

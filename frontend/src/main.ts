@@ -18,7 +18,7 @@ import { useThemeStore } from './stores/theme'
  * One-time hard refresh after deploys that change SPA assets.
  * PythonAnywhere clients often keep an old service-worker cache of /app/.
  */
-const CACHE_BUST = 'typing-fix-attach-v1'
+const CACHE_BUST = 'mobile-ui-v1'
 async function bustStaleAppCache() {
   try {
     if (localStorage.getItem('ci_cache_bust') === CACHE_BUST) return

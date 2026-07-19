@@ -1040,10 +1040,20 @@ onUnmounted(() => chat.leave())
 @media (max-width: 900px) {
   .wa-shell {
     grid-template-columns: 1fr;
-    height: calc(100dvh - 6.5rem);
+    height: calc(100dvh - var(--topbar-h, 56px) - var(--bottom-nav-h, 4.25rem) - env(safe-area-inset-bottom, 0px) - 1.25rem);
+    height: calc(100svh - var(--topbar-h, 56px) - var(--bottom-nav-h, 4.25rem) - env(safe-area-inset-bottom, 0px) - 1.25rem);
+    min-height: 420px;
+    max-height: none;
+    border-radius: 14px;
   }
   .wa-shell.has-chat .wa-sidebar { display: none; }
   .wa-shell:not(.has-chat) .wa-pane { display: none; }
   .wa-back { display: inline-flex; }
+  .wa-chat-head { padding: 0.55rem 0.65rem; gap: 0.45rem; }
+  .wa-messages { padding: 0.65rem 0.55rem 0.85rem; }
+  .wa-bubble { max-width: min(88%, 100%); }
+  .wa-composer-wrap { padding: 0.4rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom, 0px)); }
+  .wa-composer textarea { min-height: 40px; font-size: 16px; }
+  .wa-filters { padding: 0 0.65rem 0.5rem; }
 }
 </style>

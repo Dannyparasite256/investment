@@ -230,12 +230,25 @@ function logout() {
 }
 @media (max-width: 991.98px) {
   .sidebar {
-    top: 0; left: 0; bottom: 0;
+    top: 0;
+    left: 0;
+    bottom: 0;
     border-radius: 0;
     transform: translateX(-105%);
-    width: min(280px, 88vw);
+    width: min(300px, 86vw);
+    max-width: 320px;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 12px 0 40px rgba(0, 0, 0, 0.35);
   }
   .sidebar.open { transform: translateX(0); }
-  .sidebar.collapsed { width: min(280px, 88vw); }
+  .sidebar.collapsed { width: min(300px, 86vw); }
+  .link {
+    padding: 0.72rem 0.9rem;
+    min-height: 2.65rem;
+    font-size: 0.9rem;
+  }
+  .nav { padding-bottom: 1rem; }
+  .brand { padding: 1rem 0.9rem; }
 }
 </style>

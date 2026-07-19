@@ -62,6 +62,7 @@ onMounted(async () => {
 <style scoped>
 .shell {
   min-height: 100dvh;
+  min-height: 100svh;
   display: flex;
   padding: 12px;
   gap: 12px;
@@ -85,18 +86,25 @@ onMounted(async () => {
   padding: 0.35rem 0.25rem 5.5rem;
   max-width: 1400px;
   width: 100%;
+  min-width: 0;
 }
 .site-banner {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.5rem;
   padding: 0.55rem 0.85rem;
   border-radius: 12px;
   background: rgba(59, 130, 246, 0.15);
   border: 1px solid rgba(59, 130, 246, 0.3);
   font-size: 0.88rem;
   cursor: pointer;
+}
+.site-banner span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .onboard-hint {
   margin-bottom: 0.5rem;
@@ -108,18 +116,28 @@ onMounted(async () => {
   font-weight: 650;
   cursor: pointer;
   width: fit-content;
+  max-width: 100%;
 }
 @media (min-width: 992px) {
   .content { padding-bottom: 2rem; }
 }
 @media (max-width: 991.98px) {
-  .shell { padding: 0; gap: 0; }
-  .main { margin-left: 0 !important; }
+  .shell {
+    padding: 0;
+    gap: 0;
+    flex-direction: column;
+  }
+  .main {
+    margin-left: 0 !important;
+    width: 100%;
+    min-height: 100dvh;
+    min-height: 100svh;
+  }
   .overlay {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.55);
     backdrop-filter: blur(4px);
     z-index: 1030;
     opacity: 0;
@@ -131,7 +149,24 @@ onMounted(async () => {
     pointer-events: auto;
   }
   .content {
-    padding: 0.75rem 0.85rem 5.75rem;
+    padding: 0.65rem var(--page-pad-x) calc(var(--bottom-nav-h) + var(--safe-bottom) + 1rem);
+  }
+  .site-banner {
+    margin: 0 var(--page-pad-x) 0.45rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    padding: 0.5rem 0.7rem;
+  }
+  .onboard-hint {
+    margin-left: var(--page-pad-x);
+    margin-right: var(--page-pad-x);
+    font-size: 0.78rem;
+  }
+}
+@media (max-width: 420px) {
+  .content {
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
   }
 }
 </style>

@@ -60,4 +60,11 @@ defineProps<{
 .success .value { color: var(--ci-success); }
 .danger .value { color: var(--ci-danger); }
 .gold .value { color: var(--ci-gold); }
+@media (max-width: 640px) {
+  .card { padding: 0.85rem 0.8rem; }
+  .value { font-size: 1.15rem; word-break: break-word; }
+  .icon { width: 36px; height: 36px; border-radius: 10px; }
+  .icon i { font-size: 0.95rem; }
+  .card:hover { transform: none; }
+}
 </style>

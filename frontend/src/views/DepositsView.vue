@@ -255,4 +255,13 @@ onMounted(load)
   margin: 0.35rem 0 0.15rem;
   color: var(--ci-muted);
 }
+@media (max-width: 520px) {
+  .panel { padding: 0.45rem; overflow-x: auto; }
+  .dep-qr {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+  .dep-qr-meta { width: 100%; }
+}
 </style>

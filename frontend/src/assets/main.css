@@ -36,6 +36,10 @@
   --ci-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
   --sidebar-w: 268px;
   --topbar-h: 64px;
+  --bottom-nav-h: 4.25rem;
+  --page-pad-x: 0.85rem;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
   --font: 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Manrope', 'Inter', system-ui, sans-serif;
   color-scheme: dark;
@@ -183,9 +187,12 @@ html[data-theme='light'] .gradient-text {
 }
 
 @media (max-width: 1100px) {
-  .grid-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
 }
 @media (max-width: 560px) {
+  .grid-stats { grid-template-columns: 1fr 1fr; gap: 0.55rem; }
+}
+@media (max-width: 380px) {
   .grid-stats { grid-template-columns: 1fr; }
 }
 
@@ -244,6 +251,91 @@ html[data-theme='light'] .gradient-text {
 @keyframes sk {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* —— Mobile polish (global) —— */
+@media (max-width: 991.98px) {
+  :root {
+    --ci-radius: 14px;
+    --topbar-h: 56px;
+  }
+
+  /* Prevent horizontal scroll from wide tables / chips */
+  .glass {
+    max-width: 100%;
+  }
+
+  /* Scrollable data tables on phones */
+  .p-datatable-wrapper,
+  .p-datatable-table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .p-datatable table {
+    min-width: 520px;
+  }
+  .p-datatable .p-datatable-thead > tr > th,
+  .p-datatable .p-datatable-tbody > tr > td {
+    white-space: nowrap;
+    font-size: 0.82rem !important;
+    padding: 0.55rem 0.5rem !important;
+  }
+
+  /* Dialogs nearly full-width on mobile */
+  .p-dialog {
+    width: min(100vw - 1rem, 440px) !important;
+    max-width: calc(100vw - 1rem) !important;
+    margin: 0.5rem !important;
+  }
+  .p-dialog .p-dialog-content {
+    padding: 0.85rem !important;
+  }
+
+  /* Touch-friendly controls */
+  .p-button:not(.p-button-sm):not(.p-button-icon-only) {
+    min-height: 2.5rem;
+  }
+  .p-inputtext,
+  .p-select,
+  .p-password input,
+  .p-inputnumber-input {
+    min-height: 2.5rem !important;
+    font-size: 16px !important; /* prevents iOS zoom on focus */
+  }
+
+  /* Menus stay on screen */
+  .p-menu {
+    max-width: min(92vw, 280px) !important;
+  }
+
+  /* Toast: don't cover bottom nav */
+  .p-toast {
+    width: min(92vw, 22rem) !important;
+  }
+  .p-toast.p-toast-top-right,
+  .p-toast.p-toast-top-center {
+    top: calc(0.5rem + var(--safe-top)) !important;
+    right: 0.5rem !important;
+    left: auto !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .p-datatable table {
+    min-width: 460px;
+  }
+  .p-paginator {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 0.25rem !important;
+    padding: 0.5rem !important;
+  }
+  .p-paginator .p-paginator-page,
+  .p-paginator .p-paginator-prev,
+  .p-paginator .p-paginator-next {
+    min-width: 2rem !important;
+    height: 2rem !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

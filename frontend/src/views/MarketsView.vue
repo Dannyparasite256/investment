@@ -53,8 +53,15 @@ onUnmounted(() => {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.85rem;
 }
-@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); gap: 0.55rem; } }
+@media (max-width: 480px) {
+  .grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .card { padding: 0.85rem 0.7rem; }
+  .price { font-size: 1.15rem; }
+}
+@media (max-width: 360px) {
+  .grid { grid-template-columns: 1fr; }
+}
 .card { padding: 1.15rem; }
 .sym {
   display: flex;
