@@ -13,6 +13,10 @@ import { useCurrencyStore } from '@/stores/currency'
 import { api, unwrapList } from '@/services/api'
 import { formatDisplay } from '@/utils/money'
 import type { AppNotification } from '@/types/api'
+import CryptoIcon from '@/components/ui/CryptoIcon.vue'
+
+/** Always-visible sample icons (proves badges render even if a page has no crypto list). */
+const tickerIcons = ['BTC', 'ETH', 'USDT', 'BNB', 'LTC']
 
 const route = useRoute()
 const router = useRouter()
@@ -143,6 +147,10 @@ onMounted(async () => {
     </div>
 
     <div class="right">
+      <div class="crypto-ticker" title="Supported assets" @click="router.push('/wallet')">
+        <CryptoIcon v-for="s in tickerIcons" :key="s" :symbol="s" size="sm" />
+      </div>
+
       <div class="fx-wrap" v-tooltip.bottom="'Display currency · live conversion'">
         <Select
           v-model="currencyModel"
@@ -153,7 +161,21 @@ onMounted(async () => {
           class="fx-select"
           :loading="currency.switching"
           :disabled="currency.switching"
-        />
+        >
+          <template #value="{ value }">
+            <span v-if="value" class="fx-val">
+              <CryptoIcon :symbol="value" size="xs" />
+              <span>{{ value }}</span>
+            </span>
+            <span v-else>Currency</span>
+          </template>
+          <template #option="{ option }">
+            <span class="fx-val">
+              <CryptoIcon :symbol="option.code" size="xs" />
+              <span>{{ option.label }}</span>
+            </span>
+          </template>
+        </Select>
       </div>
 
       <button type="button" class="balance" @click="router.push('/wallet')">
@@ -212,6 +234,24 @@ onMounted(async () => {
   align-items: center;
   gap: 0.35rem;
   min-width: 0;
+}
+.crypto-ticker {
+  display: none;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--ci-border);
+  cursor: pointer;
+}
+@media (min-width: 900px) {
+  .crypto-ticker { display: inline-flex; }
+}
+.fx-val {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 .title {
   font-weight: 700;

@@ -17,6 +17,31 @@
           var t = localStorage.getItem('ci_theme') || 'dark'
           document.documentElement.setAttribute('data-theme', t)
         } catch (e) {}
+        // Bust stale service-worker / Cache Storage after SPA deploys (PythonAnywhere)
+        try {
+          var KEY = 'ci_cache_bust'
+          var VER = 'crypto-icons-v3'
+          if (localStorage.getItem(KEY) !== VER) {
+            localStorage.setItem(KEY, VER)
+            var done = function () { location.reload() }
+            var tasks = []
+            if ('serviceWorker' in navigator) {
+              tasks.push(
+                navigator.serviceWorker.getRegistrations().then(function (regs) {
+                  return Promise.all(regs.map(function (r) { return r.unregister() }))
+                })
+              )
+            }
+            if (typeof caches !== 'undefined') {
+              tasks.push(
+                caches.keys().then(function (keys) {
+                  return Promise.all(keys.map(function (k) { return caches.delete(k) }))
+                })
+              )
+            }
+            Promise.all(tasks).then(done).catch(done)
+          }
+        } catch (e) {}
       })()
     </script>
   </head>
