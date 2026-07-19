@@ -143,8 +143,9 @@
 
         <div class="form-sticky-actions">
           <button type="submit" class="btn btn-ci w-100" id="withdraw-submit"
+                  {% if needs_reauth and not reauth_ok %}disabled title="Complete Step 1 confirmation first"{% endif %}
                   onclick="return confirm('Confirm withdrawal? Funds will be locked until approved or rejected.');">
-            Request withdrawal
+            {% if needs_reauth and not reauth_ok %}Confirm identity first{% else %}Request withdrawal{% endif %}
           </button>
           <a href="{% url 'transactions:withdraw_list' %}" class="btn btn-ghost w-100">My withdrawals</a>
         </div>
