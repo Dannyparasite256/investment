@@ -40,11 +40,13 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 class TicketMessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.SerializerMethodField()
+    receipt_status = serializers.CharField(read_only=True)
 
     class Meta:
         model = TicketMessage
         fields = (
             'id', 'body', 'is_staff_reply', 'created_at', 'sender', 'sender_name',
+            'delivered_at', 'read_at', 'receipt_status',
         )
         read_only_fields = fields
 

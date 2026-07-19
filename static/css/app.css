@@ -5322,7 +5322,7 @@ html[data-theme="light"][data-ui-theme="premium"] body::before {
   font-size: 0.68rem;
   opacity: 0.75;
 }
-.wa-meta i { color: #53bdeb; }
+.wa-meta i { color: inherit; }
 .wa-empty-msgs {
   text-align: center;
   margin: auto;

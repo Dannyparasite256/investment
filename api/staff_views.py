@@ -1,5 +1,5 @@
 """Staff/admin API for the Vue SPA (subset of /staff/ panel)."""
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -431,31 +431,106 @@ class StaffTicketListView(APIView):
 class StaffTicketDetailView(APIView):
     permission_classes = [IsAuthenticated, IsStaffPanel]
 
+    def _msg_dict(self, m):
+        return {
+            'id': str(m.id),
+            'body': m.body,
+            'is_staff_reply': m.is_staff_reply,
+            'sender_name': m.sender.get_full_name() or m.sender.email,
+            'created_at': m.created_at,
+            'delivered_at': m.delivered_at,
+            'read_at': m.read_at,
+            'receipt_status': m.receipt_status,
+            'sender': m.sender_id,
+        }
+
+    def _mark_user_messages_read(self, ticket):
+        from support.realtime import notify_receipts
+
+        now = timezone.now()
+        qs = TicketMessage.objects.filter(
+            ticket=ticket, is_staff_reply=False, read_at__isnull=True,
+        )
+        ids = list(qs.values_list('id', flat=True))
+        if not ids:
+            return 0
+        n = qs.update(delivered_at=now, read_at=now, updated_at=now)
+        notify_receipts(ticket.id, ids, 'read', now.isoformat())
+        return n
+
     def get(self, request, pk):
+        from support.realtime import get_presence, set_presence
+
         t = get_object_or_404(SupportTicket.objects.prefetch_related('messages__sender'), pk=pk)
+        set_presence(t.id, request.user, is_staff=True)
+        self._mark_user_messages_read(t)
         return Response({
             'id': str(t.id),
             'subject': t.subject,
             'status': t.status,
+            'category': t.category,
+            'priority': t.priority,
             'user_email': t.user.email,
-            'messages': [{
-                'id': str(m.id),
-                'body': m.body,
-                'is_staff_reply': m.is_staff_reply,
-                'sender_name': m.sender.get_full_name() or m.sender.email,
-                'created_at': m.created_at,
-            } for m in t.messages.all()],
+            'user_name': t.user.get_full_name() or t.user.email,
+            'updated_at': t.updated_at,
+            'created_at': t.created_at,
+            'messages': [self._msg_dict(m) for m in t.messages.all()],
+            'presence': get_presence(t.id),
         })
 
     def post(self, request, pk):
-        t = get_object_or_404(SupportTicket, pk=pk)
+        from support.realtime import get_presence, get_typing, notify_new_message, set_presence, set_typing
+
+        t = get_object_or_404(SupportTicket.objects.prefetch_related('messages__sender'), pk=pk)
+        action = (request.data.get('action') or 'reply').strip()
+
+        if action == 'typing':
+            set_typing(t.id, request.user, is_typing=bool(request.data.get('is_typing', True)), is_staff=True)
+            return Response({'ok': True})
+
+        if action == 'heartbeat':
+            set_presence(t.id, request.user, is_staff=True)
+            self._mark_user_messages_read(t)
+            return Response({
+                'ok': True,
+                'presence': get_presence(t.id),
+                'typing': get_typing(t.id, exclude_user_id=request.user.pk),
+            })
+
+        if action == 'poll':
+            set_presence(t.id, request.user, is_staff=True)
+            self._mark_user_messages_read(t)
+            since = request.data.get('since') or request.query_params.get('since')
+            qs = t.messages.select_related('sender').all()
+            if since:
+                try:
+                    since_dt = datetime.fromisoformat(str(since).replace('Z', '+00:00'))
+                    if timezone.is_naive(since_dt):
+                        since_dt = timezone.make_aware(since_dt, timezone.get_current_timezone())
+                    qs = qs.filter(created_at__gt=since_dt)
+                except (ValueError, TypeError):
+                    pass
+            own = t.messages.filter(is_staff_reply=True).select_related('sender')
+            return Response({
+                'messages': [self._msg_dict(m) for m in qs],
+                'receipts': [self._msg_dict(m) for m in own],
+                'typing': get_typing(t.id, exclude_user_id=request.user.pk),
+                'presence': get_presence(t.id),
+                'status': t.status,
+                'server_time': timezone.now().isoformat(),
+            })
+
         body = (request.data.get('body') or '').strip()
         if not body:
             return Response({'detail': 'Message required'}, status=400)
-        TicketMessage.objects.create(
+        msg = TicketMessage.objects.create(
             ticket=t, sender=request.user, body=body, is_staff_reply=True,
         )
         t.status = SupportTicket.Status.WAITING
         t.save(update_fields=['status', 'updated_at'])
-        notify(t.user, 'Support reply', f'Re: {t.subject}', category=Notification.Category.SYSTEM, link=f'/app/support/{t.id}')
-        return Response({'ok': True})
+        notify_new_message(t, msg)
+        notify(
+            t.user, 'Support reply', f'Re: {t.subject}',
+            category=Notification.Category.SYSTEM, link=f'/app/support/{t.id}',
+        )
+        return Response(self._msg_dict(msg), status=201)

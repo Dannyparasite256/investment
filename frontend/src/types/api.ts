@@ -220,13 +220,48 @@ export interface SupportTicket {
   messages?: TicketMessage[]
 }
 
+export type ReceiptStatus = 'pending' | 'sent' | 'delivered' | 'read'
+
 export interface TicketMessage {
   id: string
   body: string
   is_staff_reply: boolean
   created_at: string
+  delivered_at?: string | null
+  read_at?: string | null
+  receipt_status?: ReceiptStatus | string
   sender: number
   sender_name: string
+  /** Local optimistic flag before server ack */
+  _pending?: boolean
+  _failed?: boolean
+}
+
+export interface ChatPresence {
+  user_online?: boolean
+  staff_online?: boolean
+  user_name?: string
+  staff_name?: string
+  user_last_seen?: string | null
+  staff_last_seen?: string | null
+}
+
+export interface ChatTyper {
+  user_id: number
+  name: string
+  is_staff: boolean
+  at?: string
+}
+
+export interface ChatPollPayload {
+  ticket_id?: string
+  status?: string
+  updated_at?: string
+  messages: TicketMessage[]
+  receipts?: TicketMessage[]
+  typing: ChatTyper[]
+  presence: ChatPresence
+  server_time?: string
 }
 
 export interface WatchlistItem {

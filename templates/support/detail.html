@@ -4,7 +4,10 @@
 {% block page_subtitle %}Support chat{% endblock %}
 
 {% block content %}
-<div class="wa-shell has-chat">
+<div class="wa-shell has-chat" id="wa-chat-root"
+     data-ticket-id="{{ ticket.pk }}"
+     data-poll-url="{% url 'support:poll' ticket.pk %}"
+     data-typing-url="{% url 'support:typing' ticket.pk %}">
   <aside class="wa-sidebar d-none d-lg-flex">
     <header class="wa-side-head">
       <div class="wa-side-title">
@@ -49,39 +52,55 @@
       <a href="{% url 'support:list' %}" class="btn btn-ghost btn-sm wa-back" aria-label="Back">
         <i class="bi bi-arrow-left"></i>
       </a>
-      <span class="wa-avatar wa-avatar-lg">S</span>
+      <span class="wa-avatar wa-avatar-lg" id="wa-support-avatar">S</span>
       <div class="wa-chat-meta">
         <div class="wa-chat-title wa-truncate">{{ ticket.subject }}</div>
-        <div class="small text-muted">
-          Support · {{ ticket.category }}
+        <div class="small text-muted" id="wa-status-line">
+          {% if presence.staff_online %}online{% else %}Support · {{ ticket.category }}{% endif %}
           <span class="badge badge-status badge-info ms-1">{{ ticket.get_status_display }}</span>
         </div>
       </div>
+      <span class="badge bg-success-subtle text-success" id="wa-live-pill">Live</span>
     </header>
 
     <div class="wa-messages" id="wa-messages">
       <div class="wa-day-pill">Conversation started · {{ ticket.created_at|when }}</div>
       {% for m in messages_list %}
-      <div class="wa-bubble-row {% if m.is_staff_reply %}theirs{% else %}mine{% endif %}">
+      <div class="wa-bubble-row {% if m.is_staff_reply %}theirs{% else %}mine{% endif %}" data-msg-id="{{ m.id }}">
         <div class="wa-bubble">
           {% if m.is_staff_reply %}<div class="wa-sender">Support</div>{% endif %}
           <div class="wa-text">{{ m.body|linebreaksbr }}</div>
           <div class="wa-meta">
             <span>{{ m.created_at|when }}</span>
-            {% if not m.is_staff_reply %}<i class="bi bi-check2-all" title="Sent"></i>{% endif %}
+            {% if not m.is_staff_reply %}
+            <span class="wa-ticks wa-ticks-{{ m.receipt_status }}" title="{{ m.receipt_status }}" data-receipt="{{ m.receipt_status }}">
+              {% if m.receipt_status == 'read' %}
+              <i class="bi bi-check2"></i><i class="bi bi-check2 wa-tick-2"></i>
+              {% elif m.receipt_status == 'delivered' %}
+              <i class="bi bi-check2"></i><i class="bi bi-check2 wa-tick-2"></i>
+              {% else %}
+              <i class="bi bi-check2"></i>
+              {% endif %}
+            </span>
+            {% endif %}
           </div>
         </div>
       </div>
       {% empty %}
       <div class="wa-empty-msgs text-muted">Send a message to start the conversation.</div>
       {% endfor %}
+      <div class="wa-bubble-row theirs d-none" id="wa-typing-row">
+        <div class="wa-bubble wa-typing-bubble">
+          <span class="wa-dot"></span><span class="wa-dot"></span><span class="wa-dot"></span>
+        </div>
+      </div>
     </div>
 
     {% if ticket.status != 'closed' and ticket.status != 'resolved' %}
     <footer class="wa-composer">
-      <form method="post" class="wa-composer-form">
+      <form method="post" class="wa-composer-form" id="wa-send-form">
         {% csrf_token %}
-        <textarea name="body" rows="1" required placeholder="Type a message" class="wa-input"></textarea>
+        <textarea name="body" rows="1" required placeholder="Type a message" class="wa-input" id="wa-input"></textarea>
         <button class="btn btn-success rounded-circle wa-send" type="submit" title="Send" aria-label="Send">
           <i class="bi bi-send-fill"></i>
         </button>
@@ -96,10 +115,144 @@
   </section>
 </div>
 
+<style>
+.wa-ticks {
+  display: inline-flex;
+  position: relative;
+  width: 1.05rem;
+  height: 0.85rem;
+  color: rgba(233, 254, 246, 0.7);
+  margin-left: 0.15rem;
+}
+.wa-ticks i { font-size: 0.75rem; position: absolute; left: 0; line-height: 1; }
+.wa-ticks .wa-tick-2 { left: 0.28rem; }
+.wa-ticks-read { color: #53bdeb !important; }
+.wa-typing-bubble {
+  display: flex !important;
+  gap: 4px;
+  align-items: center;
+  padding: 0.7rem 0.95rem !important;
+}
+.wa-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #94a3b8;
+  animation: waBounce 1.2s ease-in-out infinite;
+}
+.wa-dot:nth-child(2) { animation-delay: 0.15s; }
+.wa-dot:nth-child(3) { animation-delay: 0.3s; }
+@keyframes waBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+#wa-live-pill { font-size: 0.7rem; font-weight: 700; }
+</style>
+
 <script>
 (function () {
-  var el = document.getElementById('wa-messages');
-  if (el) el.scrollTop = el.scrollHeight;
+  var root = document.getElementById('wa-chat-root');
+  if (!root) return;
+  var pollUrl = root.getAttribute('data-poll-url');
+  var typingUrl = root.getAttribute('data-typing-url');
+  var messagesEl = document.getElementById('wa-messages');
+  var typingRow = document.getElementById('wa-typing-row');
+  var statusLine = document.getElementById('wa-status-line');
+  var input = document.getElementById('wa-input');
+  var csrf = (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
+  var seen = {};
+  var typingTimer = null;
+
+  document.querySelectorAll('[data-msg-id]').forEach(function (el) {
+    seen[el.getAttribute('data-msg-id')] = true;
+  });
+
+  function scrollBottom() {
+    if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+  scrollBottom();
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function ticksHtml(status) {
+    if (status === 'read') {
+      return '<span class="wa-ticks wa-ticks-read" title="Read"><i class="bi bi-check2"></i><i class="bi bi-check2 wa-tick-2"></i></span>';
+    }
+    if (status === 'delivered') {
+      return '<span class="wa-ticks wa-ticks-delivered" title="Delivered"><i class="bi bi-check2"></i><i class="bi bi-check2 wa-tick-2"></i></span>';
+    }
+    return '<span class="wa-ticks wa-ticks-sent" title="Sent"><i class="bi bi-check2"></i></span>';
+  }
+
+  function appendMsg(m) {
+    if (!m || !m.id || seen[m.id]) return;
+    seen[m.id] = true;
+    var mine = !m.is_staff_reply;
+    var row = document.createElement('div');
+    row.className = 'wa-bubble-row ' + (mine ? 'mine' : 'theirs');
+    row.setAttribute('data-msg-id', m.id);
+    var body = escapeHtml(m.body || '').replace(/\n/g, '<br>');
+    var ticks = mine ? ticksHtml(m.receipt_status || 'sent') : '';
+    row.innerHTML =
+      '<div class="wa-bubble">' +
+      (m.is_staff_reply ? '<div class="wa-sender">Support</div>' : '') +
+      '<div class="wa-text">' + body + '</div>' +
+      '<div class="wa-meta"><span>now</span>' + ticks + '</div></div>';
+    if (typingRow && typingRow.parentNode === messagesEl) {
+      messagesEl.insertBefore(row, typingRow);
+    } else {
+      messagesEl.appendChild(row);
+    }
+    scrollBottom();
+  }
+
+  function applyReceipts(list) {
+    (list || []).forEach(function (r) {
+      var el = document.querySelector('[data-msg-id="' + r.id + '"] .wa-ticks');
+      if (!el) return;
+      el.outerHTML = ticksHtml(r.receipt_status || 'sent');
+    });
+  }
+
+  function poll() {
+    fetch(pollUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        (data.messages || []).forEach(appendMsg);
+        applyReceipts(data.receipts || []);
+        var typing = data.typing || [];
+        if (typingRow) {
+          typingRow.classList.toggle('d-none', !typing.length);
+          if (typing.length) scrollBottom();
+        }
+        if (statusLine) {
+          if (typing.length) {
+            statusLine.innerHTML = '<span class="text-success fw-semibold">Support is typing…</span>';
+          } else if (data.presence && data.presence.staff_online) {
+            statusLine.innerHTML = '<span class="text-success">online</span>';
+          }
+        }
+      })
+      .catch(function () {});
+  }
+
+  function sendTyping(on) {
+    if (!typingUrl) return;
+    var fd = new FormData();
+    fd.append('csrfmiddlewaretoken', csrf);
+    fd.append('is_typing', on ? '1' : '0');
+    fetch(typingUrl, { method: 'POST', body: fd, credentials: 'same-origin' }).catch(function () {});
+  }
+
+  if (input) {
+    input.addEventListener('input', function () {
+      sendTyping(true);
+      if (typingTimer) clearTimeout(typingTimer);
+      typingTimer = setTimeout(function () { sendTyping(false); }, 1800);
+    });
+  }
+
+  setInterval(poll, 2500);
+  poll();
 })();
 </script>
 {% endblock %}

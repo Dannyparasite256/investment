@@ -3,6 +3,7 @@ import type {
   ActivityEvent,
   AppNotification,
   AuthResponse,
+  ChatPollPayload,
   Cryptocurrency,
   CurrencyOption,
   DashboardStats,
@@ -134,6 +135,9 @@ export const api = {
   },
   staffTicketReply(id: string, body: string) {
     return http.post(`/api/v1/staff/tickets/${id}/`, { body })
+  },
+  staffTicketAction(id: string, payload: Record<string, unknown>) {
+    return http.post(`/api/v1/staff/tickets/${id}/`, payload)
   },
   cryptocurrencies() {
     return http.get<Cryptocurrency[]>('/api/v1/cryptocurrencies/')
@@ -282,6 +286,20 @@ export const api = {
   },
   replyTicket(id: string, body: string) {
     return http.post<TicketMessage>(`/api/v1/support/${id}/reply/`, { body })
+  },
+  supportPoll(id: string, since?: string) {
+    return http.get<ChatPollPayload>(`/api/v1/support/${id}/poll/`, {
+      params: since ? { since } : undefined,
+    })
+  },
+  supportTyping(id: string, is_typing: boolean) {
+    return http.post(`/api/v1/support/${id}/typing/`, { is_typing })
+  },
+  supportHeartbeat(id: string) {
+    return http.post(`/api/v1/support/${id}/heartbeat/`)
+  },
+  supportMarkRead(id: string) {
+    return http.post(`/api/v1/support/${id}/mark_read/`)
   },
 
   // KYC

@@ -1,6 +1,7 @@
 """Support tickets and contact requests."""
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from core.models import TimeStampedModel, UUIDModel
 
@@ -32,21 +33,60 @@ class SupportTicket(UUIDModel, TimeStampedModel):
     )
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['-updated_at', '-created_at']
 
     def __str__(self):
         return f'#{str(self.id)[:8]} {self.subject}'
 
 
 class TicketMessage(UUIDModel, TimeStampedModel):
+    """
+    Chat message with WhatsApp-style delivery receipts:
+    - created_at  → sent (single grey tick)
+    - delivered_at → delivered to recipient device (double grey ticks)
+    - read_at     → viewed by recipient (double blue ticks)
+    """
     ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     body = models.TextField()
     is_staff_reply = models.BooleanField(default=False)
     attachment = models.FileField(upload_to='tickets/%Y/%m/', blank=True, null=True)
+    delivered_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    read_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ['created_at']
 
     def __str__(self):
         return f'Message on {self.ticket_id}'
+
+    @property
+    def receipt_status(self) -> str:
+        """sent | delivered | read"""
+        if self.read_at:
+            return 'read'
+        if self.delivered_at:
+            return 'delivered'
+        return 'sent'
+
+    def mark_delivered(self, when=None):
+        if self.delivered_at:
+            return False
+        self.delivered_at = when or timezone.now()
+        self.save(update_fields=['delivered_at', 'updated_at'])
+        return True
+
+    def mark_read(self, when=None):
+        now = when or timezone.now()
+        fields = []
+        if not self.delivered_at:
+            self.delivered_at = now
+            fields.append('delivered_at')
+        if not self.read_at:
+            self.read_at = now
+            fields.append('read_at')
+        if fields:
+            fields.append('updated_at')
+            self.save(update_fields=fields)
+            return True
+        return False

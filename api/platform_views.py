@@ -1,4 +1,5 @@
 """Platform API endpoints powering the Vue SPA (parity with Django UI features)."""
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth import get_user_model
@@ -108,6 +109,7 @@ class ChangePasswordView(APIView):
 
 
 class SupportTicketViewSet(viewsets.ModelViewSet):
+    """User support chat: messages, typing, presence, read receipts, poll sync."""
     http_method_names = ['get', 'post', 'head', 'options']
 
     def get_queryset(self):
@@ -118,7 +120,14 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
             return SupportTicketCreateSerializer
         return SupportTicketSerializer
 
+    def retrieve(self, request, *args, **kwargs):
+        ticket = self.get_object()
+        self._mark_peer_messages_read(ticket, is_staff=False)
+        return Response(SupportTicketSerializer(ticket).data)
+
     def create(self, request, *args, **kwargs):
+        from support.realtime import notify_new_message
+
         ser = SupportTicketCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         ticket = SupportTicket.objects.create(
@@ -126,14 +135,19 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
             subject=ser.validated_data['subject'],
             category=ser.validated_data.get('category') or 'general',
         )
-        TicketMessage.objects.create(
+        msg = TicketMessage.objects.create(
             ticket=ticket, sender=request.user, body=ser.validated_data['body'],
         )
+        notify_new_message(ticket, msg)
         return Response(SupportTicketSerializer(ticket).data, status=201)
 
     @action(detail=True, methods=['post'])
     def reply(self, request, pk=None):
+        from support.realtime import notify_new_message
+
         ticket = self.get_object()
+        if ticket.status in (SupportTicket.Status.CLOSED, SupportTicket.Status.RESOLVED):
+            return Response({'detail': 'This conversation is closed.'}, status=400)
         ser = TicketReplySerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         msg = TicketMessage.objects.create(
@@ -142,7 +156,83 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         if ticket.status == SupportTicket.Status.WAITING:
             ticket.status = SupportTicket.Status.OPEN
             ticket.save(update_fields=['status', 'updated_at'])
+        else:
+            ticket.save(update_fields=['updated_at'])
+        notify_new_message(ticket, msg)
         return Response(TicketMessageSerializer(msg).data, status=201)
+
+    @action(detail=True, methods=['get'])
+    def poll(self, request, pk=None):
+        """Near-realtime sync when WebSockets are unavailable (e.g. PythonAnywhere)."""
+        from support.realtime import get_presence, get_typing, set_presence
+
+        ticket = self.get_object()
+        set_presence(ticket.id, request.user, is_staff=False)
+        self._mark_peer_messages_read(ticket, is_staff=False)
+
+        since = request.query_params.get('since')
+        qs = ticket.messages.select_related('sender').all()
+        if since:
+            try:
+                since_dt = datetime.fromisoformat(since.replace('Z', '+00:00'))
+                if timezone.is_naive(since_dt):
+                    since_dt = timezone.make_aware(since_dt, timezone.get_current_timezone())
+                qs = qs.filter(created_at__gt=since_dt)
+            except (ValueError, TypeError):
+                pass
+
+        # Receipt updates for own messages (staff may have read them)
+        own = ticket.messages.filter(is_staff_reply=False).select_related('sender')
+        return Response({
+            'ticket_id': str(ticket.id),
+            'status': ticket.status,
+            'updated_at': ticket.updated_at,
+            'messages': TicketMessageSerializer(qs, many=True).data,
+            'receipts': TicketMessageSerializer(own, many=True).data,
+            'typing': get_typing(ticket.id, exclude_user_id=request.user.pk),
+            'presence': get_presence(ticket.id),
+            'server_time': timezone.now().isoformat(),
+        })
+
+    @action(detail=True, methods=['post'])
+    def typing(self, request, pk=None):
+        from support.realtime import set_typing
+
+        ticket = self.get_object()
+        is_typing = bool(request.data.get('is_typing', True))
+        set_typing(ticket.id, request.user, is_typing=is_typing, is_staff=False)
+        return Response({'ok': True, 'is_typing': is_typing})
+
+    @action(detail=True, methods=['post'])
+    def heartbeat(self, request, pk=None):
+        from support.realtime import get_presence, set_presence
+
+        ticket = self.get_object()
+        set_presence(ticket.id, request.user, is_staff=False)
+        self._mark_peer_messages_read(ticket, is_staff=False)
+        return Response({'ok': True, 'presence': get_presence(ticket.id)})
+
+    @action(detail=True, methods=['post'])
+    def mark_read(self, request, pk=None):
+        ticket = self.get_object()
+        n = self._mark_peer_messages_read(ticket, is_staff=False)
+        return Response({'ok': True, 'updated': n})
+
+    def _mark_peer_messages_read(self, ticket, *, is_staff: bool) -> int:
+        from support.realtime import notify_receipts
+
+        now = timezone.now()
+        qs = TicketMessage.objects.filter(ticket=ticket, read_at__isnull=True)
+        if is_staff:
+            qs = qs.filter(is_staff_reply=False)
+        else:
+            qs = qs.filter(is_staff_reply=True)
+        ids = list(qs.values_list('id', flat=True))
+        if not ids:
+            return 0
+        updated = qs.update(delivered_at=now, read_at=now, updated_at=now)
+        notify_receipts(ticket.id, ids, 'read', now.isoformat())
+        return updated
 
 
 class ReferralsView(APIView):
