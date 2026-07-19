@@ -1,0 +1,281 @@
+/* ==========================================================================
+   Vue UI polish — clean, smooth, intuitive interactions
+   Works with classic + premium themes; does not replace app.css
+   ========================================================================== */
+
+[v-cloak] { display: none !important; }
+
+/* Soft page enter */
+.vue-page-enter {
+  animation: vuePageIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes vuePageIn {
+  from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+
+/* Top loading bar */
+.vue-progress {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  z-index: 2000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  background: transparent;
+  overflow: hidden;
+}
+.vue-progress.is-active {
+  opacity: 1;
+}
+.vue-progress .bar {
+  height: 100%;
+  width: 30%;
+  border-radius: 0 4px 4px 0;
+  background: linear-gradient(90deg, var(--ci-primary, #4F46E5), var(--ci-accent, #7C3AED), #10B981);
+  box-shadow: 0 0 12px rgba(79, 70, 229, 0.55);
+  animation: vueProgress 1.1s ease-in-out infinite;
+}
+@keyframes vueProgress {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(400%); }
+}
+
+/* Vue toast stack */
+.vue-toasts {
+  position: fixed;
+  top: max(0.75rem, env(safe-area-inset-top));
+  right: max(0.75rem, env(safe-area-inset-right));
+  z-index: 2100;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: min(360px, calc(100vw - 1.5rem));
+  pointer-events: none;
+}
+.vue-toast {
+  pointer-events: auto;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  background: var(--ci-bg-card, rgba(17, 24, 39, 0.88));
+  border: 1px solid var(--ci-border, rgba(255,255,255,0.16));
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: var(--ci-shadow-lg, 0 16px 40px rgba(0,0,0,0.35));
+  color: var(--ci-text, #fff);
+  animation: vueToastIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.vue-toast.is-leaving {
+  animation: vueToastOut 0.28s ease forwards;
+}
+@keyframes vueToastIn {
+  from { opacity: 0; transform: translateX(18px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes vueToastOut {
+  to { opacity: 0; transform: translateX(16px) scale(0.96); }
+}
+.vue-toast .icon {
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+.vue-toast.success .icon { background: rgba(34, 197, 94, 0.15); color: #22C55E; }
+.vue-toast.danger .icon  { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
+.vue-toast.warning .icon { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
+.vue-toast.info .icon    { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+.vue-toast .body { flex: 1; min-width: 0; }
+.vue-toast .title { font-weight: 700; font-size: 0.9rem; letter-spacing: -0.02em; margin-bottom: 0.15rem; }
+.vue-toast .msg { font-size: 0.82rem; color: var(--ci-text-muted, #9CA3AF); line-height: 1.4; }
+.vue-toast .x {
+  border: 0; background: transparent; color: var(--ci-text-muted);
+  cursor: pointer; padding: 0.15rem; line-height: 1; opacity: 0.7;
+}
+.vue-toast .x:hover { opacity: 1; color: var(--ci-text); }
+
+/* Scroll to top */
+.vue-scroll-top {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  z-index: 1050;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--ci-border);
+  background: var(--ci-bg-card);
+  color: var(--ci-text);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--ci-shadow);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px) scale(0.9);
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (min-width: 992px) {
+  .vue-scroll-top { bottom: max(1.5rem, env(safe-area-inset-bottom)); }
+}
+.vue-scroll-top.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+.vue-scroll-top:hover {
+  border-color: var(--ci-border-glow, rgba(79,70,229,0.4));
+  transform: translateY(-2px);
+}
+
+/* Cleaner content rhythm */
+.page-content.vue-ui-ready > .row,
+.page-content.vue-ui-ready > .glass-card,
+.page-content.vue-ui-ready > .mb-3,
+.page-content.vue-ui-ready > .mb-4 {
+  /* subtle stagger handled via JS classes */
+}
+
+.vue-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.vue-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Interactive card feel */
+.vue-card-press {
+  transition: transform 0.2s ease, box-shadow 0.25s ease !important;
+}
+.vue-card-press:active {
+  transform: scale(0.985) !important;
+}
+
+/* Cleaner quick actions */
+.quick-actions .btn {
+  min-height: 44px;
+  border-radius: 14px;
+  font-weight: 600;
+}
+.quick-actions .btn i {
+  opacity: 0.9;
+}
+
+/* Focus ring polish */
+.vue-ui-ready :focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.65);
+  outline-offset: 3px;
+}
+
+/* Theme switcher chips (Vue) */
+.vue-theme-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--ci-border-soft, rgba(255,255,255,0.1));
+}
+[data-theme="light"] .vue-theme-switch {
+  background: rgba(15, 23, 42, 0.05);
+}
+.vue-theme-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--ci-text-muted);
+  width: 34px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+.vue-theme-switch button.is-active {
+  background: var(--ci-gradient-btn, linear-gradient(135deg, #4F46E5, #7C3AED));
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3);
+}
+.vue-theme-switch button:hover:not(.is-active) {
+  color: var(--ci-text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Empty / loading skeleton */
+.vue-skel {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.1) 50%,
+    rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%;
+  animation: vueSkel 1.2s ease-in-out infinite;
+  border-radius: 10px;
+  min-height: 1rem;
+}
+[data-theme="light"] .vue-skel {
+  background: linear-gradient(90deg,
+    rgba(15,23,42,0.04) 25%,
+    rgba(15,23,42,0.08) 50%,
+    rgba(15,23,42,0.04) 75%);
+  background-size: 200% 100%;
+}
+@keyframes vueSkel {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Soften dense tables for readability */
+.vue-ui-ready .table-ci tbody td {
+  padding-top: 0.95rem;
+  padding-bottom: 0.95rem;
+}
+.vue-ui-ready .table-ci thead th {
+  letter-spacing: 0.08em;
+}
+
+/* Status chips more readable */
+.vue-ui-ready .badge-status {
+  letter-spacing: 0.03em;
+  font-weight: 650;
+}
+
+/* Mobile nav active indicator */
+.vue-ui-ready .mobile-bottom-nav a.active {
+  position: relative;
+}
+.vue-ui-ready .mobile-bottom-nav a.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  border-radius: 0 0 4px 4px;
+  background: var(--ci-primary-bright, #818CF8);
+}
+
+/* Prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .vue-page-enter,
+  .vue-reveal,
+  .vue-toast,
+  .vue-progress .bar {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}

@@ -70,11 +70,11 @@
       </form>
     </div>
     <div class="col-lg-5">
-      <div class="d-flex flex-wrap gap-2 quick-actions justify-content-start justify-content-lg-end w-100">
+      <div class="d-flex flex-wrap gap-2 quick-actions justify-content-start justify-content-lg-end w-100" role="group" aria-label="Quick actions">
         <a href="{% url 'transactions:deposit_create' %}" class="btn btn-ci"><i class="bi bi-download me-1"></i> Deposit</a>
         <a href="{% url 'transactions:withdraw_create' %}" class="btn btn-outline-ci"><i class="bi bi-upload me-1"></i> Withdraw</a>
         <a href="{% url 'investments:plans' %}" class="btn btn-ghost"><i class="bi bi-graph-up-arrow me-1"></i> Invest</a>
-        <a href="{% url 'markets:overview' %}" class="btn btn-ghost"><i class="bi bi-bar-chart-line me-1"></i> Markets</a>
+        <a href="{% url 'markets:overview' %}" class="btn btn-ghost d-none d-sm-inline-flex"><i class="bi bi-bar-chart-line me-1"></i> Markets</a>
       </div>
     </div>
   </div>

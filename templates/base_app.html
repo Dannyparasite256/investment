@@ -156,7 +156,8 @@
         <button class="btn btn-ghost btn-sm d-none d-xl-inline-flex" type="button" onclick="toggleDensity()" title="Compact / comfortable">
           <i class="bi bi-arrows-collapse"></i>
         </button>
-        <button class="btn btn-ghost btn-sm" type="button" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">
+        <div id="vue-theme-switch" class="d-none d-md-inline-flex" v-cloak></div>
+        <button class="btn btn-ghost btn-sm d-md-none" type="button" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">
           <i data-theme-icon class="bi bi-{% if theme == 'light' %}sun{% else %}moon-stars{% endif %}-fill"></i>
         </button>
         <form id="theme-form" action="{% url 'core:set_theme' %}" method="post" class="d-none">
@@ -220,13 +221,17 @@
 
     <main class="page-content">
       {% if messages %}
-      <div class="mb-3">
+      <div class="mb-3 d-none d-md-block" data-django-messages>
         {% for message in messages %}
         <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show glass-card border-0" role="alert">
           {{ message }}
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         {% endfor %}
+      </div>
+      {# Mobile: Vue toasts handle messages for a cleaner layout #}
+      <div class="d-md-none visually-hidden" aria-live="polite">
+        {% for message in messages %}{{ message }}{% endfor %}
       </div>
       {% endif %}
 

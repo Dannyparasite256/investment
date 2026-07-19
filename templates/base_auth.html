@@ -20,8 +20,11 @@
 
     {% block content %}{% endblock %}
   </div>
-  <button class="btn btn-ghost btn-sm position-fixed top-0 end-0 m-3" type="button" onclick="toggleTheme()" aria-label="Toggle theme">
-    <i data-theme-icon class="bi bi-moon-stars-fill"></i>
-  </button>
+  <div class="position-fixed top-0 end-0 m-3 d-flex align-items-center gap-2" style="z-index:20">
+    <div id="vue-theme-switch" v-cloak></div>
+    <button class="btn btn-ghost btn-sm d-md-none" type="button" onclick="toggleTheme()" aria-label="Toggle theme">
+      <i data-theme-icon class="bi bi-moon-stars-fill"></i>
+    </button>
+  </div>
 </div>
 {% endblock %}
