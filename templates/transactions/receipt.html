@@ -30,6 +30,12 @@
     font-family: var(--font-mono);
     letter-spacing: -0.04em;
     line-height: 1.15;
+    word-break: break-word;
+  }
+  .receipt-amount-sub {
+    font-size: 0.9rem;
+    color: var(--ci-text-muted);
+    margin-top: 0.25rem;
   }
   .receipt-watermark {
     position: absolute;
@@ -39,6 +45,13 @@
     opacity: 0.04;
     pointer-events: none;
     user-select: none;
+  }
+  .receipt-card .table-ci tbody tr td:first-child {
+    width: 38%;
+    white-space: nowrap;
+  }
+  .receipt-card .table-ci tbody tr td:last-child {
+    font-variant-numeric: tabular-nums;
   }
   @media print {
     body * { visibility: hidden !important; }
@@ -65,7 +78,7 @@
 
       <div class="d-flex justify-content-between align-items-start mb-3 gap-2 flex-wrap">
         <div class="d-flex align-items-center gap-2">
-          <div class="logo-mark" style="width:40px;height:40px;font-size:1rem">C</div>
+          <div class="logo-mark" style="width:40px;height:40px;font-size:1rem" aria-hidden="true">C</div>
           <div>
             <strong>{{ SITE_NAME }}</strong>
             <div class="small text-muted">Transaction receipt</div>
@@ -82,13 +95,15 @@
           <div class="receipt-amount {% if sticker_kind == 'deposit' or sticker_kind == 'profit' or sticker_kind == 'referral' or sticker_kind == 'success' %}text-profit{% elif sticker_kind == 'withdraw' or sticker_kind == 'invest' %}text-loss{% endif %}">
             {{ amount_display.label }}
           </div>
+          {% if fee_display and fee_display.value != '0' and fee_display.value != '0.00' %}
+          <div class="receipt-amount-sub">
+            Fee {{ fee_display.label }}{% if net_display %} · Net {{ net_display.label }}{% endif %}
+          </div>
+          {% endif %}
           {% elif kind == 'deposit' and deposit %}
           <div class="receipt-amount">{{ deposit.amount|money_trim:8 }} {{ deposit.cryptocurrency.symbol }}</div>
           {% elif kind == 'withdrawal' and withdrawal %}
           <div class="receipt-amount">{{ withdrawal.amount|money_trim:8 }}</div>
-          {% endif %}
-          {% if fee_display and fee_display.value != '0' and fee_display.value != '0.00' %}
-          <div class="small text-muted mt-1">Fee {{ fee_display.label }}{% if net_display %} · Net {{ net_display.label }}{% endif %}</div>
           {% endif %}
         </div>
       </div>
@@ -97,7 +112,7 @@
         {% for label, value in rows %}
         <tr>
           <td class="text-muted">{{ label }}</td>
-          <td class="text-end {% if label == 'Receipt ID' or label == 'Tx hash' or label == 'Transaction hash' or label == 'Wallet address' or label == 'Address' %}font-mono small{% endif %}"
+          <td class="text-end {% if label == 'Receipt ID' or label == 'Tx hash' or label == 'Transaction hash' or label == 'Wallet address' or label == 'Address' or label == 'Reference' %}font-mono small{% elif label == 'Amount' or label == 'Fee' or label == 'Net amount' or label == 'Platform value' or label == 'Crypto amount' or label == 'You entered' %}font-mono{% endif %}"
               style="{% if label == 'Tx hash' or label == 'Transaction hash' or label == 'Wallet address' or label == 'Address' %}word-break:break-all{% endif %}">
             {% if label == 'Date' or label == 'Submitted' %}{{ value|when:"full" }}{% else %}{{ value }}{% endif %}
           </td>
@@ -120,7 +135,9 @@
       </table>
 
       <p class="small text-muted mb-0">
-        Keep this receipt for your records. Quote the Receipt ID if you contact support.
+        Amounts match your selected display currency
+        (<strong class="text-soft">{{ display_currency|default:currency_symbol }}</strong>
+        where applicable. Quote the Receipt ID if you contact support.
       </p>
     </div>
 

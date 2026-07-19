@@ -388,6 +388,176 @@ def format_amount_for_code(amount_usd, currency_code: str) -> dict:
     return _format_amount(amount_usd, code)
 
 
+def format_amount_native(amount, currency_code: str) -> dict:
+    """
+    Format an amount already denominated in `currency_code` (no FX conversion).
+
+    Use for exact user-entered "desired" amounts so receipts match what the user
+    typed (e.g. 50,000 UGX stays 50,000 UGX, not a re-converted estimate).
+    """
+    code = (currency_code or 'USD').strip() or 'USD'
+    meta = get_currency_meta(code)
+    places = int(meta.get('decimals', 2) or 0)
+    symbol = meta.get('symbol') or code
+    try:
+        raw = Decimal(str(amount).replace(',', '').strip())
+    except Exception:
+        raw = Decimal('0')
+    q = Decimal('1').scaleb(-places) if places > 0 else Decimal('1')
+    rounding = ROUND_HALF_UP if places == 0 else ROUND_DOWN
+    value = raw.quantize(q, rounding=rounding)
+    if places == 0:
+        formatted = format_money(value, 0)
+    elif places > 2:
+        formatted = format_money(value, places, strip_trailing_zeros=True)
+    else:
+        formatted = format_money(value, 2)
+    usd_eq = convert_to_usd(value, code)
+    return {
+        'value': str(value),
+        'symbol': symbol,
+        'code': meta.get('code') or code,
+        'formatted': formatted,
+        'usd_price': float(meta.get('rate_to_usd') or 1),
+        'usd_equivalent': format_money(usd_eq, 2),
+        'label': f'{formatted} {symbol}',
+        'native': True,
+    }
+
+
+def _dec(val, default='0') -> Decimal:
+    if val is None or val == '':
+        return Decimal(default)
+    try:
+        return Decimal(str(val).replace(',', '').strip())
+    except Exception:
+        return Decimal(default)
+
+
+def platform_usd_from_transaction(tx) -> Decimal:
+    """
+    Resolve the true platform (USD-equivalent) value of a Transaction row.
+
+    Deposits may store crypto units in `amount`; withdrawals/investments store
+    platform USD. Prefer explicit metadata when present.
+    """
+    md = getattr(tx, 'metadata', None) or {}
+    for key in ('platform_usd', 'platform_credit'):
+        if md.get(key) is not None and str(md.get(key)).strip() != '':
+            return quantize_amount(_dec(md.get(key)), 8)
+
+    tx_type = getattr(tx, 'tx_type', '') or ''
+    amount = _dec(getattr(tx, 'amount', 0))
+    currency = (getattr(tx, 'currency', '') or '').strip()
+
+    # Crypto deposit rows: amount is on-chain units
+    crypto_amt = md.get('crypto_amount')
+    rate = md.get('rate_usd')
+    if crypto_amt is not None and rate is not None:
+        return quantize_amount(_dec(crypto_amt) * _dec(rate, '1'), 8)
+
+    if tx_type == 'deposit' and currency and currency.upper() not in ('USD', ''):
+        if rate is not None:
+            return quantize_amount(amount * _dec(rate, '1'), 8)
+        # Live price fallback by currency symbol
+        crypto = resolve_display_crypto(currency)
+        if crypto and crypto.usd_price and Decimal(str(crypto.usd_price)) > 0:
+            return quantize_amount(amount * Decimal(str(crypto.usd_price)), 8)
+
+    return quantize_amount(amount, 8)
+
+
+def resolve_transaction_display_amounts(tx, display_code: str) -> dict:
+    """
+    Build consistent receipt / history amounts for a Transaction.
+
+    Priority for the primary (desired) amount:
+      1. metadata.display_amount in the same currency the user is viewing
+      2. Platform USD → current display currency (including deposit credits)
+    Fees / net always derive from platform USD so wallet math matches.
+    """
+    md = getattr(tx, 'metadata', None) or {}
+    preferred = (display_code or 'USD').strip() or 'USD'
+    platform = platform_usd_from_transaction(tx)
+
+    fee_usd = _dec(md.get('fee_usd')) if md.get('fee_usd') is not None else _dec(getattr(tx, 'fee', 0))
+    if fee_usd < 0:
+        fee_usd = Decimal('0')
+    if md.get('net_usd') is not None:
+        net_usd = _dec(md.get('net_usd'))
+    else:
+        net_usd = quantize_amount(platform - fee_usd, 8)
+
+    disp_amt = md.get('display_amount')
+    disp_cur = (md.get('display_currency') or '').strip()
+
+    # Exact desired amount when the viewer is on the same currency they entered
+    if disp_amt is not None and str(disp_amt).strip() != '' and disp_cur:
+        if disp_cur.upper() == preferred.upper():
+            amount_display = format_amount_native(disp_amt, preferred)
+        else:
+            # Different display currency now — convert platform so numbers stay coherent
+            amount_display = format_amount_for_code(platform, preferred)
+    else:
+        amount_display = format_amount_for_code(platform, preferred)
+
+    fee_display = (
+        format_amount_for_code(fee_usd, preferred)
+        if fee_usd and fee_usd > 0
+        else None
+    )
+    net_display = format_amount_for_code(net_usd, preferred)
+
+    # When fee applies and amount was native desired, recompute net in native
+    # space so Amount − Fee ≈ Net on the receipt (avoids FX double-rounding).
+    if (
+        amount_display.get('native')
+        and fee_display
+        and fee_display.get('value') is not None
+    ):
+        try:
+            native_net = _dec(amount_display['value']) - _dec(fee_display['value'])
+            if native_net < 0:
+                native_net = Decimal('0')
+            net_display = format_amount_native(native_net, preferred)
+        except Exception:
+            pass
+
+    crypto_symbol = (
+        md.get('crypto_symbol')
+        or md.get('symbol')
+        or (getattr(tx, 'currency', '') if tx_type_is_crypto_asset(tx) else '')
+        or ''
+    )
+    crypto_amount = md.get('crypto_amount')
+    if crypto_amount is None and tx_type_is_crypto_asset(tx) and not md.get('platform_usd'):
+        # Deposit without metadata crypto_amount — amount field is crypto units
+        if getattr(tx, 'tx_type', '') == 'deposit':
+            crypto_amount = str(getattr(tx, 'amount', '') or '')
+
+    return {
+        'platform_usd': platform,
+        'fee_usd': fee_usd,
+        'net_usd': net_usd,
+        'amount_display': amount_display,
+        'fee_display': fee_display,
+        'net_display': net_display,
+        'desired_amount': disp_amt,
+        'desired_currency': disp_cur,
+        'crypto_amount': crypto_amount,
+        'crypto_symbol': crypto_symbol,
+        'rate_usd': md.get('rate_usd'),
+    }
+
+
+def tx_type_is_crypto_asset(tx) -> bool:
+    """True when the transaction's amount field may be crypto units, not platform USD."""
+    if getattr(tx, 'tx_type', '') == 'deposit':
+        return True
+    md = getattr(tx, 'metadata', None) or {}
+    return bool(md.get('crypto_amount') and md.get('rate_usd') and not md.get('platform_usd'))
+
+
 def get_currency_meta(currency_code: str) -> dict:
     """
     Metadata for a display currency: code, symbol, decimal places, unit rate to USD.

@@ -93,6 +93,13 @@ def deposit_create(request):
                     )
                 except Exception:
                     pass
+                _rate = deposit.cryptocurrency.usd_price or 1
+                try:
+                    from decimal import Decimal as _D
+                    from core.utils import quantize_amount as _q
+                    _credit_est = _q(_D(str(deposit.amount)) * _D(str(_rate)), 8)
+                except Exception:
+                    _credit_est = deposit.amount
                 Transaction.objects.create(
                     user=request.user,
                     tx_type=Transaction.TxType.DEPOSIT,
@@ -108,8 +115,10 @@ def deposit_create(request):
                     reference_id=str(deposit.id),
                     metadata={
                         'crypto_amount': str(deposit.amount),
+                        'crypto_symbol': deposit.cryptocurrency.symbol,
                         'symbol': deposit.cryptocurrency.symbol,
-                        'rate_usd': str(deposit.cryptocurrency.usd_price or 1),
+                        'rate_usd': str(_rate),
+                        'platform_credit': str(_credit_est),
                     },
                 )
                 create_audit_log(
@@ -371,7 +380,7 @@ def withdraw_cancel(request, pk):
 
 @login_required
 def history(request):
-    from wallets.display import format_amount_for_code, get_default_display_code
+    from wallets.display import get_default_display_code, resolve_transaction_display_amounts
 
     code = get_default_display_code(request.user, request=request)
     qs = Transaction.objects.filter(user=request.user)
@@ -380,8 +389,9 @@ def history(request):
         qs = qs.filter(tx_type=tx_type)
     page = Paginator(qs, 20).get_page(request.GET.get('page'))
     for tx in page:
-        tx.amount_display = format_amount_for_code(tx.amount, code)
-        tx.fee_display = format_amount_for_code(tx.fee or 0, code) if tx.fee else None
+        resolved = resolve_transaction_display_amounts(tx, code)
+        tx.amount_display = resolved['amount_display']
+        tx.fee_display = resolved['fee_display']
     if request.headers.get('HX-Request'):
         return render(request, 'transactions/partials/history_table.html', {
             'page': page,
@@ -418,15 +428,23 @@ def _sticker_for_transaction(tx: Transaction) -> str:
 @require_GET
 def transaction_receipt(request, pk):
     """Official receipt for any ledger transaction belonging to the user."""
-    from wallets.display import format_amount_for_code, get_currency_meta, get_default_display_code
+    from core.utils import format_money
+    from wallets.display import (
+        format_amount_for_code,
+        format_amount_native,
+        get_currency_meta,
+        get_default_display_code,
+        resolve_transaction_display_amounts,
+    )
 
     tx = get_object_or_404(Transaction, pk=pk, user=request.user)
     code = get_default_display_code(request.user, request=request)
     meta = get_currency_meta(code)
-    amount_disp = format_amount_for_code(tx.amount, code)
-    fee_disp = format_amount_for_code(tx.fee or 0, code) if tx.fee else None
-    net_usd = (tx.amount or 0) - (tx.fee or 0)
-    net_disp = format_amount_for_code(net_usd, code)
+    resolved = resolve_transaction_display_amounts(tx, code)
+    amount_disp = resolved['amount_display']
+    fee_disp = resolved['fee_display']
+    net_disp = resolved['net_display']
+    md = tx.metadata or {}
 
     sticker = _sticker_for_transaction(tx)
     rows = [
@@ -435,11 +453,36 @@ def transaction_receipt(request, pk):
         ('Status', tx.get_status_display()),
         ('Amount', amount_disp['label']),
     ]
-    if fee_disp and (tx.fee or 0) > 0:
+    if fee_disp and resolved['fee_usd'] and resolved['fee_usd'] > 0:
         rows.append(('Fee', fee_disp['label']))
-        rows.append(('Net', net_disp['label']))
-    if tx.currency:
-        rows.append(('Currency / asset', tx.currency))
+        rows.append(('Net amount', net_disp['label']))
+
+    # Exact desired entry (when user entered a different currency than table amount)
+    if (
+        resolved.get('desired_amount') is not None
+        and resolved.get('desired_currency')
+        and not amount_disp.get('native')
+    ):
+        desired = format_amount_native(
+            resolved['desired_amount'],
+            resolved['desired_currency'],
+        )
+        rows.append(('You entered', desired['label']))
+
+    if resolved.get('crypto_amount') and resolved.get('crypto_symbol'):
+        crypto_label = f"{format_money(resolved['crypto_amount'], 8, strip_trailing_zeros=True)} {resolved['crypto_symbol']}"
+        rows.append(('Crypto amount', crypto_label))
+    elif tx.currency and tx.tx_type == Transaction.TxType.DEPOSIT:
+        rows.append(('Crypto amount', f"{format_money(tx.amount, 8, strip_trailing_zeros=True)} {tx.currency}"))
+
+    # Platform value for ops clarity (always matches wallet ledger)
+    platform_disp = format_amount_for_code(resolved['platform_usd'], 'USD')
+    rows.append(('Platform value', f"{platform_disp['label']}"))
+
+    if resolved.get('rate_usd'):
+        unit = resolved.get('crypto_symbol') or tx.currency or 'unit'
+        rows.append(('Rate', f"1 {unit} ≈ ${format_money(resolved['rate_usd'], 8, strip_trailing_zeros=True)}"))
+
     if tx.network:
         rows.append(('Network', tx.network))
     if tx.wallet_address:
@@ -449,20 +492,12 @@ def transaction_receipt(request, pk):
     if tx.description:
         rows.append(('Description', tx.description))
     if tx.reference_type and tx.reference_id:
-        rows.append(('Reference', f'{tx.reference_type}:{tx.reference_id}'))
+        rows.append(('Reference', f'{tx.reference_type} · {tx.reference_id}'))
     rows.append(('Date', tx.created_at))
 
-    # Extra metadata (display amounts, crypto payout, etc.)
     extra = []
-    md = tx.metadata or {}
-    if md.get('display_amount') and md.get('display_currency'):
-        extra.append(('Entered amount', f"{md['display_amount']} {md['display_currency']}"))
-    if md.get('crypto_amount') and md.get('crypto_symbol'):
-        extra.append(('Crypto amount', f"{md['crypto_amount']} {md['crypto_symbol']}"))
-    if md.get('rate_usd'):
-        extra.append(('Rate (USD)', f"1 unit ≈ ${md['rate_usd']}"))
-    if md.get('platform_credit'):
-        extra.append(('Platform credit', str(md['platform_credit'])))
+    if md.get('fee_percent') not in (None, '', '0', '0.0'):
+        extra.append(('Fee rate', f"{md['fee_percent']}%"))
 
     return render(request, 'transactions/receipt.html', {
         'kind': 'transaction',
@@ -478,6 +513,7 @@ def transaction_receipt(request, pk):
         'extra_rows': extra,
         'status_class': tx.status,
         'status_label': tx.get_status_display(),
+        'resolved': resolved,
     })
 
 

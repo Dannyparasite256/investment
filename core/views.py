@@ -75,18 +75,11 @@ def dashboard(request):
     pending_withdrawals_display = format_amount_for_code(pending_wd_usd, display_code)
 
     recent_tx = Transaction.objects.filter(user=user)[:10]
-    # Attach display amounts for list rows (platform USD → selected currency)
+    # Same amount resolution as receipts / history so figures always match
+    from wallets.display import resolve_transaction_display_amounts
     for tx in recent_tx:
-        # Deposit rows may store crypto units; investment/profit/withdrawal are platform USD
-        if tx.tx_type == Transaction.TxType.DEPOSIT and tx.currency and tx.currency.upper() not in ('USD', ''):
-            # Prefer metadata platform credit when present
-            meta = tx.metadata or {}
-            if meta.get('platform_credit') is not None:
-                tx.amount_display = format_amount_for_code(meta.get('platform_credit'), display_code)
-            else:
-                tx.amount_display = format_amount_for_code(tx.amount, display_code)
-        else:
-            tx.amount_display = format_amount_for_code(tx.amount, display_code)
+        resolved = resolve_transaction_display_amounts(tx, display_code)
+        tx.amount_display = resolved['amount_display']
 
     recent_earnings = Earning.objects.filter(user=user).select_related('investment__plan')[:8]
     notifications = Notification.objects.filter(user=user, is_read=False)[:5]

@@ -109,6 +109,9 @@ def global_search(request):
 @require_GET
 def deposit_receipt(request, pk):
     """Deposit receipt — prefer unified Transaction receipt when linked."""
+    from decimal import Decimal
+
+    from core.utils import format_money, quantize_amount
     from transactions.models import Transaction
     from wallets.display import format_amount_for_code, get_currency_meta, get_default_display_code
 
@@ -123,11 +126,18 @@ def deposit_receipt(request, pk):
 
     code = get_default_display_code(request.user, request=request)
     meta = get_currency_meta(code)
+    # Prefer approved credit; otherwise estimate from live/rate price
     credit = deposit.credit_amount
-    amount_disp = (
-        format_amount_for_code(credit, code)
-        if credit is not None
-        else None
+    if credit is None:
+        price = Decimal(str(deposit.rate_usd or 0)) if getattr(deposit, 'rate_usd', None) else None
+        if not price or price <= 0:
+            price = Decimal(str(getattr(deposit.cryptocurrency, 'usd_price', None) or 0))
+        if price and price > 0:
+            credit = quantize_amount(Decimal(str(deposit.amount or 0)) * price, 8)
+    amount_disp = format_amount_for_code(credit, code) if credit is not None else None
+    crypto_label = (
+        f"{format_money(deposit.amount, 8, strip_trailing_zeros=True)} "
+        f"{deposit.cryptocurrency.symbol}"
     )
     sticker = 'success' if deposit.status == 'approved' else (
         'rejected' if deposit.status == 'rejected' else 'pending'
@@ -136,19 +146,25 @@ def deposit_receipt(request, pk):
         ('Receipt ID', str(deposit.id)),
         ('Type', 'Crypto deposit'),
         ('Status', deposit.get_status_display()),
-        ('Crypto amount', f'{deposit.amount} {deposit.cryptocurrency.symbol}'),
+        ('Amount', amount_disp['label'] if amount_disp else crypto_label),
+        ('Crypto amount', crypto_label),
         ('Network', deposit.network or deposit.cryptocurrency.network),
         ('Tx hash', deposit.transaction_hash or '—'),
         ('Submitted', deposit.created_at),
     ]
     if credit is not None:
-        rows.append(('Platform credit', amount_disp['label'] if amount_disp else str(credit)))
+        rows.append(('Platform value', format_amount_for_code(credit, 'USD')['label']))
     return render(request, 'transactions/receipt.html', {
         'kind': 'deposit',
         'deposit': deposit,
         'title': 'Deposit receipt',
         'sticker_kind': sticker,
-        'amount_display': amount_disp,
+        'amount_display': amount_disp or {
+            'label': crypto_label,
+            'value': str(deposit.amount),
+            'symbol': deposit.cryptocurrency.symbol,
+            'formatted': format_money(deposit.amount, 8, strip_trailing_zeros=True),
+        },
         'display_currency': code,
         'currency_symbol': meta['symbol'],
         'rows': rows,
@@ -162,8 +178,14 @@ def deposit_receipt(request, pk):
 @require_GET
 def withdraw_receipt(request, pk):
     """Withdrawal receipt — prefer unified Transaction receipt when linked."""
+    from core.utils import format_money
     from transactions.models import Transaction
-    from wallets.display import format_amount_for_code, get_currency_meta, get_default_display_code
+    from wallets.display import (
+        format_amount_for_code,
+        format_amount_native,
+        get_currency_meta,
+        get_default_display_code,
+    )
 
     withdrawal = get_object_or_404(Withdrawal, pk=pk, user=request.user)
     linked = Transaction.objects.filter(
@@ -176,8 +198,34 @@ def withdraw_receipt(request, pk):
 
     code = get_default_display_code(request.user, request=request)
     meta = get_currency_meta(code)
-    amount_disp = format_amount_for_code(withdrawal.amount, code)
-    fee_disp = format_amount_for_code(withdrawal.fee or 0, code)
+    # Parse desired amount from admin_notes snapshot if present:
+    # "Display: {amt} {cur} · Payout: ..."
+    desired_label = None
+    notes = withdrawal.admin_notes or ''
+    if notes.startswith('Display:'):
+        try:
+            part = notes.split('·')[0].replace('Display:', '').strip()
+            bits = part.rsplit(' ', 1)
+            if len(bits) == 2 and bits[1].upper() == code.upper():
+                desired_label = format_amount_native(bits[0], code)
+        except Exception:
+            desired_label = None
+
+    amount_disp = desired_label or format_amount_for_code(withdrawal.amount, code)
+    fee_disp = format_amount_for_code(withdrawal.fee or 0, code) if (withdrawal.fee or 0) > 0 else None
+    net_usd = (withdrawal.net_amount if withdrawal.net_amount is not None
+               else (withdrawal.amount - (withdrawal.fee or 0)))
+    net_disp = format_amount_for_code(net_usd, code)
+    if amount_disp.get('native') and fee_disp:
+        try:
+            from decimal import Decimal
+            native_net = Decimal(str(amount_disp['value'])) - Decimal(str(fee_disp['value']))
+            if native_net < 0:
+                native_net = Decimal('0')
+            net_disp = format_amount_native(native_net, code)
+        except Exception:
+            pass
+
     sticker = 'success' if withdrawal.status in ('paid', 'completed', 'approved') else (
         'rejected' if withdrawal.status in ('rejected', 'cancelled') else 'pending'
     )
@@ -186,11 +234,17 @@ def withdraw_receipt(request, pk):
         ('Type', 'Withdrawal'),
         ('Status', withdrawal.get_status_display()),
         ('Amount', amount_disp['label']),
-        ('Fee', fee_disp['label']),
-        ('Network', withdrawal.network or withdrawal.cryptocurrency.symbol),
-        ('Address', withdrawal.wallet_address),
-        ('Submitted', withdrawal.created_at),
     ]
+    if fee_disp:
+        rows.append(('Fee', fee_disp['label']))
+        rows.append(('Net amount', net_disp['label']))
+    rows.append(('Platform value', format_amount_for_code(withdrawal.amount, 'USD')['label']))
+    rows.append(('Network', withdrawal.network or withdrawal.cryptocurrency.symbol))
+    rows.append(('Address', withdrawal.wallet_address))
+    if withdrawal.transaction_hash:
+        rows.append(('Transaction hash', withdrawal.transaction_hash))
+    rows.append(('Submitted', withdrawal.created_at))
+
     return render(request, 'transactions/receipt.html', {
         'kind': 'withdrawal',
         'withdrawal': withdrawal,
@@ -198,6 +252,7 @@ def withdraw_receipt(request, pk):
         'sticker_kind': sticker,
         'amount_display': amount_disp,
         'fee_display': fee_disp,
+        'net_display': net_disp,
         'display_currency': code,
         'currency_symbol': meta['symbol'],
         'rows': rows,
