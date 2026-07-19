@@ -5312,6 +5312,21 @@ html[data-theme="light"][data-ui-theme="premium"] body::before {
 .wa-text {
   font-size: 0.92rem;
   line-height: 1.45;
+  word-break: break-word;
+}
+.wa-text .chat-link,
+.wa-text a.chat-link {
+  color: #53bdeb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 600;
+  word-break: break-all;
+}
+.wa-bubble-row.mine .wa-text .chat-link {
+  color: #a5f3fc;
+}
+.wa-text .chat-link:hover {
+  filter: brightness(1.15);
 }
 .wa-meta {
   display: flex;

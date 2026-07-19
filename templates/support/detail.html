@@ -1,4 +1,5 @@
 {% extends "base_app.html" %}
+{% load chat_filters %}
 {% block title %}{{ ticket.subject }} — Support — {{ SITE_NAME }}{% endblock %}
 {% block page_title %}{{ ticket.subject }}{% endblock %}
 {% block page_subtitle %}Support chat{% endblock %}
@@ -71,7 +72,7 @@
       <div class="wa-bubble-row {% if m.is_staff_reply %}theirs{% else %}mine{% endif %}" data-msg-id="{{ m.id }}">
         <div class="wa-bubble">
           {% if m.is_staff_reply %}<div class="wa-sender">Support</div>{% endif %}
-          <div class="wa-text">{{ m.body|linebreaksbr }}</div>
+          <div class="wa-text">{{ m.body|chat_links }}</div>
           <div class="wa-meta">
             <span>{{ m.created_at|when }}</span>
             {% if not m.is_staff_reply %}
@@ -145,6 +146,15 @@
 }
 #wa-live-pill { font-size: 0.7rem; font-weight: 700; }
 #wa-send-btn:disabled { opacity: 0.6; }
+.wa-text .chat-link {
+  color: #53bdeb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 600;
+  word-break: break-all;
+}
+.wa-bubble-row.mine .wa-text .chat-link { color: #a5f3fc; }
+.wa-text .chat-link:hover { filter: brightness(1.15); }
 </style>
 
 <script>
@@ -179,6 +189,21 @@
   function escapeHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+  function linkify(s) {
+    var esc = escapeHtml(s || '').replace(/\n/g, '<br>');
+    return esc.replace(/((?:https?:\/\/|www\.)[^\s<]+)/gi, function (raw) {
+      var trail = '';
+      var url = raw;
+      while (/[.,;:!?)"'\]]$/.test(url) && url.length > 1) {
+        trail = url.slice(-1) + trail;
+        url = url.slice(0, -1);
+      }
+      var href = /^https?:\/\//i.test(url) ? url : ('https://' + url);
+      if (!/^https?:\/\//i.test(href)) return raw;
+      return '<a class="chat-link" href="' + href.replace(/"/g, '%22') +
+        '" target="_blank" rel="noopener noreferrer">' + url + '</a>' + trail;
+    });
+  }
 
   function ticksHtml(status) {
     if (status === 'read') {
@@ -199,7 +224,7 @@
     var row = document.createElement('div');
     row.className = 'wa-bubble-row ' + (mine ? 'mine' : 'theirs');
     row.setAttribute('data-msg-id', m.id);
-    var body = escapeHtml(m.body || '').replace(/\n/g, '<br>');
+    var body = linkify(m.body || '');
     var ticks = mine ? ticksHtml(m.receipt_status || 'sent') : '';
     var time = 'now';
     if (m.created_at) {

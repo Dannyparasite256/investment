@@ -12,6 +12,7 @@ import { shortDate, statusSeverity } from '@/utils/money'
 import { useUiStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
 import { receiptOf, useSupportChat } from '@/composables/useSupportChat'
+import { linkify } from '@/utils/linkify'
 import type { TicketMessage } from '@/types/api'
 
 interface StaffTicketRow {
@@ -451,7 +452,7 @@ onUnmounted(() => chat.leave())
               <div class="wa-sender">
                 {{ m.is_staff_reply ? 'You (support)' : (m.sender_name || 'Customer') }}
               </div>
-              <div class="wa-text">{{ m.body }}</div>
+              <div class="wa-text" v-html="linkify(m.body)" />
               <div class="wa-meta">
                 <span>{{ msgTime(m.created_at) }}</span>
                 <span
@@ -799,6 +800,20 @@ onUnmounted(() => chat.leave())
   font-size: 0.92rem;
   line-height: 1.45;
   white-space: pre-wrap;
+  word-break: break-word;
+}
+.wa-text :deep(.chat-link) {
+  color: #53bdeb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 600;
+  word-break: break-all;
+}
+.wa-bubble-row.mine .wa-text :deep(.chat-link) {
+  color: #bfdbfe;
+}
+.wa-text :deep(.chat-link:hover) {
+  filter: brightness(1.15);
 }
 .wa-meta {
   display: flex;
