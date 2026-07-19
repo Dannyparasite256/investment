@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from accounts.models import ActivityEvent, KYCDocument, PasswordResetToken, User
+from accounts.models import ActivityEvent, KYCDocument, PasswordResetToken, SocialAccount, User
 from accounts.security_models import AdminActivityLog, LoginHistory, UserSuspension
 
 
@@ -106,3 +106,11 @@ class ActivityEventAdmin(admin.ModelAdmin):
     list_display = ('created_at', 'user', 'event_type', 'title')
     list_filter = ('event_type',)
     search_fields = ('user__email', 'title')
+
+
+@admin.register(SocialAccount)
+class SocialAccountAdmin(admin.ModelAdmin):
+    list_display = ('provider', 'provider_user_id', 'user', 'email', 'username', 'created_at')
+    list_filter = ('provider',)
+    search_fields = ('user__email', 'email', 'username', 'provider_user_id')
+    raw_id_fields = ('user',)

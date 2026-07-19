@@ -79,7 +79,15 @@ def register_view(request):
         login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         record_login(request, user=user, result=LoginHistory.Result.SUCCESS)
         return redirect('core:dashboard')
-    return render(request, 'accounts/register.html', {'form': form})
+    # Keep referral in session for social signup buttons
+    if ref:
+        request.session['pending_referral'] = ref
+    from accounts.oauth import enabled_providers
+    return render(request, 'accounts/register.html', {
+        'form': form,
+        'oauth': enabled_providers(),
+        'ref': ref or '',
+    })
 
 
 @ratelimit(key='ip', rate='20/h', method='POST', block=True)
@@ -106,7 +114,12 @@ def login_view(request):
     if request.method == 'POST' and not form.is_valid():
         email = (request.POST.get('username') or '')[:254]
         record_login(request, email=email, result=LoginHistory.Result.FAILED)
-    return render(request, 'accounts/login.html', {'form': form})
+    from accounts.oauth import enabled_providers
+    return render(request, 'accounts/login.html', {
+        'form': form,
+        'oauth': enabled_providers(),
+        'next': request.GET.get('next') or '',
+    })
 
 
 @require_http_methods(['GET', 'POST'])

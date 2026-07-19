@@ -1,0 +1,258 @@
+"""OAuth start + callback views for Google and X social signup/login."""
+import logging
+import secrets
+
+from django.contrib import messages
+from django.contrib.auth import login
+from django.db import transaction
+from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.views.decorators.http import require_GET
+
+from accounts.models import ActivityEvent, SocialAccount, User
+from accounts.oauth import (
+    build_authorize_url,
+    enabled_providers,
+    fetch_profile,
+    make_pkce_pair,
+    make_state,
+    oauth_enabled,
+)
+from accounts.security import record_login
+from accounts.security_models import LoginHistory
+from core.models import AuditLog
+from core.utils import create_audit_log
+from notifications.models import Notification, notify
+from wallets.models import Wallet
+
+logger = logging.getLogger('accounts')
+
+PROVIDER_ALIASES = {
+    'google': SocialAccount.Provider.GOOGLE,
+    'x': SocialAccount.Provider.X,
+    'twitter': SocialAccount.Provider.X,
+}
+
+
+def _normalize_provider(provider: str) -> str | None:
+    key = (provider or '').lower().strip()
+    if key in PROVIDER_ALIASES:
+        return 'x' if key == 'twitter' else key
+    return None
+
+
+def _callback_url(request, provider: str) -> str:
+    return request.build_absolute_uri(reverse('accounts:oauth_callback', args=[provider]))
+
+
+@require_GET
+def oauth_start(request, provider: str):
+    """Redirect user to Google / X authorization screen."""
+    provider = _normalize_provider(provider)
+    if not provider or not oauth_enabled(provider):
+        messages.error(request, 'This social login is not configured yet.')
+        return redirect('accounts:login')
+
+    if request.user.is_authenticated:
+        return redirect('core:dashboard')
+
+    state = make_state()
+    request.session['oauth_state'] = state
+    request.session['oauth_provider'] = provider
+    request.session['oauth_next'] = request.GET.get('next') or ''
+    # Preserve referral for new social signups
+    ref = (request.GET.get('ref') or request.session.get('pending_referral') or '').strip().upper()
+    if ref:
+        request.session['pending_referral'] = ref
+
+    code_challenge = ''
+    if provider == 'x':
+        verifier, challenge = make_pkce_pair()
+        request.session['oauth_code_verifier'] = verifier
+        code_challenge = challenge
+
+    try:
+        url = build_authorize_url(
+            provider,
+            redirect_uri=_callback_url(request, provider),
+            state=state,
+            code_challenge=code_challenge,
+        )
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect('accounts:login')
+    return redirect(url)
+
+
+@require_GET
+def oauth_callback(request, provider: str):
+    """Handle OAuth redirect: create/link user and log in."""
+    provider = _normalize_provider(provider)
+    if not provider:
+        messages.error(request, 'Unknown login provider.')
+        return redirect('accounts:login')
+
+    err = request.GET.get('error')
+    if err:
+        desc = request.GET.get('error_description') or err
+        messages.error(request, f'Social login cancelled or failed: {desc}')
+        return redirect('accounts:login')
+
+    state = request.GET.get('state') or ''
+    code = request.GET.get('code') or ''
+    expected = request.session.get('oauth_state')
+    sess_provider = request.session.get('oauth_provider')
+    if not code or not state or state != expected or sess_provider != provider:
+        messages.error(request, 'Invalid or expired social login session. Please try again.')
+        return redirect('accounts:login')
+
+    code_verifier = request.session.pop('oauth_code_verifier', '') if provider == 'x' else ''
+    # Clear one-time state
+    request.session.pop('oauth_state', None)
+    request.session.pop('oauth_provider', None)
+    next_url = request.session.pop('oauth_next', '') or reverse('core:dashboard')
+
+    try:
+        profile = fetch_profile(
+            provider,
+            code=code,
+            redirect_uri=_callback_url(request, provider),
+            code_verifier=code_verifier,
+        )
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect('accounts:login')
+
+    if not profile.provider_user_id:
+        messages.error(request, 'Could not read your social profile.')
+        return redirect('accounts:login')
+
+    try:
+        user, created = _login_or_register_from_profile(request, profile)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect('accounts:login')
+
+    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+    record_login(request, user=user, result=LoginHistory.Result.SUCCESS)
+    create_audit_log(
+        request=request, user=user,
+        action=AuditLog.Action.LOGIN if not created else AuditLog.Action.REGISTER,
+        message=f'{"Signed up" if created else "Logged in"} with {provider}',
+    )
+    ActivityEvent.objects.create(
+        user=user,
+        event_type='register' if created else 'login',
+        title='Account created via social' if created else f'Logged in with {provider.title()}',
+        description=f'Provider: {provider}',
+        metadata={'provider': provider},
+    )
+    if created:
+        messages.success(request, f'Welcome! Your account was created with {provider.title()}.')
+    else:
+        messages.success(request, f'Welcome back, {user.display_name}!')
+
+    if not next_url.startswith('/'):
+        next_url = reverse('core:dashboard')
+    return redirect(next_url)
+
+
+@transaction.atomic
+def _login_or_register_from_profile(request, profile):
+    """
+    Link existing SocialAccount, or match by email, or create a new user.
+    Returns (user, created).
+    """
+    provider = PROVIDER_ALIASES[profile.provider]
+    social = (
+        SocialAccount.objects.select_related('user')
+        .filter(provider=provider, provider_user_id=profile.provider_user_id)
+        .first()
+    )
+    if social:
+        # Refresh profile metadata
+        social.email = profile.email or social.email
+        social.username = profile.username or social.username
+        social.display_name = profile.display_name or social.display_name
+        social.avatar_url = profile.avatar_url or social.avatar_url
+        social.extra_data = profile.raw or social.extra_data
+        social.save()
+        user = social.user
+        if not user.is_active:
+            raise ValueError('This account is suspended. Contact support.')
+        return user, False
+
+    user = None
+    created = False
+    # Link by real email when Google provides one (not the synthetic X address)
+    if profile.email and not profile.email.endswith('@users.noreply.x.com'):
+        user = User.objects.filter(email__iexact=profile.email).first()
+
+    if user is None:
+        email = profile.email
+        if not email:
+            email = f'{provider}_{profile.provider_user_id}@oauth.local'
+        # Ensure unique
+        base_email = email
+        n = 0
+        while User.objects.filter(email__iexact=email).exists():
+            n += 1
+            local, _, domain = base_email.partition('@')
+            email = f'{local}+{n}@{domain}'
+
+        user = User(
+            email=email.lower(),
+            first_name=profile.first_name or '',
+            last_name=profile.last_name or '',
+            email_verified=not email.endswith(('@users.noreply.x.com', '@oauth.local')),
+        )
+        user.set_unusable_password()
+        # Referral
+        ref = (request.session.pop('pending_referral', None) or '').strip().upper()
+        if ref:
+            referrer = User.objects.filter(referral_code__iexact=ref).exclude(email=user.email).first()
+            if referrer:
+                user.referred_by = referrer
+        user.save()
+        Wallet.objects.get_or_create(user=user)
+        created = True
+        if user.referred_by_id:
+            notify(
+                user.referred_by, 'New referral',
+                f'{user.email} signed up with your link ({provider}).',
+                level=Notification.Level.SUCCESS, category=Notification.Category.REFERRAL,
+                link='/referrals/',
+            )
+        notify(
+            user, 'Welcome!',
+            f'Welcome to the platform. You signed in with {provider.title()}.',
+            category=Notification.Category.SYSTEM,
+        )
+    else:
+        if not user.is_active:
+            raise ValueError('This account is suspended. Contact support.')
+        # Fill empty names from social profile
+        updated = []
+        if not user.first_name and profile.first_name:
+            user.first_name = profile.first_name
+            updated.append('first_name')
+        if not user.last_name and profile.last_name:
+            user.last_name = profile.last_name
+            updated.append('last_name')
+        if profile.email and not profile.email.endswith('@users.noreply.x.com') and not user.email_verified:
+            user.email_verified = True
+            updated.append('email_verified')
+        if updated:
+            user.save(update_fields=updated)
+
+    SocialAccount.objects.create(
+        user=user,
+        provider=provider,
+        provider_user_id=profile.provider_user_id,
+        email=profile.email or '',
+        username=profile.username or '',
+        display_name=profile.display_name or '',
+        avatar_url=profile.avatar_url or '',
+        extra_data=profile.raw or {},
+    )
+    return user, created

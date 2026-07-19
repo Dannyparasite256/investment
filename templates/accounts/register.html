@@ -83,6 +83,7 @@
     </div>
   </div>
 
+  {% include "accounts/partials/social_auth.html" with oauth=oauth ref=ref %}
   <p class="text-center text-muted small mb-0 mt-3">
     Already have an account? <a href="{% url 'accounts:login' %}">Log in</a>
   </p>

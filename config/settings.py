@@ -152,6 +152,15 @@ LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'core:dashboard'
 LOGOUT_REDIRECT_URL = 'core:home'
 
+# ---------------------------------------------------------------------------
+# Social OAuth (Google + X/Twitter) — leave blank to hide buttons
+# ---------------------------------------------------------------------------
+GOOGLE_OAUTH_CLIENT_ID = env('GOOGLE_OAUTH_CLIENT_ID', default='')
+GOOGLE_OAUTH_CLIENT_SECRET = env('GOOGLE_OAUTH_CLIENT_SECRET', default='')
+X_OAUTH_CLIENT_ID = env('X_OAUTH_CLIENT_ID', default='')
+X_OAUTH_CLIENT_SECRET = env('X_OAUTH_CLIENT_SECRET', default='')
+
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 8}},

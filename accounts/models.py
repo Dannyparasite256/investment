@@ -234,3 +234,29 @@ class ActivityEvent(UUIDModel, TimeStampedModel):
 
     def __str__(self):
         return f'{self.event_type}: {self.title}'
+
+
+class SocialAccount(UUIDModel, TimeStampedModel):
+    """Linked OAuth identity (Google, X/Twitter, …)."""
+
+    class Provider(models.TextChoices):
+        GOOGLE = 'google', 'Google'
+        X = 'x', 'X (Twitter)'
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='social_accounts')
+    provider = models.CharField(max_length=20, choices=Provider.choices, db_index=True)
+    provider_user_id = models.CharField(max_length=128, db_index=True)
+    email = models.EmailField(blank=True)
+    username = models.CharField(max_length=150, blank=True)
+    display_name = models.CharField(max_length=200, blank=True)
+    avatar_url = models.URLField(blank=True, max_length=500)
+    extra_data = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = [('provider', 'provider_user_id')]
+        indexes = [models.Index(fields=['user', 'provider'])]
+
+    def __str__(self):
+        return f'{self.provider}:{self.provider_user_id} → {self.user.email}'
+

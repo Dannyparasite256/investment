@@ -6,7 +6,39 @@ Replace `investment256` with **your** PythonAnywhere username if different.
 
 ---
 
+## Social login (Google + X)
+
+Optional. Leave client IDs empty to hide the buttons.
+
+### Google
+1. [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials  
+2. Create **OAuth 2.0 Client ID** (Web application)  
+3. Authorized redirect URI:
+   `https://YOUR_USERNAME.pythonanywhere.com/accounts/oauth/google/callback/`  
+4. Put Client ID + Secret in `.env`:
+   ```
+   GOOGLE_OAUTH_CLIENT_ID=...
+   GOOGLE_OAUTH_CLIENT_SECRET=...
+   ```
+
+### X (Twitter)
+1. [X Developer Portal](https://developer.x.com/) → Project → User authentication  
+2. App permissions: **Read**  
+3. Type: **Web App** · OAuth 2.0  
+4. Callback URI:
+   `https://YOUR_USERNAME.pythonanywhere.com/accounts/oauth/x/callback/`  
+5. Client ID + Secret in `.env`:
+   ```
+   X_OAUTH_CLIENT_ID=...
+   X_OAUTH_CLIENT_SECRET=...
+   ```
+
+Then reload the web app. Buttons appear on `/accounts/login/` and `/accounts/register/`.
+
+---
+
 ## Vue SPA (no npm on PythonAnywhere)
+
 
 Free PythonAnywhere **does not include npm**. Do **not** run `npm install` on the server.
 

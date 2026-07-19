@@ -33,16 +33,7 @@
   <button type="submit" class="btn btn-ci w-100 mb-3 pulse-glow">
     <i class="bi bi-box-arrow-in-right me-1"></i> Log in
   </button>
-  <div class="d-flex align-items-center gap-2 my-3">
-    <div class="flex-grow-1 border-top border-ci"></div>
-    <span class="small text-muted">or</span>
-    <div class="flex-grow-1 border-top border-ci"></div>
-  </div>
-  <div class="d-grid gap-2 mb-3">
-    <button type="button" class="btn btn-ghost btn-sm" disabled title="Connect OAuth in production">
-      <i class="bi bi-google me-1"></i> Continue with Google
-    </button>
-  </div>
+  {% include "accounts/partials/social_auth.html" with oauth=oauth next=next %}
   <p class="text-center text-muted small mb-0">
     No account? <a href="{% url 'accounts:register' %}">Create one</a>
   </p>
