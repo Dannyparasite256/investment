@@ -53,7 +53,7 @@ const nav = computed(() => {
       items: [
         { to: '/notifications', icon: 'pi pi-inbox', label: 'Notifications' },
         { to: '/activity', icon: 'pi pi-clock', label: 'Activity' },
-        { to: '/support', icon: 'pi pi-comments', label: 'Support' },
+        { to: '/support', icon: 'pi pi-comments', label: 'Support chat' },
         { to: '/kyc', icon: 'pi pi-id-card', label: 'KYC' },
         { to: '/security', icon: 'pi pi-shield', label: 'Security' },
         { to: '/profile', icon: 'pi pi-user', label: 'Profile' },
@@ -71,7 +71,7 @@ const nav = computed(() => {
         { to: '/admin/withdrawals', icon: 'pi pi-send', label: 'Payouts' },
         { to: '/admin/kyc', icon: 'pi pi-id-card', label: 'KYC review' },
         { to: '/admin/users', icon: 'pi pi-users', label: 'Users' },
-        { to: '/admin/tickets', icon: 'pi pi-headphones', label: 'Tickets' },
+        { to: '/admin/tickets', icon: 'pi pi-headphones', label: 'Support chat' },
       ],
     })
   }

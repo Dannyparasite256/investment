@@ -295,7 +295,7 @@ onUnmounted(() => chat.leave())
           <span class="wa-brand-dot" />
           <div>
             <h1>Support</h1>
-            <p class="muted">Realtime chat</p>
+            <p class="muted">Chat with our team</p>
           </div>
         </div>
         <Button

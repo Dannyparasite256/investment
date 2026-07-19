@@ -890,10 +890,10 @@ def settings_view(request):
 @staff_panel_required
 def tickets_list(request):
     status = request.GET.get('status', '')
-    qs = SupportTicket.objects.select_related('user', 'assigned_to')
+    qs = SupportTicket.objects.select_related('user', 'assigned_to').prefetch_related('messages')
     if status:
         qs = qs.filter(status=status)
-    page = Paginator(qs, 25).get_page(request.GET.get('page'))
+    page = Paginator(qs.order_by('-updated_at'), 40).get_page(request.GET.get('page'))
     return render(request, 'staffpanel/tickets.html', {
         'page': page, 'status': status, 'statuses': SupportTicket.Status.choices,
     })
@@ -902,17 +902,30 @@ def tickets_list(request):
 @staff_panel_required
 @require_http_methods(['GET', 'POST'])
 def ticket_detail(request, pk):
+    from django.utils import timezone
+    from support.realtime import (
+        get_presence,
+        get_typing,
+        notify_new_message,
+        notify_receipts,
+        set_presence,
+    )
+
     ticket = get_object_or_404(SupportTicket.objects.select_related('user'), pk=pk)
     if request.method == 'POST':
         body = request.POST.get('body', '').strip()
         if body:
-            TicketMessage.objects.create(
+            msg = TicketMessage.objects.create(
                 ticket=ticket, sender=request.user, body=body, is_staff_reply=True,
             )
             ticket.status = SupportTicket.Status.WAITING
             ticket.assigned_to = request.user
             ticket.save(update_fields=['status', 'assigned_to', 'updated_at'])
-            notify(ticket.user, 'Support reply', f'Re: {ticket.subject}', category=Notification.Category.SYSTEM)
+            notify_new_message(ticket, msg)
+            notify(
+                ticket.user, 'Support reply', f'Re: {ticket.subject}',
+                category=Notification.Category.SYSTEM, link=f'/app/support/{ticket.id}',
+            )
             messages.success(request, 'Reply sent.')
             return redirect('staffpanel:ticket_detail', pk=pk)
         new_status = request.POST.get('status')
@@ -921,9 +934,29 @@ def ticket_detail(request, pk):
             ticket.save(update_fields=['status', 'updated_at'])
             messages.success(request, 'Status updated.')
             return redirect('staffpanel:ticket_detail', pk=pk)
+
+    # Mark customer messages as read when staff opens chat
+    now = timezone.now()
+    unread = TicketMessage.objects.filter(
+        ticket=ticket, is_staff_reply=False, read_at__isnull=True,
+    )
+    ids = list(unread.values_list('id', flat=True))
+    if ids:
+        unread.update(delivered_at=now, read_at=now, updated_at=now)
+        notify_receipts(ticket.id, ids, 'read', now.isoformat())
+
+    set_presence(ticket.id, request.user, is_staff=True)
+    other_tickets = (
+        SupportTicket.objects.select_related('user')
+        .order_by('-updated_at')[:40]
+    )
     return render(request, 'staffpanel/ticket_detail.html', {
-        'ticket': ticket, 'messages_list': ticket.messages.select_related('sender'),
+        'ticket': ticket,
+        'messages_list': ticket.messages.select_related('sender'),
         'statuses': SupportTicket.Status.choices,
+        'other_tickets': other_tickets,
+        'presence': get_presence(ticket.id),
+        'typing': get_typing(ticket.id, exclude_user_id=request.user.pk),
     })
 
 

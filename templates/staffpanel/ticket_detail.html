@@ -1,31 +1,121 @@
 {% extends "staffpanel/base.html" %}
-{% block page_title %}Ticket{% endblock %}
+{% block page_title %}{{ ticket.subject }} — Support{% endblock %}
 {% block content %}
-<div class="row g-4">
-  <div class="col-lg-8">
-    <div class="glass-card p-4 mb-3">
-      <h5>{{ ticket.subject }}</h5>
-      <p class="text-muted small">{{ ticket.user.email }} · {{ ticket.get_status_display }}</p>
-      {% for m in messages_list %}
-      <div class="p-3 mb-2 rounded {% if m.is_staff_reply %}bg-elevated{% else %}border border-ci{% endif %}">
-        <div class="small text-muted mb-1">{{ m.sender.email }} · {{ m.created_at|when }}{% if m.is_staff_reply %} · staff{% endif %}</div>
-        <div>{{ m.body|linebreaksbr }}</div>
+<div class="wa-shell has-chat">
+  <aside class="wa-sidebar d-none d-lg-flex">
+    <header class="wa-side-head">
+      <div class="wa-side-title">
+        <span class="wa-brand-dot" style="background:linear-gradient(145deg,#3B82F6,#7C3AED)" aria-hidden="true"></span>
+        <div>
+          <div class="wa-side-h1">Support inbox</div>
+          <div class="small text-muted">All conversations</div>
+        </div>
       </div>
+    </header>
+    <div class="wa-chat-list">
+      {% for t in other_tickets %}
+      <a href="{% url 'staffpanel:ticket_detail' t.pk %}" class="wa-chat-row {% if t.pk == ticket.pk %}active{% endif %}">
+        <span class="wa-avatar" style="background:linear-gradient(145deg,#3B82F6,#7C3AED)">
+          {{ t.user.email|slice:":1"|upper }}
+        </span>
+        <span class="wa-row-body">
+          <span class="wa-row-top">
+            <strong class="wa-truncate">{{ t.user.get_full_name|default:t.user.email }}</strong>
+            <span class="wa-time">{{ t.updated_at|when }}</span>
+          </span>
+          <span class="wa-row-bot">
+            <span class="wa-preview wa-truncate">{{ t.subject }}</span>
+            <span class="badge badge-status badge-info wa-status">{{ t.get_status_display }}</span>
+          </span>
+        </span>
+      </a>
       {% endfor %}
-      <form method="post" class="mt-3">{% csrf_token %}
-        <textarea class="form-control mb-2" name="body" rows="3" placeholder="Reply…" required></textarea>
-        <button class="btn btn-ci">Send reply</button>
-      </form>
     </div>
-  </div>
-  <div class="col-lg-4">
-    <div class="glass-card p-3">
-      <form method="post">{% csrf_token %}
-        <label class="form-label">Status</label>
-        <select class="form-select mb-2" name="status">{% for v,l in statuses %}<option value="{{ v }}" {% if ticket.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
-        <button class="btn btn-outline-ci btn-sm w-100">Update status</button>
+  </aside>
+
+  <section class="wa-pane">
+    <header class="wa-chat-head">
+      <a href="{% url 'staffpanel:tickets' %}" class="btn btn-ghost btn-sm wa-back" aria-label="Back">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <span class="wa-avatar wa-avatar-lg" style="background:linear-gradient(145deg,#3B82F6,#7C3AED)">
+        {{ ticket.user.email|slice:":1"|upper }}
+      </span>
+      <div class="wa-chat-meta">
+        <div class="wa-chat-title wa-truncate">{{ ticket.user.get_full_name|default:ticket.user.email }}</div>
+        <div class="small text-muted">
+          {% if presence.user_online %}<span class="text-success">online</span> · {% endif %}
+          {{ ticket.user.email }} · {{ ticket.subject }}
+          <span class="badge badge-status badge-info ms-1">{{ ticket.get_status_display }}</span>
+        </div>
+      </div>
+      <form method="post" class="d-flex align-items-center gap-2 mb-0">
+        {% csrf_token %}
+        <select class="form-select form-select-sm" name="status" style="width:auto;min-width:8rem">
+          {% for v,l in statuses %}
+          <option value="{{ v }}" {% if ticket.status == v %}selected{% endif %}>{{ l }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-outline-ci btn-sm" type="submit">Update</button>
       </form>
+    </header>
+
+    <div class="wa-messages" id="wa-messages">
+      <div class="wa-day-pill">Conversation started · {{ ticket.created_at|when }}</div>
+      {% for m in messages_list %}
+      <div class="wa-bubble-row {% if m.is_staff_reply %}mine{% else %}theirs{% endif %}">
+        <div class="wa-bubble" {% if m.is_staff_reply %}style="background:linear-gradient(160deg,#1d4ed8,#1e40af);color:#eef2ff;border-top-right-radius:3px"{% endif %}>
+          <div class="wa-sender">{% if m.is_staff_reply %}You (support){% else %}{{ m.sender.get_full_name|default:m.sender.email }}{% endif %}</div>
+          <div class="wa-text">{{ m.body|linebreaksbr }}</div>
+          <div class="wa-meta">
+            <span>{{ m.created_at|when }}</span>
+            {% if m.is_staff_reply %}
+            <span class="wa-ticks wa-ticks-{{ m.receipt_status }}" title="{{ m.receipt_status }}">
+              {% if m.receipt_status == 'read' or m.receipt_status == 'delivered' %}
+              <i class="bi bi-check2"></i><i class="bi bi-check2 wa-tick-2"></i>
+              {% else %}
+              <i class="bi bi-check2"></i>
+              {% endif %}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="wa-empty-msgs text-muted">No messages yet.</div>
+      {% endfor %}
     </div>
-  </div>
+
+    <footer class="wa-composer">
+      <form method="post" class="wa-composer-form">
+        {% csrf_token %}
+        <textarea name="body" rows="1" required placeholder="Type a reply as support…" class="wa-input"></textarea>
+        <button class="btn btn-primary rounded-circle wa-send" type="submit" style="background:#3B82F6;border-color:#3B82F6" title="Send" aria-label="Send">
+          <i class="bi bi-send-fill"></i>
+        </button>
+      </form>
+    </footer>
+  </section>
 </div>
+
+<style>
+.wa-ticks {
+  display: inline-flex;
+  position: relative;
+  width: 1.05rem;
+  height: 0.85rem;
+  color: rgba(238, 242, 255, 0.75);
+  margin-left: 0.15rem;
+}
+.wa-ticks i { font-size: 0.75rem; position: absolute; left: 0; line-height: 1; }
+.wa-ticks .wa-tick-2 { left: 0.28rem; }
+.wa-ticks-read { color: #53bdeb !important; }
+.wa-chat-row.active { background: rgba(59, 130, 246, 0.14) !important; }
+</style>
+<script>
+(function () {
+  var el = document.getElementById('wa-messages');
+  if (el) el.scrollTop = el.scrollHeight;
+})();
+</script>
 {% endblock %}

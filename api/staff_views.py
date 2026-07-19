@@ -413,19 +413,34 @@ class StaffTicketListView(APIView):
     permission_classes = [IsAuthenticated, IsStaffPanel]
 
     def get(self, request):
-        qs = SupportTicket.objects.select_related('user').order_by('-updated_at')[:50]
-        return Response({
-            'results': [{
+        qs = (
+            SupportTicket.objects.select_related('user')
+            .prefetch_related('messages')
+            .order_by('-updated_at')[:80]
+        )
+        results = []
+        for t in qs:
+            last = t.messages.order_by('-created_at').first()
+            results.append({
                 'id': str(t.id),
                 'subject': t.subject,
                 'status': t.status,
                 'priority': t.priority,
                 'category': t.category,
                 'user_email': t.user.email,
+                'user_name': t.user.get_full_name() or t.user.email,
                 'created_at': t.created_at,
                 'updated_at': t.updated_at,
-            } for t in qs]
-        })
+                'message_count': t.messages.count(),
+                'last_message': ({
+                    'id': str(last.id),
+                    'body': last.body,
+                    'is_staff_reply': last.is_staff_reply,
+                    'created_at': last.created_at,
+                    'receipt_status': last.receipt_status,
+                } if last else None),
+            })
+        return Response({'results': results})
 
 
 class StaffTicketDetailView(APIView):
