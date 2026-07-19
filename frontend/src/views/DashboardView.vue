@@ -87,6 +87,26 @@ onMounted(async () => {
       <Button label="Invest" icon="pi pi-chart-line" severity="secondary" outlined @click="router.push('/plans')" />
     </PageHeader>
 
+    <!-- Always-visible crypto brand icons -->
+    <div class="crypto-hero glass">
+      <div class="crypto-hero-title">
+        <strong>Crypto assets</strong>
+        <span class="muted small">Tap an asset to open wallet / deposit QR</span>
+      </div>
+      <div class="crypto-hero-row">
+        <button
+          v-for="s in ['BTC', 'ETH', 'USDT', 'BNB', 'LTC', 'USDC', 'TRX', 'SOL']"
+          :key="s"
+          type="button"
+          class="crypto-hero-chip"
+          @click="router.push('/wallet')"
+        >
+          <CryptoIcon :symbol="s" size="lg" />
+          <span>{{ s }}</span>
+        </button>
+      </div>
+    </div>
+
     <div v-if="loading" class="grid-stats">
       <Skeleton v-for="i in 4" :key="i" height="110px" border-radius="18px" />
     </div>
@@ -212,6 +232,39 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.crypto-hero {
+  margin-top: 0.85rem;
+  padding: 1rem 1.15rem;
+  border-radius: 16px;
+}
+.crypto-hero-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-bottom: 0.75rem;
+}
+.crypto-hero-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+.crypto-hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 14px;
+  border: 1px solid var(--ci-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.crypto-hero-chip:hover {
+  border-color: rgba(59, 130, 246, 0.6);
+  background: rgba(59, 130, 246, 0.12);
+}
 .hero {
   margin-top: 1rem;
   padding: 1.35rem 1.4rem;

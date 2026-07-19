@@ -103,24 +103,32 @@ async function copyAddress() {
       <StatCard label="Profit" :value="formatDisplay(currency.balances?.profit)" icon="pi pi-chart-line" tone="gold" />
     </div>
 
-    <!-- Always-visible crypto strip so icons are obvious on every visit -->
-    <div v-if="cryptos.length" class="glass panel crypto-strip">
+    <!-- Always-visible crypto strip (hardcoded fallbacks if API empty) -->
+    <div class="glass panel crypto-strip">
       <h3>Supported assets</h3>
       <div class="crypto-chips">
-        <button
-          v-for="c in cryptos.filter((x) => x.is_active)"
-          :key="c.id"
-          type="button"
-          class="crypto-chip"
-          :class="{ active: selectedId === c.id }"
-          @click="selectedId = c.id"
-        >
-          <CryptoIcon :symbol="c.symbol" :icon="c.icon" size="md" />
-          <span class="chip-text">
-            <strong>{{ c.symbol }}</strong>
-            <small class="muted">{{ c.network }}</small>
-          </span>
-        </button>
+        <template v-if="cryptos.filter((x) => x.is_active).length">
+          <button
+            v-for="c in cryptos.filter((x) => x.is_active)"
+            :key="c.id"
+            type="button"
+            class="crypto-chip"
+            :class="{ active: selectedId === c.id }"
+            @click="selectedId = c.id"
+          >
+            <CryptoIcon :symbol="c.symbol" :icon="c.icon" size="lg" />
+            <span class="chip-text">
+              <strong>{{ c.symbol }}</strong>
+              <small class="muted">{{ c.network }}</small>
+            </span>
+          </button>
+        </template>
+        <template v-else>
+          <div v-for="s in ['BTC', 'ETH', 'USDT', 'BNB', 'LTC']" :key="s" class="crypto-chip">
+            <CryptoIcon :symbol="s" size="lg" />
+            <span class="chip-text"><strong>{{ s }}</strong></span>
+          </div>
+        </template>
       </div>
     </div>
 

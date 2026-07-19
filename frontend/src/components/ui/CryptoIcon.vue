@@ -12,41 +12,30 @@ const props = withDefaults(
   { size: 'md' },
 )
 
-const letter = computed(() => cryptoGlyph(props.symbol, props.icon))
-const color = computed(() => cryptoColor(props.symbol))
+const letter = computed(() => cryptoGlyph(props.symbol, props.icon) || '?')
+const color = computed(() => cryptoColor(props.symbol) || '#64748B')
 const title = computed(() => props.name || props.symbol || 'Crypto')
 const px = computed(() => cryptoSizePx(props.size))
-const fontPx = computed(() => Math.max(10, Math.round(px.value * 0.48)))
+const fontPx = computed(() => Math.max(11, Math.round(px.value * 0.5)))
 
-/** Fully inline styles so no global CSS can hide the badge */
-const boxStyle = computed(() => ({
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  flexShrink: '0',
-  width: `${px.value}px`,
-  height: `${px.value}px`,
-  minWidth: `${px.value}px`,
-  minHeight: `${px.value}px`,
-  borderRadius: '50%',
-  backgroundColor: color.value,
-  color: '#ffffff',
-  fontWeight: '800',
-  fontSize: `${fontPx.value}px`,
-  lineHeight: '1',
-  fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, sans-serif',
-  boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
-  border: '2px solid rgba(255,255,255,0.25)',
-  verticalAlign: 'middle',
-  boxSizing: 'border-box' as const,
-  userSelect: 'none' as const,
-}))
+/** Style as a plain string — most reliable across PrimeVue portals / tables */
+const styleAttr = computed(
+  () =>
+    `display:inline-flex !important;align-items:center;justify-content:center;` +
+    `flex-shrink:0;width:${px.value}px;height:${px.value}px;` +
+    `min-width:${px.value}px;min-height:${px.value}px;` +
+    `border-radius:50%;background:${color.value};color:#fff;` +
+    `font-weight:800;font-size:${fontPx.value}px;line-height:1;` +
+    `font-family:Inter,system-ui,sans-serif;` +
+    `box-shadow:0 2px 8px rgba(0,0,0,.4);border:2px solid rgba(255,255,255,.3);` +
+    `vertical-align:middle;box-sizing:border-box;user-select:none;`,
+)
 </script>
 
 <template>
   <span
     class="ci-crypto-icon"
-    :style="boxStyle"
+    :style="styleAttr"
     :title="title"
     role="img"
     :aria-label="title"

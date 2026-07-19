@@ -236,17 +236,15 @@ onMounted(async () => {
   min-width: 0;
 }
 .crypto-ticker {
-  display: none;
+  display: inline-flex !important;
   align-items: center;
-  gap: 0.28rem;
-  padding: 0.2rem 0.4rem;
+  gap: 0.3rem;
+  padding: 0.28rem 0.5rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--ci-border);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   cursor: pointer;
-}
-@media (min-width: 900px) {
-  .crypto-ticker { display: inline-flex; }
+  flex-shrink: 0;
 }
 .fx-val {
   display: inline-flex;
