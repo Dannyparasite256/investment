@@ -30,10 +30,10 @@ const chat = useSupportChat({
 })
 
 const statusLine = computed(() => {
-  if (chat.peerTypingText.value) return chat.peerTypingText.value
-  if (chat.presence.value.user_online) return 'Customer is online'
-  if (chat.presence.value.user_last_seen) {
-    return `Last seen ${shortDate(chat.presence.value.user_last_seen)}`
+  if (chat.peerTypingText) return chat.peerTypingText
+  if (chat.presence.user_online) return 'Customer is online'
+  if (chat.presence.user_last_seen) {
+    return `Last seen ${shortDate(chat.presence.user_last_seen)}`
   }
   return ticket.value?.user_email || ''
 })

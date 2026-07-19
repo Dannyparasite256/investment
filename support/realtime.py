@@ -249,6 +249,12 @@ def broadcast_staff(payload: dict) -> None:
 def message_payload(msg) -> dict:
     sender = msg.sender
     name = f'{sender.first_name} {sender.last_name}'.strip() or sender.email
+    att_url = ''
+    if getattr(msg, 'attachment', None):
+        try:
+            att_url = msg.attachment.url
+        except Exception:
+            att_url = ''
     return {
         'id': str(msg.id),
         'ticket_id': str(msg.ticket_id),
@@ -260,6 +266,7 @@ def message_payload(msg) -> dict:
         'receipt_status': msg.receipt_status,
         'sender': sender.pk,
         'sender_name': name,
+        'attachment_url': att_url,
     }
 
 

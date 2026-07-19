@@ -108,10 +108,10 @@ function lastSeenLabel(iso?: string | null): string {
 }
 
 const statusLine = computed(() => {
-  if (chat.peerTypingText.value) return chat.peerTypingText.value
-  if (chat.presence.value.user_online) return 'online'
-  if (chat.presence.value.user_last_seen) {
-    return `last seen ${lastSeenLabel(chat.presence.value.user_last_seen)}`
+  if (chat.peerTypingText) return chat.peerTypingText
+  if (chat.presence.user_online) return 'online'
+  if (chat.presence.user_last_seen) {
+    return `last seen ${lastSeenLabel(chat.presence.user_last_seen)}`
   }
   return activeTicket.value
     ? `${activeTicket.value.user_email} · ${activeTicket.value.category || 'support'}`
@@ -119,7 +119,7 @@ const statusLine = computed(() => {
 })
 
 const liveLabel = computed(() => {
-  if (chat.connected.value) return chat.mode.value === 'ws' ? 'Live' : 'Live · sync'
+  if (chat.connected) return chat.mode === 'ws' ? 'Live' : 'Live · sync'
   return 'Connecting…'
 })
 

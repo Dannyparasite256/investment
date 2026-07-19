@@ -947,6 +947,12 @@ def ticket_detail(request, pk):
                 notify_receipts(ticket.id, ids, 'read', now.isoformat())
             msgs = []
             for m in ticket.messages.select_related('sender').all():
+                att_url = ''
+                if m.attachment:
+                    try:
+                        att_url = m.attachment.url
+                    except Exception:
+                        att_url = ''
                 msgs.append({
                     'id': str(m.id),
                     'body': m.body,
@@ -956,6 +962,7 @@ def ticket_detail(request, pk):
                     'read_at': m.read_at.isoformat() if m.read_at else None,
                     'receipt_status': m.receipt_status,
                     'sender_name': m.sender.get_full_name() or m.sender.email,
+                    'attachment_url': att_url,
                 })
             own = [x for x in msgs if x['is_staff_reply']]
             return JsonResponse({
@@ -966,9 +973,14 @@ def ticket_detail(request, pk):
             })
 
         body = request.POST.get('body', '').strip()
-        if body:
+        attachment = request.FILES.get('attachment')
+        if body or attachment:
             msg = TicketMessage.objects.create(
-                ticket=ticket, sender=request.user, body=body, is_staff_reply=True,
+                ticket=ticket,
+                sender=request.user,
+                body=body or '(attachment)',
+                is_staff_reply=True,
+                attachment=attachment,
             )
             ticket.status = SupportTicket.Status.WAITING
             ticket.assigned_to = request.user
@@ -979,6 +991,12 @@ def ticket_detail(request, pk):
                 category=Notification.Category.SYSTEM, link=f'/app/support/{ticket.id}',
             )
             if wants_json:
+                att_url = ''
+                if msg.attachment:
+                    try:
+                        att_url = msg.attachment.url
+                    except Exception:
+                        att_url = ''
                 return JsonResponse({
                     'ok': True,
                     'message': {
@@ -988,6 +1006,7 @@ def ticket_detail(request, pk):
                         'created_at': msg.created_at.isoformat() if msg.created_at else None,
                         'receipt_status': msg.receipt_status,
                         'sender_name': request.user.get_full_name() or request.user.email,
+                        'attachment_url': att_url,
                     },
                 })
             messages.success(request, 'Reply sent.')

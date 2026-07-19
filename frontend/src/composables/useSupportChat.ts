@@ -2,7 +2,7 @@
  * Realtime support chat: HTTP poll is always the source of truth
  * (works on PythonAnywhere). WebSocket is optional bonus.
  */
-import { onUnmounted, ref, type Ref } from 'vue'
+import { onUnmounted, reactive, ref, type Ref } from 'vue'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import type {
@@ -451,7 +451,9 @@ export function useSupportChat(options: {
     leave()
   })
 
-  return {
+  // reactive() auto-unwraps nested refs in templates (plain objects do not).
+  // Without this, v-if="chat.peerTypingText" is always true (Ref object is truthy).
+  return reactive({
     connected,
     mode,
     typing,
@@ -466,5 +468,5 @@ export function useSupportChat(options: {
     receiptOf,
     pollOnce,
     clearPeerTyping,
-  }
+  })
 }

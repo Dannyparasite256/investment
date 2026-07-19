@@ -58,6 +58,12 @@ def ticket_create(request):
 
 
 def _msg_json(m):
+    att_url = ''
+    if m.attachment:
+        try:
+            att_url = m.attachment.url
+        except Exception:
+            att_url = ''
     return {
         'id': str(m.id),
         'body': m.body,
@@ -67,6 +73,7 @@ def _msg_json(m):
         'read_at': m.read_at.isoformat() if m.read_at else None,
         'receipt_status': m.receipt_status,
         'sender_name': m.sender.get_full_name() or m.sender.email,
+        'attachment_url': att_url,
     }
 
 
@@ -76,20 +83,26 @@ def ticket_detail(request, pk):
     ticket = get_object_or_404(SupportTicket, pk=pk, user=request.user)
     if request.method == 'POST':
         body = request.POST.get('body', '').strip()
+        attachment = request.FILES.get('attachment')
         wants_json = (
             request.headers.get('X-Requested-With') == 'XMLHttpRequest'
             or 'application/json' in (request.headers.get('Accept') or '')
         )
-        if not body:
+        if not body and not attachment:
             if wants_json:
-                return JsonResponse({'detail': 'Message required'}, status=400)
-            messages.error(request, 'Message required.')
+                return JsonResponse({'detail': 'Message or attachment required'}, status=400)
+            messages.error(request, 'Message or attachment required.')
             return redirect('support:detail', pk=pk)
         if ticket.status in (SupportTicket.Status.CLOSED, SupportTicket.Status.RESOLVED):
             if wants_json:
                 return JsonResponse({'detail': 'Conversation closed'}, status=400)
             return redirect('support:detail', pk=pk)
-        msg = TicketMessage.objects.create(ticket=ticket, sender=request.user, body=body)
+        msg = TicketMessage.objects.create(
+            ticket=ticket,
+            sender=request.user,
+            body=body or '(attachment)',
+            attachment=attachment,
+        )
         if ticket.status == SupportTicket.Status.WAITING:
             ticket.status = SupportTicket.Status.OPEN
             ticket.save(update_fields=['status', 'updated_at'])
@@ -148,18 +161,7 @@ def ticket_poll(request, pk):
             qs = qs.filter(created_at__gt=since_dt)
         except (ValueError, TypeError):
             pass
-    data = []
-    for m in qs:
-        data.append({
-            'id': str(m.id),
-            'body': m.body,
-            'is_staff_reply': m.is_staff_reply,
-            'created_at': m.created_at.isoformat() if m.created_at else None,
-            'delivered_at': m.delivered_at.isoformat() if m.delivered_at else None,
-            'read_at': m.read_at.isoformat() if m.read_at else None,
-            'receipt_status': m.receipt_status,
-            'sender_name': m.sender.get_full_name() or m.sender.email,
-        })
+    data = [_msg_json(m) for m in qs]
     own = []
     for m in ticket.messages.filter(is_staff_reply=False):
         own.append({

@@ -87,16 +87,16 @@ function lastSeenLabel(iso?: string | null): string {
 }
 
 const statusLine = computed(() => {
-  if (chat.peerTypingText.value) return chat.peerTypingText.value
-  if (chat.presence.value.staff_online) return 'online'
-  if (chat.presence.value.staff_last_seen) {
-    return `last seen ${lastSeenLabel(chat.presence.value.staff_last_seen)}`
+  if (chat.peerTypingText) return chat.peerTypingText
+  if (chat.presence.staff_online) return 'online'
+  if (chat.presence.staff_last_seen) {
+    return `last seen ${lastSeenLabel(chat.presence.staff_last_seen)}`
   }
   return activeTicket.value ? `${activeTicket.value.category} · support chat` : ''
 })
 
 const liveLabel = computed(() => {
-  if (chat.connected.value) return chat.mode.value === 'ws' ? 'Live' : 'Live · sync'
+  if (chat.connected) return chat.mode === 'ws' ? 'Live' : 'Live · sync'
   return 'Connecting…'
 })
 
