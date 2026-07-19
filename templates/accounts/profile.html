@@ -218,10 +218,16 @@
               <label class="form-check-label" for="id_email_alerts">Price / product email alerts</label>
             </div>
           </div>
-          <div class="col-md-6">
+          <div class="col-12">
             <div class="form-check">
               {{ form.require_social_reauth_withdraw }}
-              <label class="form-check-label" for="id_require_social_reauth_withdraw">Require Google confirm for withdrawals</label>
+              <label class="form-check-label" for="id_require_social_reauth_withdraw">
+                <strong>Require confirmation before withdrawals</strong>
+              </label>
+              <div class="form-text text-muted small">
+                When enabled, the Withdraw page asks for a <strong>code emailed to you</strong> or a
+                <strong>Google confirm</strong> before you can cash out. Save this form after checking the box.
+              </div>
             </div>
           </div>
           <div class="col-12"><hr class="border-ci"></div>

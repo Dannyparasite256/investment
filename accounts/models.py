@@ -130,7 +130,7 @@ class User(AbstractUser):
     public_bio = models.CharField(max_length=280, blank=True)
     require_social_reauth_withdraw = models.BooleanField(
         default=False,
-        help_text='Require recent Google confirmation before withdrawals',
+        help_text='Require email code or Google confirmation before withdrawals',
     )
 
     objects = UserManager()

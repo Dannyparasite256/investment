@@ -199,22 +199,58 @@ def deposit_detail(request, pk):
     })
 
 
-def _recent_google_reauth(request, minutes=15) -> bool:
-    """True if user confirmed Google identity within the window."""
+def _session_time_ok(request, key: str, minutes: int = 20) -> bool:
     from datetime import timedelta
 
     from django.utils import timezone
     from django.utils.dateparse import parse_datetime
 
-    raw = request.session.get('social_reauth_at') or ''
-    if request.session.get('social_reauth_provider') != 'google':
-        return False
+    raw = request.session.get(key) or ''
     when = parse_datetime(raw) if raw else None
     if not when:
         return False
     if timezone.is_naive(when):
         when = timezone.make_aware(when, timezone.get_current_timezone())
     return when >= timezone.now() - timedelta(minutes=minutes)
+
+
+def _recent_google_reauth(request, minutes=20) -> bool:
+    """True if user confirmed Google identity within the window."""
+    if request.session.get('social_reauth_provider') != 'google':
+        return False
+    return _session_time_ok(request, 'social_reauth_at', minutes=minutes)
+
+
+def _recent_email_reauth(request, minutes=20) -> bool:
+    return _session_time_ok(request, 'withdraw_email_verified_at', minutes=minutes)
+
+
+def _withdraw_reauth_ok(request) -> bool:
+    """Either recent Google confirm or recent email code counts."""
+    return _recent_google_reauth(request) or _recent_email_reauth(request)
+
+
+def _send_withdraw_email_code(request) -> None:
+    import random
+
+    from django.conf import settings
+    from django.core.mail import send_mail
+    from django.utils import timezone
+
+    user = request.user
+    code = f'{random.randint(0, 999999):06d}'
+    request.session['withdraw_email_code'] = code
+    request.session['withdraw_email_code_at'] = timezone.now().isoformat()
+    # Clear previous success so they must re-enter
+    request.session.pop('withdraw_email_verified_at', None)
+    subject = f'Withdrawal verification code — {settings.SITE_NAME}'
+    body = (
+        f'Hi {user.get_full_name() or user.email},\n\n'
+        f'Your withdrawal confirmation code is: {code}\n\n'
+        f'It expires in 20 minutes. If you did not request a withdrawal, ignore this email '
+        f'and secure your account.\n\n— {settings.SITE_NAME}\n'
+    )
+    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
 
 
 @login_required
@@ -234,22 +270,69 @@ def withdraw_create(request):
     except Exception:
         pass
 
+    # Ensure latest preference from DB (not a stale session user object)
+    try:
+        request.user.refresh_from_db(
+            fields=['require_social_reauth_withdraw', 'email'],
+        )
+    except Exception:
+        pass
+
     wallet, _ = Wallet.objects.get_or_create(user=request.user)
     display_code = get_default_display_code(request.user, request=request)
     currency_meta = get_currency_meta(display_code)
     needs_reauth = bool(getattr(request.user, 'require_social_reauth_withdraw', False))
-    reauth_ok = _recent_google_reauth(request) if needs_reauth else True
+    reauth_ok = _withdraw_reauth_ok(request) if needs_reauth else True
+    reauth_via = (
+        'google' if _recent_google_reauth(request)
+        else ('email' if _recent_email_reauth(request) else '')
+    )
+
+    # Handle verification actions before the withdrawal form
+    if request.method == 'POST' and request.POST.get('security_action'):
+        action = request.POST.get('security_action')
+        if action == 'send_email_code':
+            try:
+                _send_withdraw_email_code(request)
+                messages.success(
+                    request,
+                    f'We sent a 6-digit code to {request.user.email}. Enter it below.',
+                )
+            except Exception as exc:
+                messages.error(request, f'Could not send email: {exc}')
+            return redirect('transactions:withdraw_create')
+        if action == 'verify_email_code':
+            from django.utils import timezone
+            from django.utils.dateparse import parse_datetime
+
+            expected = (request.session.get('withdraw_email_code') or '').strip()
+            submitted = (request.POST.get('email_code') or '').strip()
+            sent_at = request.session.get('withdraw_email_code_at') or ''
+            when = parse_datetime(sent_at) if sent_at else None
+            if when and timezone.is_naive(when):
+                when = timezone.make_aware(when, timezone.get_current_timezone())
+            expired = (not when) or (when < timezone.now() - __import__('datetime').timedelta(minutes=20))
+            if not expected or expired:
+                messages.error(request, 'Code expired. Send a new one.')
+            elif submitted != expected:
+                messages.error(request, 'Incorrect code. Check your email and try again.')
+            else:
+                request.session['withdraw_email_verified_at'] = timezone.now().isoformat()
+                request.session.pop('withdraw_email_code', None)
+                messages.success(request, 'Email confirmed. You can submit your withdrawal now.')
+            return redirect('transactions:withdraw_create')
+
     form = WithdrawalForm(
         user=request.user,
         currency_code=display_code,
-        data=request.POST or None,
+        data=request.POST or None if not request.POST.get('security_action') else None,
     )
-    if request.method == 'POST' and form.is_valid():
-        if needs_reauth and not _recent_google_reauth(request):
+    if request.method == 'POST' and not request.POST.get('security_action') and form.is_valid():
+        if needs_reauth and not _withdraw_reauth_ok(request):
             messages.error(
                 request,
-                'For your security, confirm with Google before withdrawing. '
-                'Use “Confirm with Google” below, then submit again.',
+                'Extra security is on for your account. Confirm by email code or Google first, '
+                'then submit the withdrawal again.',
             )
             return redirect('transactions:withdraw_create')
         try:
@@ -382,8 +465,12 @@ def withdraw_create(request):
         'crypto_rates': rates,
         'needs_reauth': needs_reauth,
         'reauth_ok': reauth_ok,
+        'reauth_via': reauth_via,
+        'code_sent': bool(request.session.get('withdraw_email_code')),
+        'user_email': request.user.email,
         'google_reauth_url': (
-            reverse('accounts:oauth_start', args=['google']) + '?next=' + reverse('transactions:withdraw_create')
+            reverse('accounts:oauth_start', args=['google'])
+            + '?next=' + reverse('transactions:withdraw_create')
         ),
     })
 

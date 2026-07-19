@@ -7,6 +7,61 @@
 <div class="ui-flow-hero glass-card p-3 mb-3">
   {% include "partials/ui_sticker.html" with kind="withdraw" size="sm" compact=1 title="Cash out securely" text="Enter the amount in your display currency. We convert with live rates and lock funds until paid." %}
 </div>
+
+{% if needs_reauth %}
+<div class="glass-card p-4 mb-4 border border-warning" id="withdraw-security-gate" style="border-color: rgba(251,191,36,0.45) !important">
+  <div class="d-flex align-items-start gap-3 flex-wrap">
+    <div class="flex-grow-1">
+      <h5 class="mb-1"><i class="bi bi-shield-lock text-warning me-1"></i> Step 1 — Confirm it’s you</h5>
+      <p class="small text-muted mb-3">
+        You enabled <strong>extra confirmation for withdrawals</strong> in Profile.
+        Complete email code <em>or</em> Google below before submitting a withdrawal.
+      </p>
+      {% if reauth_ok %}
+      <div class="alert alert-success border-0 small mb-0">
+        <i class="bi bi-check-circle me-1"></i>
+        Confirmed via <strong>{{ reauth_via|default:"secure check" }}</strong> — you can submit for about 20 minutes.
+      </div>
+      {% else %}
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="p-3 rounded" style="background:rgba(255,255,255,0.04);border:1px solid var(--ci-border)">
+            <div class="fw-semibold mb-2"><i class="bi bi-envelope me-1"></i> Email code</div>
+            <p class="small text-muted">We’ll send a 6-digit code to <strong>{{ user_email }}</strong></p>
+            <form method="post" class="mb-2">
+              {% csrf_token %}
+              <input type="hidden" name="security_action" value="send_email_code">
+              <button type="submit" class="btn btn-ci btn-sm w-100">
+                {% if code_sent %}Resend code{% else %}Send code to my email{% endif %}
+              </button>
+            </form>
+            {% if code_sent %}
+            <form method="post" class="d-flex gap-2">
+              {% csrf_token %}
+              <input type="hidden" name="security_action" value="verify_email_code">
+              <input type="text" name="email_code" class="form-control form-control-sm font-mono"
+                     inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="123456" required>
+              <button type="submit" class="btn btn-outline-ci btn-sm">Verify</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 rounded h-100" style="background:rgba(255,255,255,0.04);border:1px solid var(--ci-border)">
+            <div class="fw-semibold mb-2"><i class="bi bi-google me-1"></i> Google</div>
+            <p class="small text-muted">Sign in with Google to unlock withdrawals for 20 minutes.</p>
+            <a class="btn btn-outline-ci btn-sm w-100" href="{{ google_reauth_url }}">
+              Confirm with Google
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <div class="row g-4">
   <div class="col-lg-7">
     <div class="glass-card p-4 mb-3">
@@ -21,18 +76,11 @@
       </div>
     </div>
 
-    <div class="glass-card p-4">
-      {% if needs_reauth %}
-      <div class="alert {% if reauth_ok %}alert-success{% else %}alert-warning{% endif %} glass-card border-0 small mb-3">
-        <i class="bi bi-shield-lock me-1"></i>
-        <strong>Extra security:</strong> Google confirmation is required before withdrawals.
-        {% if reauth_ok %}
-        You’re confirmed for the next few minutes.
-        {% else %}
-        <a class="btn btn-outline-ci btn-sm ms-2" href="{{ google_reauth_url }}">
-          <i class="bi bi-google me-1"></i> Confirm with Google
-        </a>
-        {% endif %}
+    <div class="glass-card p-4 {% if needs_reauth and not reauth_ok %}opacity-75{% endif %}">
+      <h6 class="mb-3">{% if needs_reauth %}Step 2 — Withdrawal details{% else %}Withdrawal details{% endif %}</h6>
+      {% if needs_reauth and not reauth_ok %}
+      <div class="alert alert-warning border-0 small mb-3">
+        Complete <strong>Step 1</strong> above first. The form stays locked until email or Google confirms you.
       </div>
       {% endif %}
       <div class="alert alert-warning glass-card border-0 small mb-3">
@@ -41,7 +89,7 @@
         Choose the <strong>crypto network</strong> you want paid to — we convert with the live rate and lock platform balance.
         Wrong network can mean permanent loss of funds.
       </div>
-      <form method="post" id="withdraw-form">
+      <form method="post" id="withdraw-form" {% if needs_reauth and not reauth_ok %}onsubmit="alert('Confirm with email code or Google first (Step 1).'); return false;"{% endif %}>
         {% csrf_token %}
         <div class="mb-3">
           <label class="form-label" for="id_cryptocurrency">Payout crypto / network</label>
