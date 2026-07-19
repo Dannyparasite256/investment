@@ -46,6 +46,35 @@ Premium fintech UI inspired by Binance / Coinbase / Bybit: glassmorphism, gradie
 
 ---
 
+## Vue SPA (native-feeling app)
+
+Modern Vue 3 + PrimeVue shell that talks to the existing Django REST API (no business-logic rewrite).
+
+```bash
+# Terminal 1 — Django API
+.\venv\Scripts\Activate.ps1
+python manage.py runserver
+
+# Terminal 2 — Vue app
+cd frontend
+npm install
+npm run dev
+```
+
+Open **http://127.0.0.1:5173** (proxies `/api` to Django).
+
+Production build served by Django at **`/app/`**:
+
+```bash
+cd frontend
+npm run build:django
+# then open http://127.0.0.1:8000/app/
+```
+
+Classic Django templates remain at `/` and `/dashboard/`.
+
+---
+
 ## Quick start (local / SQLite)
 
 ```bash
