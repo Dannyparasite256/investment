@@ -11,11 +11,13 @@ import PageHeader from '@/components/ui/PageHeader.vue'
 import StatCard from '@/components/ui/StatCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useCurrencyStore } from '@/stores/currency'
 import { api, unwrapList } from '@/services/api'
-import { formatMoney, shortDate, statusSeverity } from '@/utils/money'
+import { formatDisplay, formatMoney, shortDate, statusSeverity } from '@/utils/money'
 import type { InvestmentPlan, Transaction, Earning } from '@/types/api'
 
 const auth = useAuthStore()
+const currency = useCurrencyStore()
 const router = useRouter()
 const loading = ref(true)
 const plans = ref<InvestmentPlan[]>([])
@@ -23,9 +25,9 @@ const transactions = ref<Transaction[]>([])
 const earnings = ref<Earning[]>([])
 const prices = ref<Record<string, string | number>>({})
 
-const available = computed(() => formatMoney(auth.wallet?.available_balance ?? 0))
-const profit = computed(() => formatMoney(auth.wallet?.total_profit ?? 0))
-const invested = computed(() => formatMoney(auth.wallet?.total_invested ?? 0))
+const available = computed(() => formatDisplay(currency.balances?.available) || formatMoney(auth.wallet?.available_balance ?? 0))
+const profit = computed(() => formatDisplay(currency.balances?.profit) || formatMoney(auth.wallet?.total_profit ?? 0))
+const invested = computed(() => formatDisplay((currency.balances as any)?.active_investments?.capital) || formatMoney(auth.wallet?.total_invested ?? 0))
 const deposited = computed(() => formatMoney(auth.wallet?.total_deposited ?? 0))
 
 const chartSeries = computed(() => [{
@@ -53,6 +55,8 @@ onMounted(async () => {
   loading.value = true
   try {
     await auth.refreshWallet()
+    if (!currency.balances) await currency.init()
+    else await currency.refreshBalances()
     const [p, t, e, pr] = await Promise.allSettled([
       api.plans(),
       api.transactions({ page: 1 }),
@@ -90,7 +94,10 @@ onMounted(async () => {
       <div>
         <div class="stat-label">Available balance</div>
         <div class="hero-val mono gradient-text">{{ available }}</div>
-        <div class="muted small">Locked {{ formatMoney(auth.wallet?.locked_balance ?? 0) }} · Total {{ formatMoney(auth.wallet?.balance ?? 0) }}</div>
+        <div class="muted small">
+          Locked {{ formatDisplay(currency.balances?.locked) }} · Total {{ formatDisplay(currency.balances?.balance) }}
+          · {{ currency.code || 'USD' }}
+        </div>
       </div>
       <div class="actions">
         <Button label="Deposit" icon="pi pi-download" @click="router.push('/deposits')" />

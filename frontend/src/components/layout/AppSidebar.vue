@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
@@ -8,58 +9,74 @@ const router = useRouter()
 const auth = useAuthStore()
 const ui = useUiStore()
 
-const nav = [
-  {
-    label: 'Main',
-    items: [
-      { to: '/dashboard', icon: 'pi pi-th-large', label: 'Dashboard' },
-      { to: '/plans', icon: 'pi pi-chart-line', label: 'Invest' },
-      { to: '/investments', icon: 'pi pi-briefcase', label: 'My Portfolio' },
-      { to: '/portfolio', icon: 'pi pi-chart-pie', label: 'Performance' },
-      { to: '/calculator', icon: 'pi pi-calculator', label: 'Calculator' },
-      { to: '/markets', icon: 'pi pi-chart-bar', label: 'Markets' },
-    ],
-  },
-  {
-    label: 'Wallet',
-    items: [
-      { to: '/wallet', icon: 'pi pi-wallet', label: 'Wallet' },
-      { to: '/deposits', icon: 'pi pi-download', label: 'Deposit' },
-      { to: '/withdrawals', icon: 'pi pi-upload', label: 'Withdraw' },
-      { to: '/transactions', icon: 'pi pi-history', label: 'History' },
-      { to: '/earnings', icon: 'pi pi-dollar', label: 'Earnings' },
-      { to: '/statements', icon: 'pi pi-file', label: 'Statements' },
-    ],
-  },
-  {
-    label: 'Markets tools',
-    items: [
-      { to: '/watchlist', icon: 'pi pi-star', label: 'Watchlist' },
-      { to: '/alerts', icon: 'pi pi-bell', label: 'Price alerts' },
-      { to: '/signals', icon: 'pi pi-bolt', label: 'Signals' },
-    ],
-  },
-  {
-    label: 'Grow',
-    items: [
-      { to: '/referrals', icon: 'pi pi-users', label: 'Referrals' },
-      { to: '/vip', icon: 'pi pi-crown', label: 'VIP' },
-    ],
-  },
-  {
-    label: 'Account',
-    items: [
-      { to: '/notifications', icon: 'pi pi-inbox', label: 'Notifications' },
-      { to: '/activity', icon: 'pi pi-clock', label: 'Activity' },
-      { to: '/support', icon: 'pi pi-comments', label: 'Support' },
-      { to: '/kyc', icon: 'pi pi-id-card', label: 'KYC' },
-      { to: '/security', icon: 'pi pi-shield', label: 'Security' },
-      { to: '/profile', icon: 'pi pi-user', label: 'Profile' },
-      { to: '/faq', icon: 'pi pi-question-circle', label: 'FAQ' },
-      { to: '/risk-quiz', icon: 'pi pi-sliders-h', label: 'Risk profile' },
-    ],
-  },
-]
+const nav = computed(() => {
+  const sections = [
+    {
+      label: 'Main',
+      items: [
+        { to: '/dashboard', icon: 'pi pi-th-large', label: 'Dashboard' },
+        { to: '/plans', icon: 'pi pi-chart-line', label: 'Invest' },
+        { to: '/investments', icon: 'pi pi-briefcase', label: 'My Portfolio' },
+        { to: '/portfolio', icon: 'pi pi-chart-pie', label: 'Performance' },
+        { to: '/calculator', icon: 'pi pi-calculator', label: 'Calculator' },
+        { to: '/markets', icon: 'pi pi-chart-bar', label: 'Markets' },
+      ],
+    },
+    {
+      label: 'Wallet',
+      items: [
+        { to: '/wallet', icon: 'pi pi-wallet', label: 'Wallet' },
+        { to: '/deposits', icon: 'pi pi-download', label: 'Deposit' },
+        { to: '/withdrawals', icon: 'pi pi-upload', label: 'Withdraw' },
+        { to: '/transactions', icon: 'pi pi-history', label: 'History' },
+        { to: '/earnings', icon: 'pi pi-dollar', label: 'Earnings' },
+        { to: '/statements', icon: 'pi pi-file', label: 'Statements' },
+      ],
+    },
+    {
+      label: 'Markets tools',
+      items: [
+        { to: '/watchlist', icon: 'pi pi-star', label: 'Watchlist' },
+        { to: '/alerts', icon: 'pi pi-bell', label: 'Price alerts' },
+        { to: '/signals', icon: 'pi pi-bolt', label: 'Signals' },
+      ],
+    },
+    {
+      label: 'Grow',
+      items: [
+        { to: '/referrals', icon: 'pi pi-users', label: 'Referrals' },
+        { to: '/vip', icon: 'pi pi-crown', label: 'VIP' },
+      ],
+    },
+    {
+      label: 'Account',
+      items: [
+        { to: '/notifications', icon: 'pi pi-inbox', label: 'Notifications' },
+        { to: '/activity', icon: 'pi pi-clock', label: 'Activity' },
+        { to: '/support', icon: 'pi pi-comments', label: 'Support' },
+        { to: '/kyc', icon: 'pi pi-id-card', label: 'KYC' },
+        { to: '/security', icon: 'pi pi-shield', label: 'Security' },
+        { to: '/profile', icon: 'pi pi-user', label: 'Profile' },
+        { to: '/faq', icon: 'pi pi-question-circle', label: 'FAQ' },
+        { to: '/risk-quiz', icon: 'pi pi-sliders-h', label: 'Risk profile' },
+      ],
+    },
+  ]
+  if (auth.user?.is_staff_panel) {
+    sections.push({
+      label: 'Admin',
+      items: [
+        { to: '/admin', icon: 'pi pi-cog', label: 'Admin home' },
+        { to: '/admin/deposits', icon: 'pi pi-check-circle', label: 'Approve deposits' },
+        { to: '/admin/withdrawals', icon: 'pi pi-send', label: 'Payouts' },
+        { to: '/admin/kyc', icon: 'pi pi-id-card', label: 'KYC review' },
+        { to: '/admin/users', icon: 'pi pi-users', label: 'Users' },
+        { to: '/admin/tickets', icon: 'pi pi-headphones', label: 'Tickets' },
+      ],
+    })
+  }
+  return sections
+})
 
 function isActive(path: string) {
   if (path === '/dashboard') return route.path === path
@@ -94,7 +111,7 @@ function logout() {
           :key="item.to"
           type="button"
           class="link"
-          :class="{ active: isActive(item.to) }"
+          :class="{ active: isActive(item.to), staff: section.label === 'Admin' }"
           :title="item.label"
           @click="go(item.to)"
         >
@@ -199,6 +216,7 @@ function logout() {
   color: var(--ci-text);
   font-weight: 600;
 }
+.link.staff:not(.active) { color: #FBBF24; }
 .foot {
   padding: 0.65rem;
   border-top: 1px solid var(--ci-border);

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
@@ -19,6 +20,7 @@ import { useUiStore } from '@/stores/ui'
 
 const auth = useAuthStore()
 const ui = useUiStore()
+const router = useRouter()
 const rows = ref<Withdrawal[]>([])
 const cryptos = ref<Cryptocurrency[]>([])
 const loading = ref(true)
@@ -85,6 +87,11 @@ onMounted(load)
         </Column>
         <Column field="status" header="Status">
           <template #body="{ data }"><Tag :value="data.status" :severity="statusSeverity(data.status)" /></template>
+        </Column>
+        <Column header="" style="width:6rem">
+          <template #body="{ data }">
+            <Button label="Receipt" size="small" text icon="pi pi-file" @click="router.push(`/receipts/withdrawal/${data.id}`)" />
+          </template>
         </Column>
       </DataTable>
       <EmptyState v-else-if="!loading" title="No withdrawals yet" text="Request a payout to your external wallet.">

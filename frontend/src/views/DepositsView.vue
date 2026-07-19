@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
@@ -16,6 +17,7 @@ import { formatMoney, shortDate, statusSeverity } from '@/utils/money'
 import type { Cryptocurrency, Deposit } from '@/types/api'
 import { useUiStore } from '@/stores/ui'
 
+const router = useRouter()
 const ui = useUiStore()
 const rows = ref<Deposit[]>([])
 const cryptos = ref<Cryptocurrency[]>([])
@@ -82,6 +84,17 @@ onMounted(load)
         </Column>
         <Column field="transaction_hash" header="Tx hash">
           <template #body="{ data }"><span class="mono muted small">{{ data.transaction_hash || '—' }}</span></template>
+        </Column>
+        <Column header="" style="width:6rem">
+          <template #body="{ data }">
+            <Button
+              label="Receipt"
+              size="small"
+              text
+              icon="pi pi-file"
+              @click="router.push(`/receipts/deposit/${data.id}`)"
+            />
+          </template>
         </Column>
       </DataTable>
       <EmptyState v-else-if="!loading" title="No deposits yet" text="Submit a crypto deposit to fund your wallet.">

@@ -4,8 +4,10 @@ import type {
   AppNotification,
   AuthResponse,
   Cryptocurrency,
+  CurrencyOption,
   DashboardStats,
   Deposit,
+  DisplayBalances,
   Earning,
   FAQItem,
   Investment,
@@ -16,6 +18,7 @@ import type {
   Paginated,
   PortfolioData,
   PriceAlert,
+  ReceiptData,
   ReferralData,
   SearchResult,
   SupportTicket,
@@ -64,9 +67,63 @@ export const api = {
   wallet() {
     return http.get<Wallet>('/api/v1/wallet/')
   },
+  currencies() {
+    return http.get<{ current: string; meta: any; options: CurrencyOption[] }>('/api/v1/currencies/')
+  },
   balances(currency?: string) {
-    const q = currency ? `?currency=${encodeURIComponent(currency)}` : ''
-    return http.get(`/api/balances/${q}`)
+    return http.get<DisplayBalances>('/api/v1/balances/', {
+      params: currency ? { currency } : undefined,
+    })
+  },
+  setDisplayCurrency(currency: string) {
+    return http.post<DisplayBalances>('/api/v1/display-currency/', { currency })
+  },
+  depositReceipt(id: string) {
+    return http.get<ReceiptData>(`/api/v1/receipts/deposit/${id}/`)
+  },
+  withdrawalReceipt(id: string) {
+    return http.get<ReceiptData>(`/api/v1/receipts/withdrawal/${id}/`)
+  },
+  transactionReceipt(id: string) {
+    return http.get<ReceiptData>(`/api/v1/receipts/transaction/${id}/`)
+  },
+  // Staff admin
+  staffDashboard() {
+    return http.get('/api/v1/staff/dashboard/')
+  },
+  staffDeposits(params?: { status?: string; q?: string }) {
+    return http.get('/api/v1/staff/deposits/', { params })
+  },
+  staffDepositAction(id: string, action: 'approve' | 'reject', payload?: { notes?: string; reason?: string }) {
+    return http.post(`/api/v1/staff/deposits/${id}/${action}/`, payload || {})
+  },
+  staffWithdrawals(params?: { status?: string; q?: string }) {
+    return http.get('/api/v1/staff/withdrawals/', { params })
+  },
+  staffWithdrawalAction(
+    id: string,
+    action: 'approve' | 'paid' | 'reject',
+    payload?: { notes?: string; reason?: string; tx_hash?: string },
+  ) {
+    return http.post(`/api/v1/staff/withdrawals/${id}/${action}/`, payload || {})
+  },
+  staffKyc(params?: { status?: string }) {
+    return http.get('/api/v1/staff/kyc/', { params })
+  },
+  staffKycAction(id: string, action: 'approve' | 'reject', payload?: { reason?: string }) {
+    return http.post(`/api/v1/staff/kyc/${id}/${action}/`, payload || {})
+  },
+  staffUsers(params?: { q?: string }) {
+    return http.get('/api/v1/staff/users/', { params })
+  },
+  staffTickets() {
+    return http.get('/api/v1/staff/tickets/')
+  },
+  staffTicket(id: string) {
+    return http.get(`/api/v1/staff/tickets/${id}/`)
+  },
+  staffTicketReply(id: string, body: string) {
+    return http.post(`/api/v1/staff/tickets/${id}/`, { body })
   },
   cryptocurrencies() {
     return http.get<Cryptocurrency[]>('/api/v1/cryptocurrencies/')

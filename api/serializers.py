@@ -8,6 +8,8 @@ from wallets.models import Cryptocurrency, UserWalletAddress, Wallet
 
 
 class UserSerializer(serializers.ModelSerializer):
+    is_staff_panel = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = (
@@ -16,8 +18,14 @@ class UserSerializer(serializers.ModelSerializer):
             'country', 'country_code', 'date_joined', 'preferred_theme', 'preferred_ui_theme',
             'preferred_language', 'preferred_currency', 'preferred_timezone',
             'email_alerts', 'sms_alerts', 'risk_score', 'tour_completed',
+            'is_staff', 'is_superuser', 'role', 'is_staff_panel',
         )
         read_only_fields = fields
+
+    def get_is_staff_panel(self, obj):
+        if getattr(obj, 'is_superuser', False) or getattr(obj, 'is_staff', False):
+            return True
+        return getattr(obj, 'role', '') in ('support', 'manager', 'admin')
 
 
 class WalletSerializer(serializers.ModelSerializer):

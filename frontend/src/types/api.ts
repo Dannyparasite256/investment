@@ -21,6 +21,62 @@ export interface User {
   sms_alerts?: boolean
   risk_score?: number
   tour_completed?: boolean
+  is_staff?: boolean
+  is_superuser?: boolean
+  role?: string
+  is_staff_panel?: boolean
+}
+
+export interface BalanceMoney {
+  value: string
+  symbol: string
+  code?: string
+  formatted: string
+  usd_price?: number
+  usd_equivalent?: string
+  label: string
+}
+
+export interface DisplayBalances {
+  ok?: boolean
+  error?: string
+  currency?: string
+  message?: string
+  saved?: boolean
+  available?: BalanceMoney
+  balance?: BalanceMoney
+  profit?: BalanceMoney
+  locked?: BalanceMoney
+  referral?: BalanceMoney
+  active_capital?: BalanceMoney
+  total_deposited?: BalanceMoney
+  total_withdrawn?: BalanceMoney
+  total_invested?: BalanceMoney
+  [key: string]: unknown
+}
+
+export interface CurrencyOption {
+  code: string
+  label: string
+  symbol: string
+  kind: string
+  usd_price: string
+  network?: string
+}
+
+export interface ReceiptData {
+  kind: string
+  id: string
+  title: string
+  status: string
+  status_label: string
+  display_currency: string
+  currency_symbol: string
+  amount: BalanceMoney
+  fee?: BalanceMoney | null
+  net?: BalanceMoney | null
+  rows: Array<{ label: string; value: string }>
+  print_url?: string
 }
 
 export interface Wallet {

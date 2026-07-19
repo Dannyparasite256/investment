@@ -8,6 +8,17 @@ export function formatMoney(value: string | number | null | undefined, places = 
   })
 }
 
+/** Prefer server-converted display label (e.g. "1,250,000 UGX"). */
+export function formatDisplay(
+  money: { label?: string; formatted?: string; symbol?: string; value?: string } | null | undefined,
+  fallbackPlaces = 2,
+): string {
+  if (!money) return formatMoney(0, fallbackPlaces)
+  if (money.label) return money.label
+  if (money.formatted && money.symbol) return `${money.formatted} ${money.symbol}`
+  return formatMoney(money.value, fallbackPlaces)
+}
+
 export function shortDate(iso?: string | null): string {
   if (!iso) return '—'
   try {

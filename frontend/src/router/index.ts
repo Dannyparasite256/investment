@@ -195,6 +195,55 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/SearchView.vue'),
         meta: { title: 'Search' },
       },
+      {
+        path: 'receipts/:kind/:id',
+        name: 'receipt',
+        component: () => import('@/views/ReceiptView.vue'),
+        meta: { title: 'Receipt' },
+      },
+      // Staff / admin (requires is_staff_panel)
+      {
+        path: 'admin',
+        name: 'admin',
+        component: () => import('@/views/staff/StaffDashboardView.vue'),
+        meta: { title: 'Admin', staff: true },
+      },
+      {
+        path: 'admin/deposits',
+        name: 'admin-deposits',
+        component: () => import('@/views/staff/StaffDepositsView.vue'),
+        meta: { title: 'Admin Deposits', staff: true },
+      },
+      {
+        path: 'admin/withdrawals',
+        name: 'admin-withdrawals',
+        component: () => import('@/views/staff/StaffWithdrawalsView.vue'),
+        meta: { title: 'Admin Withdrawals', staff: true },
+      },
+      {
+        path: 'admin/kyc',
+        name: 'admin-kyc',
+        component: () => import('@/views/staff/StaffKycView.vue'),
+        meta: { title: 'Admin KYC', staff: true },
+      },
+      {
+        path: 'admin/users',
+        name: 'admin-users',
+        component: () => import('@/views/staff/StaffUsersView.vue'),
+        meta: { title: 'Admin Users', staff: true },
+      },
+      {
+        path: 'admin/tickets',
+        name: 'admin-tickets',
+        component: () => import('@/views/staff/StaffTicketsView.vue'),
+        meta: { title: 'Admin Tickets', staff: true },
+      },
+      {
+        path: 'admin/tickets/:id',
+        name: 'admin-ticket-detail',
+        component: () => import('@/views/staff/StaffTicketDetailView.vue'),
+        meta: { title: 'Admin Ticket', staff: true },
+      },
     ],
   },
   {
@@ -227,6 +276,9 @@ router.beforeEach(async (to) => {
     return { name: 'login', query: { next: to.fullPath } }
   }
   if ((to.name === 'login' || to.name === 'register') && auth.isAuthenticated) {
+    return { name: 'dashboard' }
+  }
+  if (to.meta.staff && !auth.user?.is_staff_panel) {
     return { name: 'dashboard' }
   }
   return true

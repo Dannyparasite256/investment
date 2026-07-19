@@ -4,12 +4,14 @@ import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Badge from 'primevue/badge'
 import Menu from 'primevue/menu'
+import Select from 'primevue/select'
 import type { MenuItem } from 'primevue/menuitem'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { useUiStore } from '@/stores/ui'
+import { useCurrencyStore } from '@/stores/currency'
 import { api, unwrapList } from '@/services/api'
-import { formatMoney } from '@/utils/money'
+import { formatDisplay } from '@/utils/money'
 import type { AppNotification } from '@/types/api'
 
 const route = useRoute()
@@ -17,29 +19,52 @@ const router = useRouter()
 const auth = useAuthStore()
 const theme = useThemeStore()
 const ui = useUiStore()
+const currency = useCurrencyStore()
 
 const profileMenu = ref()
 const notifMenu = ref()
 const notifications = ref<AppNotification[]>([])
 
 const title = computed(() => (route.meta.title as string) || 'Dashboard')
-const available = computed(() => formatMoney(auth.wallet?.available_balance ?? 0, 2))
+const available = computed(() =>
+  formatDisplay(currency.balances?.available) || '—',
+)
 const unread = computed(() => notifications.value.filter((n) => !n.is_read).length)
 
-const profileItems = computed<MenuItem[]>(() => [
-  { label: auth.displayName, disabled: true },
-  { separator: true },
-  { label: 'Profile', icon: 'pi pi-user', command: () => router.push('/profile') },
-  { label: 'Wallet', icon: 'pi pi-wallet', command: () => router.push('/wallet') },
-  { label: 'Notifications', icon: 'pi pi-bell', command: () => router.push('/notifications') },
-  { separator: true },
-  {
-    label: theme.mode === 'light' ? 'Dark mode' : 'Light mode',
-    icon: theme.mode === 'light' ? 'pi pi-moon' : 'pi pi-sun',
-    command: () => theme.toggleDarkLight(),
+const currencyModel = computed({
+  get: () => currency.code,
+  set: async (v: string) => {
+    const ok = await currency.setCurrency(v)
+    if (ok) ui.toast('Currency', `Display set to ${v}`, 'success')
+    else if (currency.error) ui.toast('Currency', currency.error, 'error')
   },
-  { label: 'Log out', icon: 'pi pi-sign-out', command: () => auth.logout() },
-])
+})
+
+const profileItems = computed<MenuItem[]>(() => {
+  const items: MenuItem[] = [
+    { label: auth.displayName, disabled: true },
+    { separator: true },
+    { label: 'Profile', icon: 'pi pi-user', command: () => router.push('/profile') },
+    { label: 'Wallet', icon: 'pi pi-wallet', command: () => router.push('/wallet') },
+    { label: 'Notifications', icon: 'pi pi-bell', command: () => router.push('/notifications') },
+  ]
+  if (auth.user?.is_staff_panel) {
+    items.push(
+      { separator: true },
+      { label: 'Admin panel', icon: 'pi pi-cog', command: () => router.push('/admin') },
+    )
+  }
+  items.push(
+    { separator: true },
+    {
+      label: theme.mode === 'light' ? 'Dark mode' : 'Light mode',
+      icon: theme.mode === 'light' ? 'pi pi-moon' : 'pi pi-sun',
+      command: () => theme.toggleDarkLight(),
+    },
+    { label: 'Log out', icon: 'pi pi-sign-out', command: () => auth.logout() },
+  )
+  return items
+})
 
 const notifItems = computed<MenuItem[]>(() => {
   if (!notifications.value.length) {
@@ -57,11 +82,12 @@ const notifItems = computed<MenuItem[]>(() => {
 
 onMounted(async () => {
   try {
+    await currency.init()
+  } catch { /* ignore */ }
+  try {
     const { data } = await api.notifications()
     notifications.value = unwrapList(data)
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
 })
 </script>
 
@@ -92,6 +118,19 @@ onMounted(async () => {
     </div>
 
     <div class="right">
+      <div class="fx-wrap" v-tooltip.bottom="'Display currency · live conversion'">
+        <Select
+          v-model="currencyModel"
+          :options="currency.options"
+          option-label="label"
+          option-value="code"
+          placeholder="Currency"
+          class="fx-select"
+          :loading="currency.switching"
+          :disabled="currency.switching"
+        />
+      </div>
+
       <button type="button" class="balance" @click="router.push('/wallet')">
         <i class="pi pi-wallet" />
         <span class="mono">{{ available }}</span>
@@ -161,6 +200,16 @@ onMounted(async () => {
   text-overflow: ellipsis;
   max-width: 220px;
 }
+.fx-wrap { min-width: 0; }
+.fx-select {
+  min-width: 7.5rem;
+  max-width: 11rem;
+}
+:deep(.fx-select .p-select) {
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
 .balance {
   display: none;
   align-items: center;
@@ -173,29 +222,28 @@ onMounted(async () => {
   cursor: pointer;
   font-weight: 600;
   font-size: 0.85rem;
+  max-width: 14rem;
+}
+.balance .mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .balance:hover {
   border-color: rgba(59, 130, 246, 0.4);
 }
-.notif-wrap {
-  position: relative;
-}
+.notif-wrap { position: relative; }
 .badge {
   position: absolute;
   top: 2px;
   right: 2px;
 }
-.collapse-btn {
-  display: none;
-}
-.collapse-btn.rotated {
-  transform: rotate(180deg);
-}
+.collapse-btn { display: none; }
+.collapse-btn.rotated { transform: rotate(180deg); }
 @media (min-width: 992px) {
   .menu-btn { display: none; }
   .collapse-btn { display: inline-flex; }
   .balance { display: inline-flex; }
-  .topbar { top: 12px; }
 }
 @media (max-width: 991.98px) {
   .topbar {
@@ -204,5 +252,6 @@ onMounted(async () => {
     margin-bottom: 0.5rem;
   }
   .sub { display: none; }
+  .fx-select { min-width: 5.5rem; max-width: 7.5rem; }
 }
 </style>
