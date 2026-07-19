@@ -111,7 +111,17 @@ def oauth_callback(request, provider: str):
     err = request.GET.get('error')
     if err:
         desc = request.GET.get('error_description') or err
-        messages.error(request, f'Social login cancelled or failed: {desc}')
+        logger.warning('OAuth callback error provider=%s error=%s desc=%s', provider, err, desc)
+        if provider == 'x':
+            messages.error(
+                request,
+                'X login failed. In the X Developer Portal, set Callback URI to '
+                f'{_callback_url(request, "x")} '
+                'and enable OAuth 2.0 (Type: Web App, Read permissions). '
+                f'Detail: {desc}',
+            )
+        else:
+            messages.error(request, f'Social login cancelled or failed: {desc}')
         return redirect('accounts:login')
 
     state = request.GET.get('state') or ''

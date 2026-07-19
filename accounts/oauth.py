@@ -152,31 +152,37 @@ def google_fetch_profile(*, code: str, redirect_uri: str) -> OAuthProfile:
 # ---------------------------------------------------------------------------
 
 def x_authorize_url(*, redirect_uri: str, state: str, code_challenge: str) -> str:
+    # Scopes must be space-separated; encode spaces as %20 (not +) for X.
+    # users.read is required for login; tweet.read is commonly required by X app setup.
     params = {
         'response_type': 'code',
         'client_id': settings.X_OAUTH_CLIENT_ID,
         'redirect_uri': redirect_uri,
-        'scope': 'tweet.read users.read offline.access',
+        'scope': 'users.read tweet.read offline.access',
         'state': state,
         'code_challenge': code_challenge,
         'code_challenge_method': 'S256',
     }
-    return 'https://twitter.com/i/oauth2/authorize?' + urllib.parse.urlencode(params)
+    qs = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
+    # Prefer x.com (twitter.com still works but X portal docs use x.com)
+    return 'https://x.com/i/oauth2/authorize?' + qs
 
 
 def x_fetch_profile(*, code: str, redirect_uri: str, code_verifier: str) -> OAuthProfile:
+    # Confidential client: Basic auth with client_id:client_secret
     basic = base64.b64encode(
         f'{settings.X_OAUTH_CLIENT_ID}:{settings.X_OAUTH_CLIENT_SECRET}'.encode('utf-8')
     ).decode('ascii')
     token = http_json(
         'POST',
-        'https://api.twitter.com/2/oauth2/token',
+        'https://api.x.com/2/oauth2/token',
         data={
             'code': code,
             'grant_type': 'authorization_code',
-            'client_id': settings.X_OAUTH_CLIENT_ID,
             'redirect_uri': redirect_uri,
             'code_verifier': code_verifier,
+            # client_id required in body for some X app types even with Basic auth
+            'client_id': settings.X_OAUTH_CLIENT_ID,
         },
         headers={'Authorization': f'Basic {basic}'},
         form=True,
@@ -186,7 +192,7 @@ def x_fetch_profile(*, code: str, redirect_uri: str, code_verifier: str) -> OAut
         raise ValueError('X did not return an access token.')
     me = http_json(
         'GET',
-        'https://api.twitter.com/2/users/me?' + urllib.parse.urlencode({
+        'https://api.x.com/2/users/me?' + urllib.parse.urlencode({
             'user.fields': 'id,name,username,profile_image_url',
         }),
         headers={'Authorization': f'Bearer {access}'},

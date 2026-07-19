@@ -22,16 +22,23 @@ Optional. Leave client IDs empty to hide the buttons.
    ```
 
 ### X (Twitter)
-1. [X Developer Portal](https://developer.x.com/) → Project → User authentication  
-2. App permissions: **Read**  
-3. Type: **Web App** · OAuth 2.0  
-4. Callback URI:
-   `https://YOUR_USERNAME.pythonanywhere.com/accounts/oauth/x/callback/`  
-5. Client ID + Secret in `.env`:
+1. [X Developer Portal](https://developer.x.com/) → your **Project** → **App**  
+2. **User authentication settings** → **Set up** / **Edit**  
+3. Required:
+   - **OAuth 2.0** enabled  
+   - **Type of App:** Web App, Automated App or Bot (**Confidential client**)  
+   - **App permissions:** Read  
+   - **Callback URI / Redirect URL** (exact, with `https` and trailing slash):  
+     `https://YOUR_USERNAME.pythonanywhere.com/accounts/oauth/x/callback/`  
+   - **Website URL:**  
+     `https://YOUR_USERNAME.pythonanywhere.com`  
+4. Save, then copy **OAuth 2.0 Client ID** and **Client Secret** into `.env`:
    ```
    X_OAUTH_CLIENT_ID=...
    X_OAUTH_CLIENT_SECRET=...
+   SITE_URL=https://YOUR_USERNAME.pythonanywhere.com
    ```
+5. If you see “You weren’t able to give access to the App”, the Callback URI or App Type is almost always wrong — re-save User authentication and wait 1–2 minutes.
 
 Then reload the web app. Buttons appear on `/accounts/login/` and `/accounts/register/`.
 
