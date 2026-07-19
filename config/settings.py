@@ -157,8 +157,12 @@ LOGOUT_REDIRECT_URL = 'core:home'
 # ---------------------------------------------------------------------------
 GOOGLE_OAUTH_CLIENT_ID = env('GOOGLE_OAUTH_CLIENT_ID', default='')
 GOOGLE_OAUTH_CLIENT_SECRET = env('GOOGLE_OAUTH_CLIENT_SECRET', default='')
+GOOGLE_OAUTH_REDIRECT_URI = env('GOOGLE_OAUTH_REDIRECT_URI', default='')
 X_OAUTH_CLIENT_ID = env('X_OAUTH_CLIENT_ID', default='')
 X_OAUTH_CLIENT_SECRET = env('X_OAUTH_CLIENT_SECRET', default='')
+X_OAUTH_REDIRECT_URI = env('X_OAUTH_REDIRECT_URI', default='')
+# Optional space-separated scopes, e.g. "tweet.read users.read offline.access"
+X_OAUTH_SCOPES = env('X_OAUTH_SCOPES', default='')
 
 
 AUTH_PASSWORD_VALIDATORS = [

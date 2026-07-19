@@ -151,48 +151,61 @@ def google_fetch_profile(*, code: str, redirect_uri: str) -> OAuthProfile:
 # X (Twitter) OAuth 2.0 + PKCE
 # ---------------------------------------------------------------------------
 
+def x_scopes() -> str:
+    """
+    Scopes for login. Keep minimal — offline.access is optional and can fail
+    if the X app was not saved with refresh-token support.
+    Override with X_OAUTH_SCOPES in .env if needed.
+    """
+    custom = (getattr(settings, 'X_OAUTH_SCOPES', '') or '').strip()
+    if custom:
+        return custom
+    return 'tweet.read users.read'
+
+
 def x_authorize_url(*, redirect_uri: str, state: str, code_challenge: str) -> str:
     # Scopes must be space-separated; encode spaces as %20 (not +) for X.
-    # users.read is required for login; tweet.read is commonly required by X app setup.
     params = {
         'response_type': 'code',
         'client_id': settings.X_OAUTH_CLIENT_ID,
         'redirect_uri': redirect_uri,
-        'scope': 'users.read tweet.read offline.access',
+        'scope': x_scopes(),
         'state': state,
         'code_challenge': code_challenge,
         'code_challenge_method': 'S256',
     }
     qs = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
-    # Prefer x.com (twitter.com still works but X portal docs use x.com)
-    return 'https://x.com/i/oauth2/authorize?' + qs
+    # Official authorize host used in X OAuth 2.0 docs
+    return 'https://twitter.com/i/oauth2/authorize?' + qs
 
 
 def x_fetch_profile(*, code: str, redirect_uri: str, code_verifier: str) -> OAuthProfile:
-    # Confidential client: Basic auth with client_id:client_secret
+    # Confidential client: HTTP Basic with client_id:client_secret
+    # Do NOT send client_id again in the body when using Basic (X is picky).
     basic = base64.b64encode(
         f'{settings.X_OAUTH_CLIENT_ID}:{settings.X_OAUTH_CLIENT_SECRET}'.encode('utf-8')
     ).decode('ascii')
     token = http_json(
         'POST',
-        'https://api.x.com/2/oauth2/token',
+        'https://api.twitter.com/2/oauth2/token',
         data={
             'code': code,
             'grant_type': 'authorization_code',
             'redirect_uri': redirect_uri,
             'code_verifier': code_verifier,
-            # client_id required in body for some X app types even with Basic auth
-            'client_id': settings.X_OAUTH_CLIENT_ID,
         },
         headers={'Authorization': f'Basic {basic}'},
         form=True,
     )
     access = token.get('access_token')
     if not access:
-        raise ValueError('X did not return an access token.')
+        raise ValueError(
+            'X did not return an access token. Check that X_OAUTH_CLIENT_ID / SECRET '
+            'are the OAuth 2.0 Client ID & Secret (not the API Key / API Key Secret).'
+        )
     me = http_json(
         'GET',
-        'https://api.x.com/2/users/me?' + urllib.parse.urlencode({
+        'https://api.twitter.com/2/users/me?' + urllib.parse.urlencode({
             'user.fields': 'id,name,username,profile_image_url',
         }),
         headers={'Authorization': f'Bearer {access}'},

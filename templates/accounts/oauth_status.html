@@ -1,0 +1,64 @@
+{% extends "base_auth.html" %}
+{% block title %}OAuth status — {{ SITE_NAME }}{% endblock %}
+{% block auth_subtitle %}Social login diagnostics (no secrets shown){% endblock %}
+
+{% block content %}
+<div class="small">
+  <div class="mb-3">
+    <div class="text-muted">SITE_URL</div>
+    <code class="d-block text-break">{{ site_url }}</code>
+  </div>
+
+  <div class="mb-3">
+    <div class="text-muted">Providers enabled</div>
+    <div>Google: <strong>{% if providers.google %}YES{% else %}NO{% endif %}</strong></div>
+    <div>X: <strong>{% if providers.x %}YES{% else %}NO{% endif %}</strong></div>
+  </div>
+
+  <div class="mb-3">
+    <div class="text-muted">Google Client ID (masked)</div>
+    <code>{{ google_client_id_mask }}</code>
+  </div>
+  <div class="mb-3">
+    <div class="text-muted">X Client ID (masked)</div>
+    <code>{{ x_client_id_mask }}</code>
+    {% if x_hint %}
+    <div class="alert alert-warning mt-2 py-2">{{ x_hint }}</div>
+    {% endif %}
+  </div>
+
+  <div class="mb-3">
+    <div class="text-muted fw-semibold">Copy these EXACT callback URLs into Google / X portals</div>
+    <div class="mt-2">
+      <div class="text-muted">Google redirect URI</div>
+      <code class="d-block text-break p-2 rounded" style="background:var(--ci-bg-input)">{{ google_callback }}</code>
+    </div>
+    <div class="mt-2">
+      <div class="text-muted">X callback URI</div>
+      <code class="d-block text-break p-2 rounded" style="background:var(--ci-bg-input)">{{ x_callback }}</code>
+    </div>
+  </div>
+
+  <div class="alert alert-info small">
+    <strong>X checklist</strong>
+    <ul class="mb-0 ps-3">
+      <li>User authentication → OAuth 2.0 ON</li>
+      <li>Type of App: <strong>Web App</strong> (Confidential client)</li>
+      <li>Permissions: <strong>Read</strong></li>
+      <li>Use <strong>OAuth 2.0 Client ID / Client Secret</strong>, not API Key / API Secret</li>
+      <li>Website URL: your SITE_URL</li>
+      <li>If app is in Development, only team members can authorize — add your X account to the project team</li>
+    </ul>
+  </div>
+
+  <div class="d-grid gap-2">
+    {% if providers.google %}
+    <a class="btn btn-ci" href="{% url 'accounts:oauth_start' 'google' %}">Test Google login</a>
+    {% endif %}
+    {% if providers.x %}
+    <a class="btn btn-ghost" href="{% url 'accounts:oauth_start' 'x' %}">Test X login</a>
+    {% endif %}
+    <a class="btn btn-ghost" href="{% url 'accounts:login' %}">Back to login</a>
+  </div>
+</div>
+{% endblock %}

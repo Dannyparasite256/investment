@@ -47,10 +47,21 @@ def _callback_url(request, provider: str) -> str:
 
     Prefer SITE_URL so PythonAnywhere (TLS terminated at proxy) does not
     send http://… to Google/X while consoles are registered with https://…
+    Optional overrides: GOOGLE_OAUTH_REDIRECT_URI / X_OAUTH_REDIRECT_URI
     """
     from django.conf import settings
 
-    path = reverse('accounts:oauth_callback', args=[provider])
+    provider = (provider or '').lower()
+    if provider == 'google':
+        override = (getattr(settings, 'GOOGLE_OAUTH_REDIRECT_URI', '') or '').strip()
+        if override:
+            return override
+    if provider in ('x', 'twitter'):
+        override = (getattr(settings, 'X_OAUTH_REDIRECT_URI', '') or '').strip()
+        if override:
+            return override
+
+    path = reverse('accounts:oauth_callback', args=['x' if provider == 'twitter' else provider])
     site = (getattr(settings, 'SITE_URL', '') or '').rstrip('/')
     if site:
         return f'{site}{path}'
@@ -87,10 +98,12 @@ def oauth_start(request, provider: str):
         request.session['oauth_code_verifier'] = verifier
         code_challenge = challenge
 
+    redirect_uri = _callback_url(request, provider)
+    logger.info('OAuth start provider=%s redirect_uri=%s', provider, redirect_uri)
     try:
         url = build_authorize_url(
             provider,
-            redirect_uri=_callback_url(request, provider),
+            redirect_uri=redirect_uri,
             state=state,
             code_challenge=code_challenge,
         )
@@ -98,6 +111,41 @@ def oauth_start(request, provider: str):
         messages.error(request, str(exc))
         return redirect('accounts:login')
     return redirect(url)
+
+
+@require_GET
+def oauth_status(request):
+    """
+    Safe diagnostics for OAuth setup (no secrets).
+    Open: /accounts/oauth/status/
+    """
+    from django.conf import settings
+
+    def mask(val: str) -> str:
+        val = (val or '').strip()
+        if not val:
+            return '(empty)'
+        if len(val) <= 8:
+            return val[:2] + '…' + val[-2:]
+        return val[:4] + '…' + val[-4:] + f' (len={len(val)})'
+
+    google_id = getattr(settings, 'GOOGLE_OAUTH_CLIENT_ID', '') or ''
+    x_id = getattr(settings, 'X_OAUTH_CLIENT_ID', '') or ''
+    ctx = {
+        'site_url': getattr(settings, 'SITE_URL', ''),
+        'providers': enabled_providers(),
+        'google_client_id_mask': mask(google_id),
+        'x_client_id_mask': mask(x_id),
+        'google_callback': _callback_url(request, 'google'),
+        'x_callback': _callback_url(request, 'x'),
+        'x_hint': (
+            'X OAuth 2.0 Client ID is usually longer than 25 chars. '
+            'If yours is exactly 25 characters, you may have pasted the API Key '
+            'instead of the OAuth 2.0 Client ID from User authentication settings.'
+            if x_id and len(x_id) == 25 else ''
+        ),
+    }
+    return render(request, 'accounts/oauth_status.html', ctx)
 
 
 @require_GET
