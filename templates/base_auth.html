@@ -4,7 +4,7 @@
 <div class="auth-layout">
   <div class="glass-card auth-card animate-in">
     <div class="auth-logo">
-      <div class="logo-mark">C</div>
+      <div class="logo-mark" aria-hidden="true">C</div>
       <div class="fs-4 fw-bold text-gradient">{{ SITE_NAME }}</div>
       <p class="text-muted small mb-0 mt-2">{% block auth_subtitle %}Secure crypto investing{% endblock %}</p>
     </div>
@@ -13,7 +13,7 @@
     {% for message in messages %}
     <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
       {{ message }}
-      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     {% endfor %}
     {% endif %}

@@ -4,14 +4,14 @@
 {% block title %}{{ SITE_NAME }} — Premium crypto investing{% endblock %}
 
 {% block body %}
-<nav class="navbar navbar-expand-lg px-2 px-sm-3 px-md-4 py-2 py-md-3" style="position:relative;z-index:10;border-bottom:1px solid var(--ci-border-soft)">
+<nav class="navbar navbar-expand-lg px-2 px-sm-3 px-md-4 py-2 py-md-3">
   <div class="container d-flex align-items-center justify-content-between gap-2 flex-nowrap">
     <a class="navbar-brand d-flex align-items-center gap-2 min-w-0 mb-0" href="{% url 'core:home' %}">
-      <span class="logo-mark flex-shrink-0">C</span>
+      <span class="logo-mark flex-shrink-0" aria-hidden="true">C</span>
       <span class="fw-bold text-gradient text-truncate">{{ SITE_NAME }}</span>
     </a>
     <div class="d-flex align-items-center gap-1 gap-sm-2 flex-shrink-0">
-      <button class="btn btn-ghost btn-sm" type="button" onclick="toggleTheme()" aria-label="Theme"><i class="bi bi-moon-stars-fill" data-theme-icon></i></button>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="toggleTheme()" aria-label="Toggle theme"><i class="bi bi-moon-stars-fill" data-theme-icon></i></button>
       <a href="{% url 'accounts:login' %}" class="btn btn-ghost btn-sm">Log in</a>
       <a href="{% url 'accounts:register' %}" class="btn btn-ci btn-sm"><span class="d-none d-sm-inline">Get started</span><span class="d-sm-none">Join</span></a>
     </div>
@@ -41,28 +41,28 @@
         </div>
       </div>
       <div class="col-lg-6 animate-in animate-delay-1">
-        <div class="glass-card p-4">
+        <div class="glass-card p-4 p-md-5">
           <div class="row g-3">
             <div class="col-6">
-              <div class="stat-card glass-card h-100">
+              <div class="stat-card glass-card h-100 interactive lift">
                 <div class="stat-label">Supported assets</div>
                 <div class="stat-value">7+</div>
               </div>
             </div>
             <div class="col-6">
-              <div class="stat-card glass-card h-100">
+              <div class="stat-card glass-card h-100 interactive lift">
                 <div class="stat-label">Payout modes</div>
                 <div class="stat-value" style="font-size:1.35rem">Daily</div>
               </div>
             </div>
             <div class="col-6">
-              <div class="stat-card glass-card h-100">
+              <div class="stat-card glass-card h-100 interactive lift">
                 <div class="stat-label">Networks</div>
                 <div class="stat-value" style="font-size:1.2rem">Multi</div>
               </div>
             </div>
             <div class="col-6">
-              <div class="stat-card glass-card h-100">
+              <div class="stat-card glass-card h-100 interactive lift">
                 <div class="stat-label">Security</div>
                 <div class="stat-value" style="font-size:1.35rem">2FA</div>
               </div>

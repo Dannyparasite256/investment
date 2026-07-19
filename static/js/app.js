@@ -1,4 +1,4 @@
-
+﻿
 (function () {
   'use strict';
 
@@ -194,17 +194,17 @@
     var muted = getComputedStyle(document.documentElement).getPropertyValue('--ci-text-muted').trim() || '#9CA3AF';
     return {
       muted: muted,
-      grid: 'rgba(255,255,255,0.05)',
-      purple: '#8B5CF6',
-      blue: '#3B82F6',
-      green: '#22C55E',
+      grid: 'rgba(255,255,255,0.06)',
+      purple: '#7C3AED',
+      blue: '#4F46E5',
+      green: '#34D399',
     };
   }
 
   if (window.Chart) {
     Chart.defaults.color = chartColors().muted;
-    Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
-    Chart.defaults.font.family = "'Plus Jakarta Sans', 'Inter', system-ui, sans-serif";
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+    Chart.defaults.font.family = "'Inter', 'Manrope', -apple-system, system-ui, sans-serif";
   }
 
   window.initEarningsChart = function (canvasId, labels, values) {
@@ -212,9 +212,9 @@
     if (!canvas || !window.Chart) return;
     var ctx = canvas.getContext('2d');
     var gradient = ctx.createLinearGradient(0, 0, 0, 260);
-    gradient.addColorStop(0, 'rgba(139, 92, 246, 0.45)');
-    gradient.addColorStop(0.6, 'rgba(59, 130, 246, 0.12)');
-    gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+    gradient.addColorStop(0, 'rgba(79, 70, 229, 0.48)');
+    gradient.addColorStop(0.55, 'rgba(124, 58, 237, 0.14)');
+    gradient.addColorStop(1, 'rgba(124, 58, 237, 0)');
     new Chart(ctx, {
       type: 'line',
       data: {
@@ -222,13 +222,13 @@
         datasets: [{
           label: 'Earnings',
           data: values,
-          borderColor: '#8B5CF6',
+          borderColor: '#4F46E5',
           backgroundColor: gradient,
           fill: true,
           tension: 0.45,
           pointRadius: 0,
           pointHoverRadius: 6,
-          pointHoverBackgroundColor: '#8B5CF6',
+          pointHoverBackgroundColor: '#7C3AED',
           pointHoverBorderColor: '#fff',
           pointHoverBorderWidth: 2,
           borderWidth: 2.5,
@@ -241,12 +241,12 @@
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: 'rgba(17, 24, 39, 0.95)',
+            backgroundColor: 'rgba(15, 23, 42, 0.92)',
             titleColor: '#fff',
             bodyColor: '#C4B5FD',
             padding: 14,
-            cornerRadius: 12,
-            borderColor: 'rgba(139,92,246,0.35)',
+            cornerRadius: 14,
+            borderColor: 'rgba(255,255,255,0.18)',
             borderWidth: 1,
             displayColors: false,
           },
@@ -279,7 +279,7 @@
         labels: labels,
         datasets: [{
           data: values,
-          backgroundColor: ['#8B5CF6', '#22C55E', '#3B82F6'],
+          backgroundColor: ['#4F46E5', '#7C3AED', '#34D399'],
           borderWidth: 0,
           hoverOffset: 8,
         }],
@@ -524,7 +524,7 @@
       sel.dataset.boundCurrency = '1';
       sel.addEventListener('change', function () {
         var currency = sel.value;
-        setBalanceStatus('Updating…');
+        setBalanceStatus('Updatingâ€¦');
         sel.disabled = true;
         window.setDisplayCurrency(currency)
           .then(function () {
@@ -533,7 +533,7 @@
           })
           .catch(function (err) {
             console.warn('Live currency update failed, falling back to page reload', err);
-            setBalanceStatus('Reloading…');
+            setBalanceStatus('Reloadingâ€¦');
             fallbackCurrencyFormSubmit(sel);
           })
           .finally(function () {
@@ -547,7 +547,7 @@
         if (!sel || !sel.value) return;
         if (typeof window.setDisplayCurrency !== 'function') return;
         e.preventDefault();
-        setBalanceStatus('Updating…');
+        setBalanceStatus('Updatingâ€¦');
         window.setDisplayCurrency(sel.value)
           .then(function () {
             setBalanceStatus('Updated');
@@ -698,3 +698,17 @@
     }, { passive: true });
   })();
 })();
+
+
+  // Ensure form controls have form-control class for glass styling when missing
+  (function enhanceFormWidgets() {
+    document.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=submit]):not([type=button]), select, textarea').forEach(function (el) {
+      if (el.classList.contains('form-check-input')) return;
+      if (!el.classList.contains('form-control') && !el.classList.contains('form-select') && el.tagName !== 'SELECT') {
+        el.classList.add('form-control');
+      }
+      if (el.tagName === 'SELECT' && !el.classList.contains('form-select')) {
+        el.classList.add('form-select');
+      }
+    });
+  })();

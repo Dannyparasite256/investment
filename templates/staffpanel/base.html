@@ -4,10 +4,13 @@
 {% block body %}
 <div class="app-shell">
   <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
-  <aside id="sidebar" class="sidebar">
+  <aside id="sidebar" class="sidebar" aria-label="Staff navigation">
     <div class="sidebar-brand">
-      <div class="logo-mark" style="box-shadow:var(--ci-glow-blue)">A</div>
-      <span class="logo-text text-gradient">Staff Panel</span>
+      <div class="logo-mark" aria-hidden="true">A</div>
+      <div class="min-w-0">
+        <span class="logo-text text-gradient d-block">Staff Panel</span>
+        <span class="d-block small text-muted" style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;opacity:0.75">Operations</span>
+      </div>
     </div>
     <nav class="sidebar-nav">
       <div class="nav-section-label">Overview</div>
