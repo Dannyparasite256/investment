@@ -16,7 +16,7 @@ export default defineConfig({
         theme_color: '#09090B',
         background_color: '#09090B',
         display: 'standalone',
-        start_url: '/',
+        start_url: '/app/',
         icons: [
           {
             src: '/favicon.svg',
@@ -29,6 +29,10 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Force clients to pick up new asset hashes after deploy
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
       },
     }),
   ],

@@ -1,3 +1,23 @@
+/* Crypto brand badges — always visible (backup if component styles fail) */
+.ci-crypto-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  border-radius: 50% !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+  vertical-align: middle !important;
+}
+.ci-crypto-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  vertical-align: middle !important;
+}
+
 :root {
   --ci-bg: #09090B;
   --ci-bg-elevated: #111827;

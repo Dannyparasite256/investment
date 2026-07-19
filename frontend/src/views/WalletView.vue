@@ -103,6 +103,27 @@ async function copyAddress() {
       <StatCard label="Profit" :value="formatDisplay(currency.balances?.profit)" icon="pi pi-chart-line" tone="gold" />
     </div>
 
+    <!-- Always-visible crypto strip so icons are obvious on every visit -->
+    <div v-if="cryptos.length" class="glass panel crypto-strip">
+      <h3>Supported assets</h3>
+      <div class="crypto-chips">
+        <button
+          v-for="c in cryptos.filter((x) => x.is_active)"
+          :key="c.id"
+          type="button"
+          class="crypto-chip"
+          :class="{ active: selectedId === c.id }"
+          @click="selectedId = c.id"
+        >
+          <CryptoIcon :symbol="c.symbol" :icon="c.icon" size="md" />
+          <span class="chip-text">
+            <strong>{{ c.symbol }}</strong>
+            <small class="muted">{{ c.network }}</small>
+          </span>
+        </button>
+      </div>
+    </div>
+
     <div class="glass panel qr-panel">
       <div class="qr-head">
         <div>
@@ -243,6 +264,39 @@ li {
 li span { color: var(--ci-muted); }
 .success { color: var(--ci-success); }
 
+.crypto-strip { margin-top: 1rem; }
+.crypto-strip h3 { margin-bottom: 0.75rem; }
+.crypto-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+.crypto-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 14px;
+  border: 1px solid var(--ci-border);
+  background: rgba(255,255,255,0.04);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  min-width: 7.5rem;
+}
+.crypto-chip:hover { border-color: rgba(59, 130, 246, 0.5); }
+.crypto-chip.active {
+  border-color: rgba(59, 130, 246, 0.75);
+  background: rgba(59, 130, 246, 0.12);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+}
+.chip-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.chip-text strong { font-size: 0.88rem; }
+.chip-text small { font-size: 0.72rem; }
 .qr-panel { margin-top: 1rem; }
 .qr-head {
   display: flex;
