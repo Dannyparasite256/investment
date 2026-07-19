@@ -36,10 +36,16 @@ urlpatterns = [
         {'document_root': str(settings.BASE_DIR / 'frontend' / 'dist')},
     ),
     re_path(r'^app(?:/.*)?$', spa_index, name='spa'),
+    # User uploads (profile photos, KYC, deposit screenshots).
+    # Required when DEBUG=False — e.g. PythonAnywhere without a /media/ Static files map.
+    re_path(
+        r'^media/(?P<path>.*)$',
+        serve,
+        {'document_root': str(settings.MEDIA_ROOT)},
+    ),
 ]
 
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 admin.site.site_header = f'{settings.SITE_NAME} Administration'

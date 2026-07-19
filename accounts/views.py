@@ -258,6 +258,8 @@ def profile_view(request):
             response.set_cookie('ui_theme', ui_theme, max_age=365 * 24 * 3600, samesite='Lax', path='/')
         return response
     kyc_latest = request.user.kyc_documents.order_by('-created_at').first()
+    # Refresh user from DB so avatar fields are current
+    request.user.refresh_from_db()
     social_links = {
         s.provider: s for s in request.user.social_accounts.all()
     }

@@ -149,13 +149,30 @@ class User(AbstractUser):
 
     @property
     def avatar_display_url(self):
-        """Prefer uploaded file, then remote Google/X URL."""
-        if self.profile_picture:
+        """
+        Best available photo URL for templates.
+
+        Prefer a real file on disk; if missing (common before media mapping),
+        fall back to the remote Google/X avatar URL which loads without /media/.
+        """
+        import os
+
+        remote = (self.avatar_url or '').strip()
+        if self.profile_picture and self.profile_picture.name:
+            try:
+                path = self.profile_picture.path
+                if path and os.path.isfile(path):
+                    return self.profile_picture.url
+            except Exception:
+                pass
+            # File record exists but path may be unavailable — try remote first
+            if remote:
+                return remote
             try:
                 return self.profile_picture.url
             except Exception:
                 pass
-        return (self.avatar_url or '').strip()
+        return remote
 
     @property
     def is_platform_staff(self):
