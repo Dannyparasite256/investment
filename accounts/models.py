@@ -132,6 +132,10 @@ class User(AbstractUser):
         default=False,
         help_text='Require email code or Google confirmation before withdrawals',
     )
+    email_otp_login = models.BooleanField(
+        default=True,
+        help_text='Require a one-time email code after password login (when TOTP 2FA is off)',
+    )
     # Do Not Disturb schedule (local to preferred_timezone)
     dnd_enabled = models.BooleanField(
         default=False,

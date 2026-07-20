@@ -8,14 +8,14 @@ from accounts.security_models import AdminActivityLog, LoginHistory, UserSuspens
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     ordering = ('-date_joined',)
-    list_display = ('email', 'first_name', 'last_name', 'email_verified', 'is_kyc_verified', 'preferred_currency', 'two_factor_enabled', 'is_staff', 'date_joined')
-    list_filter = ('is_staff', 'is_active', 'email_verified', 'is_kyc_verified', 'two_factor_enabled')
+    list_display = ('email', 'first_name', 'last_name', 'email_verified', 'is_kyc_verified', 'preferred_currency', 'two_factor_enabled', 'email_otp_login', 'is_staff', 'date_joined')
+    list_filter = ('is_staff', 'is_active', 'email_verified', 'is_kyc_verified', 'two_factor_enabled', 'email_otp_login')
     search_fields = ('email', 'first_name', 'last_name', 'referral_code')
     actions = ['verify_emails', 'unverify_emails']
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
         ('Personal', {'fields': ('first_name', 'last_name', 'phone', 'country', 'date_of_birth', 'profile_picture', 'preferred_theme', 'preferred_ui_theme')}),
-        ('Verification', {'fields': ('email_verified', 'is_kyc_verified', 'two_factor_enabled')}),
+        ('Verification', {'fields': ('email_verified', 'is_kyc_verified', 'two_factor_enabled', 'email_otp_login')}),
         ('Referral', {'fields': ('referral_code', 'referred_by', 'referral_earnings')}),
         ('Role & notes', {'fields': ('role', 'preferred_language', 'preferred_currency', 'last_login_ip', 'notes_internal')}),
         ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),

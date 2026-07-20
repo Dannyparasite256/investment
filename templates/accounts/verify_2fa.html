@@ -10,6 +10,15 @@
     {{ form.token }}
   </div>
   <button type="submit" class="btn btn-ci w-100 mb-3">Verify</button>
-  <p class="text-center small"><a href="{% url 'accounts:login' %}">Back to login</a></p>
 </form>
+
+<form method="post" class="mb-3">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="send_email">
+  <button type="submit" class="btn btn-ghost w-100 btn-sm">
+    Send code to {{ email_masked|default:'email' }} instead
+  </button>
+</form>
+
+<p class="text-center small"><a href="{% url 'accounts:login' %}">Back to login</a></p>
 {% endblock %}

@@ -10,7 +10,9 @@ Premium fintech UI inspired by Binance / Coinbase / Bybit: glassmorphism, gradie
 
 ### Users
 - Register, email verification, login, password reset
-- Optional TOTP 2FA (django-otp + QR)
+- **Free email OTP** after password login (Gmail/Brevo SMTP — no SMS cost)
+- Optional TOTP 2FA (django-otp + QR) with email-code fallback
+- Withdrawal email confirmation codes (same OTP service)
 - KYC document upload & admin review
 - Profile picture & referral system
 

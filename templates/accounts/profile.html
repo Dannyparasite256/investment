@@ -220,6 +220,17 @@
           </div>
           <div class="col-12">
             <div class="form-check">
+              {{ form.email_otp_login }}
+              <label class="form-check-label" for="id_email_otp_login">
+                <strong>Email code when logging in</strong>
+              </label>
+              <div class="form-text text-muted small">
+                After password, send a free one-time code to your email (skipped if authenticator 2FA is on).
+              </div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="form-check">
               {{ form.require_social_reauth_withdraw }}
               <label class="form-check-label" for="id_require_social_reauth_withdraw">
                 <strong>Require confirmation before withdrawals</strong>

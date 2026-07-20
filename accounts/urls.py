@@ -24,5 +24,6 @@ urlpatterns = [
     path('kyc/', views.kyc_view, name='kyc'),
     path('2fa/setup/', views.setup_2fa_view, name='setup_2fa'),
     path('2fa/verify/', views.verify_2fa_view, name='verify_2fa'),
+    path('2fa/email/', views.verify_email_otp_view, name='verify_email_otp'),
     path('2fa/disable/', views.disable_2fa_view, name='disable_2fa'),
 ]

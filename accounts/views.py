@@ -19,6 +19,7 @@ from django_ratelimit.decorators import ratelimit
 
 from accounts.forms import (
     ChangePasswordForm,
+    EmailOTPForm,
     KYCForm,
     LoginForm,
     PasswordResetConfirmForm,
@@ -28,6 +29,12 @@ from accounts.forms import (
     TwoFactorVerifyForm,
 )
 from accounts.models import ActivityEvent, KYCDocument, PasswordResetToken, User
+from accounts.otp import (
+    PURPOSE_LOGIN,
+    send_email_otp,
+    user_needs_step_up,
+    verify_email_otp,
+)
 from accounts.security import record_login
 from accounts.security_models import LoginHistory
 from core.models import AuditLog
@@ -35,6 +42,21 @@ from core.utils import create_audit_log
 from notifications.models import Notification, notify
 
 logger = logging.getLogger('accounts')
+
+
+def _complete_login(request, user, remember=True, auth_method='password'):
+    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+    if not remember:
+        request.session.set_expiry(0)
+    request.session.pop('pre_2fa_user_id', None)
+    request.session.pop('pre_2fa_remember', None)
+    request.session.pop('pre_2fa_method', None)
+    record_login(request, user=user, result=LoginHistory.Result.SUCCESS, auth_method=auth_method)
+    create_audit_log(request=request, user=user, action=AuditLog.Action.LOGIN, message=f'User logged in ({auth_method})')
+    ActivityEvent.objects.create(user=user, event_type='login', title='Logged in')
+    messages.success(request, f'Welcome back, {user.display_name}!')
+    next_url = request.GET.get('next') or request.session.pop('pre_2fa_next', None) or reverse('core:dashboard')
+    return redirect(next_url)
 
 
 def _send_verification_email(user, request):
@@ -98,19 +120,29 @@ def login_view(request):
     form = LoginForm(request=request, data=request.POST or None)
     if request.method == 'POST' and form.is_valid():
         user = form.get_user()
-        if user.two_factor_enabled:
+        remember = form.cleaned_data.get('remember_me', True)
+        next_url = request.GET.get('next') or ''
+        step = user_needs_step_up(user)
+        if step == 'totp':
             request.session['pre_2fa_user_id'] = user.pk
-            request.session['pre_2fa_remember'] = form.cleaned_data.get('remember_me', True)
+            request.session['pre_2fa_remember'] = remember
+            request.session['pre_2fa_method'] = 'totp'
+            if next_url:
+                request.session['pre_2fa_next'] = next_url
             return redirect('accounts:verify_2fa')
-        login(request, user)
-        if not form.cleaned_data.get('remember_me'):
-            request.session.set_expiry(0)
-        record_login(request, user=user, result=LoginHistory.Result.SUCCESS, auth_method='password')
-        create_audit_log(request=request, user=user, action=AuditLog.Action.LOGIN, message='User logged in')
-        ActivityEvent.objects.create(user=user, event_type='login', title='Logged in')
-        messages.success(request, f'Welcome back, {user.display_name}!')
-        next_url = request.GET.get('next') or reverse('core:dashboard')
-        return redirect(next_url)
+        if step == 'email':
+            request.session['pre_2fa_user_id'] = user.pk
+            request.session['pre_2fa_remember'] = remember
+            request.session['pre_2fa_method'] = 'email'
+            if next_url:
+                request.session['pre_2fa_next'] = next_url
+            result = send_email_otp(user, PURPOSE_LOGIN)
+            if result.ok:
+                messages.info(request, result.message)
+            else:
+                messages.warning(request, result.message)
+            return redirect('accounts:verify_email_otp')
+        return _complete_login(request, user, remember=remember, auth_method='password')
     if request.method == 'POST' and not form.is_valid():
         email = (request.POST.get('username') or '')[:254]
         record_login(request, email=email, result=LoginHistory.Result.FAILED)
@@ -124,23 +156,83 @@ def login_view(request):
 
 @require_http_methods(['GET', 'POST'])
 def verify_2fa_view(request):
+    """TOTP authenticator app challenge (optional email OTP fallback)."""
     user_id = request.session.get('pre_2fa_user_id')
     if not user_id:
         return redirect('accounts:login')
     user = get_object_or_404(User, pk=user_id)
     form = TwoFactorVerifyForm(request.POST or None)
+
+    if request.method == 'POST' and request.POST.get('action') == 'send_email':
+        result = send_email_otp(user, PURPOSE_LOGIN)
+        if result.ok:
+            request.session['pre_2fa_method'] = 'email'
+            messages.success(request, result.message)
+            return redirect('accounts:verify_email_otp')
+        messages.error(request, result.message)
+        return redirect('accounts:verify_2fa')
+
     if request.method == 'POST' and form.is_valid():
         token = form.cleaned_data['token']
         device = TOTPDevice.objects.filter(user=user, confirmed=True).first()
         if device and device.verify_token(token):
-            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-            if not request.session.pop('pre_2fa_remember', True):
-                request.session.set_expiry(0)
-            request.session.pop('pre_2fa_user_id', None)
-            create_audit_log(request=request, user=user, action=AuditLog.Action.LOGIN, message='2FA login success')
-            return redirect('core:dashboard')
+            return _complete_login(
+                request, user,
+                remember=request.session.get('pre_2fa_remember', True),
+                auth_method='totp',
+            )
         messages.error(request, 'Invalid authentication code.')
-    return render(request, 'accounts/verify_2fa.html', {'form': form})
+    return render(request, 'accounts/verify_2fa.html', {
+        'form': form,
+        'email_masked': _mask_email(user.email),
+    })
+
+
+@ratelimit(key='ip', rate='30/h', method='POST', block=True)
+@require_http_methods(['GET', 'POST'])
+def verify_email_otp_view(request):
+    """Email OTP challenge after password (or as TOTP fallback)."""
+    user_id = request.session.get('pre_2fa_user_id')
+    if not user_id:
+        return redirect('accounts:login')
+    user = get_object_or_404(User, pk=user_id)
+    form = EmailOTPForm(request.POST or None)
+
+    if request.method == 'POST' and request.POST.get('action') == 'resend':
+        result = send_email_otp(user, PURPOSE_LOGIN)
+        if result.ok:
+            messages.success(request, result.message)
+        else:
+            messages.error(request, result.message)
+        return redirect('accounts:verify_email_otp')
+
+    if request.method == 'POST' and form.is_valid():
+        result = verify_email_otp(user, PURPOSE_LOGIN, form.cleaned_data['code'])
+        if result.ok:
+            return _complete_login(
+                request, user,
+                remember=request.session.get('pre_2fa_remember', True),
+                auth_method='email_otp',
+            )
+        messages.error(request, result.message)
+
+    return render(request, 'accounts/verify_email_otp.html', {
+        'form': form,
+        'email_masked': _mask_email(user.email),
+        'can_use_totp': bool(user.two_factor_enabled),
+    })
+
+
+def _mask_email(email: str) -> str:
+    email = (email or '').strip()
+    if '@' not in email:
+        return email
+    local, _, domain = email.partition('@')
+    if len(local) <= 2:
+        masked = local[:1] + '*'
+    else:
+        masked = local[0] + '***' + local[-1]
+    return f'{masked}@{domain}'
 
 
 @login_required

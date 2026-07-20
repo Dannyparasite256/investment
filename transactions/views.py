@@ -231,26 +231,20 @@ def _withdraw_reauth_ok(request) -> bool:
 
 
 def _send_withdraw_email_code(request) -> None:
-    import random
-
-    from django.conf import settings
-    from django.core.mail import send_mail
+    """Send free email OTP for withdrawal confirmation (shared OTP service)."""
     from django.utils import timezone
 
-    user = request.user
-    code = f'{random.randint(0, 999999):06d}'
-    request.session['withdraw_email_code'] = code
-    request.session['withdraw_email_code_at'] = timezone.now().isoformat()
-    # Clear previous success so they must re-enter
+    from accounts.otp import PURPOSE_WITHDRAW, send_email_otp
+
+    # Clear previous success so they must re-enter a fresh code
     request.session.pop('withdraw_email_verified_at', None)
-    subject = f'Withdrawal verification code — {settings.SITE_NAME}'
-    body = (
-        f'Hi {user.get_full_name() or user.email},\n\n'
-        f'Your withdrawal confirmation code is: {code}\n\n'
-        f'It expires in 20 minutes. If you did not request a withdrawal, ignore this email '
-        f'and secure your account.\n\n— {settings.SITE_NAME}\n'
-    )
-    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+    request.session.pop('withdraw_email_code', None)
+    request.session.pop('withdraw_email_code_at', None)
+    result = send_email_otp(request.user, PURPOSE_WITHDRAW)
+    if not result.ok:
+        raise RuntimeError(result.message)
+    request.session['withdraw_email_code_pending'] = True
+    request.session['withdraw_email_code_at'] = timezone.now().isoformat()
 
 
 @login_required
@@ -303,23 +297,18 @@ def withdraw_create(request):
             return redirect('transactions:withdraw_create')
         if action == 'verify_email_code':
             from django.utils import timezone
-            from django.utils.dateparse import parse_datetime
 
-            expected = (request.session.get('withdraw_email_code') or '').strip()
+            from accounts.otp import PURPOSE_WITHDRAW, verify_email_otp
+
             submitted = (request.POST.get('email_code') or '').strip()
-            sent_at = request.session.get('withdraw_email_code_at') or ''
-            when = parse_datetime(sent_at) if sent_at else None
-            if when and timezone.is_naive(when):
-                when = timezone.make_aware(when, timezone.get_current_timezone())
-            expired = (not when) or (when < timezone.now() - __import__('datetime').timedelta(minutes=20))
-            if not expected or expired:
-                messages.error(request, 'Code expired. Send a new one.')
-            elif submitted != expected:
-                messages.error(request, 'Incorrect code. Check your email and try again.')
-            else:
+            result = verify_email_otp(request.user, PURPOSE_WITHDRAW, submitted)
+            if result.ok:
                 request.session['withdraw_email_verified_at'] = timezone.now().isoformat()
+                request.session.pop('withdraw_email_code_pending', None)
                 request.session.pop('withdraw_email_code', None)
                 messages.success(request, 'Email confirmed. You can submit your withdrawal now.')
+            else:
+                messages.error(request, result.message)
             return redirect('transactions:withdraw_create')
 
     form = WithdrawalForm(
@@ -466,7 +455,10 @@ def withdraw_create(request):
         'needs_reauth': needs_reauth,
         'reauth_ok': reauth_ok,
         'reauth_via': reauth_via,
-        'code_sent': bool(request.session.get('withdraw_email_code')),
+        'code_sent': bool(
+            request.session.get('withdraw_email_code_pending')
+            or request.session.get('withdraw_email_code')
+        ),
         'user_email': request.user.email,
         'google_reauth_url': (
             reverse('accounts:oauth_start', args=['google'])

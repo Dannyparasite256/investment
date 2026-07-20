@@ -112,6 +112,7 @@ class ProfileForm(forms.ModelForm):
             'profile_picture', 'preferred_theme', 'preferred_ui_theme', 'preferred_currency',
             'login_alert_emails', 'weekly_digest_emails', 'email_alerts',
             'public_profile_enabled', 'public_bio', 'require_social_reauth_withdraw',
+            'email_otp_login',
         )
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -130,6 +131,7 @@ class ProfileForm(forms.ModelForm):
                 'class': 'form-control', 'placeholder': 'Short public bio (optional)', 'maxlength': '280',
             }),
             'require_social_reauth_withdraw': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'email_otp_login': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -202,5 +204,20 @@ class TwoFactorVerifyForm(forms.Form):
             'placeholder': '000000',
             'autocomplete': 'one-time-code',
             'inputmode': 'numeric',
+        }),
+    )
+
+
+class EmailOTPForm(forms.Form):
+    code = forms.CharField(
+        max_length=6,
+        min_length=6,
+        label='Email code',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control form-control-lg text-center letter-spacing',
+            'placeholder': '000000',
+            'autocomplete': 'one-time-code',
+            'inputmode': 'numeric',
+            'autofocus': True,
         }),
     )

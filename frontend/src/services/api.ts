@@ -35,9 +35,25 @@ import type {
 } from '@/types/api'
 
 export const api = {
-  // Auth
-  login(username: string, password: string) {
-    return http.post<AuthResponse>('/api/v1/auth/token/', { username, password })
+  // Auth (password + optional email OTP / TOTP step-up)
+  login(
+    username: string,
+    password: string,
+    opts?: { otp_code?: string; otp_method?: 'email' | 'totp'; resend_otp?: boolean },
+  ) {
+    return http.post<AuthResponse & {
+      requires_otp?: boolean
+      method?: 'email' | 'totp'
+      detail?: string
+      email_fallback?: boolean
+      ok?: boolean
+    }>('/api/v1/auth/token/', {
+      username,
+      password,
+      otp_code: opts?.otp_code,
+      otp_method: opts?.otp_method,
+      resend_otp: opts?.resend_otp ? '1' : undefined,
+    })
   },
   register(payload: {
     email: string

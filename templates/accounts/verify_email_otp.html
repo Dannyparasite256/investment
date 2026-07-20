@@ -1,0 +1,31 @@
+{% extends "base_auth.html" %}
+{% block title %}Email verification code — {{ SITE_NAME }}{% endblock %}
+{% block auth_subtitle %}Enter the 6-digit code we sent to {{ email_masked }}{% endblock %}
+
+{% block content %}
+<form method="post" class="auth-form">
+  {% csrf_token %}
+  <div class="mb-4">
+    <label class="form-label" for="id_code">Email code</label>
+    {{ form.code }}
+    {% for e in form.code.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+  </div>
+  <button type="submit" class="btn btn-ci w-100 mb-3">Verify &amp; continue</button>
+</form>
+
+<form method="post" class="mb-3">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="resend">
+  <button type="submit" class="btn btn-ghost w-100 btn-sm">Resend code</button>
+</form>
+
+{% if can_use_totp %}
+<p class="text-center small mb-2">
+  <a href="{% url 'accounts:verify_2fa' %}">Use authenticator app instead</a>
+</p>
+{% endif %}
+<p class="text-center small mb-0"><a href="{% url 'accounts:login' %}">Back to login</a></p>
+<p class="text-muted small text-center mt-3 mb-0">
+  Free email OTP — check spam if you don’t see the message. Codes expire in a few minutes.
+</p>
+{% endblock %}

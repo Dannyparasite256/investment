@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -15,13 +15,57 @@ const route = useRoute()
 
 const email = ref('')
 const password = ref('')
+const otpCode = ref('')
+const info = ref('')
 
-async function submit() {
-  const ok = await auth.login(email.value.trim(), password.value)
+const needsOtp = computed(() => !!auth.otpChallenge)
+
+async function submitPassword() {
+  info.value = ''
+  auth.clearOtpState()
+  const result = await auth.login(email.value.trim(), password.value)
+  if (result.ok) {
+    const next = (route.query.next as string) || '/dashboard'
+    router.replace(next)
+    return
+  }
+  if (result.needsOtp && auth.otpChallenge) {
+    info.value = auth.otpChallenge.detail
+    otpCode.value = ''
+  }
+}
+
+async function submitOtp() {
+  info.value = ''
+  const method = auth.otpChallenge?.method || 'email'
+  const ok = await auth.verifyOtp(otpCode.value.trim(), method)
   if (ok) {
     const next = (route.query.next as string) || '/dashboard'
     router.replace(next)
   }
+}
+
+async function resend() {
+  info.value = ''
+  await auth.resendEmailOtp()
+  if (auth.otpChallenge?.detail) {
+    info.value = auth.otpChallenge.detail
+  }
+}
+
+async function useEmailInstead() {
+  info.value = ''
+  await auth.requestEmailOtpFallback()
+  if (auth.otpChallenge?.detail) {
+    info.value = auth.otpChallenge.detail
+  }
+}
+
+function backToPassword() {
+  auth.clearOtpState()
+  otpCode.value = ''
+  info.value = ''
+  auth.error = ''
 }
 </script>
 
@@ -34,12 +78,19 @@ async function submit() {
       <div class="logo">
         <div class="mark">C</div>
         <h1 class="gradient-text">CryptoInvest</h1>
-        <p class="muted">Welcome back to your portfolio</p>
+        <p class="muted">
+          {{ needsOtp
+            ? (auth.otpChallenge?.method === 'totp'
+              ? 'Enter your authenticator code'
+              : 'Enter the code we emailed you')
+            : 'Welcome back to your portfolio' }}
+        </p>
       </div>
 
       <Message v-if="auth.error" severity="error" :closable="false" class="mb">{{ auth.error }}</Message>
+      <Message v-else-if="info" severity="info" :closable="false" class="mb">{{ info }}</Message>
 
-      <form class="form" @submit.prevent="submit">
+      <form v-if="!needsOtp" class="form" @submit.prevent="submitPassword">
         <label class="field">
           <span>Email</span>
           <InputText v-model="email" type="email" autocomplete="username" required fluid placeholder="you@email.com" />
@@ -51,6 +102,44 @@ async function submit() {
         <Button type="submit" label="Log in" icon="pi pi-sign-in" class="w-full" :loading="auth.loading" />
       </form>
 
+      <form v-else class="form" @submit.prevent="submitOtp">
+        <label class="field">
+          <span>{{ auth.otpChallenge?.method === 'totp' ? 'Authenticator code' : 'Email code' }}</span>
+          <InputText
+            v-model="otpCode"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="6"
+            required
+            fluid
+            placeholder="000000"
+            class="otp-input"
+          />
+        </label>
+        <Button type="submit" label="Verify & continue" icon="pi pi-check" class="w-full" :loading="auth.loading" />
+        <Button
+          v-if="auth.otpChallenge?.method === 'email' || auth.otpChallenge?.emailFallback"
+          type="button"
+          label="Resend email code"
+          severity="secondary"
+          text
+          class="w-full"
+          :loading="auth.loading"
+          @click="resend"
+        />
+        <Button
+          v-if="auth.otpChallenge?.method === 'totp' && auth.otpChallenge?.emailFallback"
+          type="button"
+          label="Send code to my email instead"
+          severity="secondary"
+          text
+          class="w-full"
+          :loading="auth.loading"
+          @click="useEmailInstead"
+        />
+        <Button type="button" label="Back" severity="secondary" text class="w-full" @click="backToPassword" />
+      </form>
+
       <p class="foot muted">
         No account?
         <RouterLink to="/register">Create one</RouterLink>
@@ -59,7 +148,7 @@ async function submit() {
       </p>
       <p class="foot muted small">
         Prefer classic site?
-        <a href="/">Open Django UI</a>
+        <a href="/accounts/login/">Open Django login</a>
       </p>
     </div>
   </div>
@@ -152,6 +241,13 @@ h1 {
   font-weight: 600;
 }
 .small { font-size: 0.8rem; opacity: 0.85; }
+.otp-input :deep(input),
+:deep(.otp-input) {
+  text-align: center;
+  letter-spacing: 0.35em;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
 :deep(.p-password) { width: 100%; }
 :deep(.p-password-input) { width: 100%; }
 </style>

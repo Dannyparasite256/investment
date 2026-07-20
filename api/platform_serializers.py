@@ -19,6 +19,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'preferred_language', 'preferred_currency', 'preferred_timezone',
             'email_alerts', 'sms_alerts', 'tour_completed',
             'dnd_enabled', 'dnd_start', 'dnd_end',
+            'email_otp_login', 'require_social_reauth_withdraw',
         )
         read_only_fields = (
             'id', 'email', 'email_verified', 'is_kyc_verified', 'two_factor_enabled',

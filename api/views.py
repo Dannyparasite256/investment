@@ -37,12 +37,86 @@ class IsOwner(permissions.BasePermission):
 
 
 class CustomAuthToken(ObtainAuthToken):
+    """
+    Login API with free email OTP / TOTP step-up.
+
+    1) POST username+password → if step-up needed: {requires_otp, method, detail}
+    2) POST username+password+otp_code (+ otp_method=email|totp) → token
+    3) POST username+password+otp_method=email (no code) → send email OTP (TOTP users)
+    4) POST username+password+resend_otp=1 → resend email code
+    """
     throttle_scope = 'login'
 
     def post(self, request, *args, **kwargs):
+        from accounts.otp import (
+            PURPOSE_LOGIN,
+            send_email_otp,
+            user_needs_step_up,
+            verify_email_otp,
+        )
+        from django_otp.plugins.otp_totp.models import TOTPDevice
+
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
+        otp_code = (request.data.get('otp_code') or request.data.get('otp') or '').strip()
+        otp_method = (request.data.get('otp_method') or '').strip().lower()
+        resend = str(request.data.get('resend_otp') or '').lower() in ('1', 'true', 'yes')
+
+        step = user_needs_step_up(user)
+        use_email = otp_method == 'email' or step == 'email' or resend
+
+        if step and (resend or (use_email and not otp_code and otp_method == 'email')):
+            result = send_email_otp(user, PURPOSE_LOGIN)
+            return Response({
+                'requires_otp': True,
+                'method': 'email',
+                'detail': result.message,
+                'ok': result.ok,
+            }, status=status.HTTP_200_OK if result.ok else status.HTTP_400_BAD_REQUEST)
+
+        if step and not otp_code:
+            if step == 'totp':
+                return Response({
+                    'requires_otp': True,
+                    'method': 'totp',
+                    'detail': 'Enter the code from your authenticator app, or request an email code.',
+                    'email_fallback': True,
+                }, status=status.HTTP_200_OK)
+            result = send_email_otp(user, PURPOSE_LOGIN)
+            return Response({
+                'requires_otp': True,
+                'method': 'email',
+                'detail': result.message,
+                'ok': result.ok,
+            }, status=status.HTTP_200_OK if result.ok else status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        if step == 'totp' and otp_code:
+            if otp_method == 'email':
+                result = verify_email_otp(user, PURPOSE_LOGIN, otp_code)
+                if not result.ok:
+                    return Response(
+                        {'detail': result.message, 'requires_otp': True, 'method': 'email'},
+                        status=400,
+                    )
+            else:
+                device = TOTPDevice.objects.filter(user=user, confirmed=True).first()
+                if not device or not device.verify_token(otp_code):
+                    return Response({
+                        'detail': 'Invalid authenticator code.',
+                        'requires_otp': True,
+                        'method': 'totp',
+                        'email_fallback': True,
+                    }, status=400)
+        elif step == 'email' and otp_code:
+            result = verify_email_otp(user, PURPOSE_LOGIN, otp_code)
+            if not result.ok:
+                return Response({
+                    'detail': result.message,
+                    'requires_otp': True,
+                    'method': 'email',
+                }, status=400)
+
         token, _ = Token.objects.get_or_create(user=user)
         return Response({
             'token': token.key,

@@ -38,6 +38,16 @@ GOOGLE_SITE_VERIFICATION = env('GOOGLE_SITE_VERIFICATION', default='')
 ADSENSE_HTML_VERIFY_NAME = env('ADSENSE_HTML_VERIFY_NAME', default='').strip().lstrip('/')
 ADSENSE_HTML_VERIFY_CONTENT = env('ADSENSE_HTML_VERIFY_CONTENT', default='')
 ADSENSE_CLIENT = env('ADSENSE_CLIENT', default='ca-pub-4816791058478135')
+
+# ---------------------------------------------------------------------------
+# Email OTP (free login step-up + withdrawal confirmation)
+# ---------------------------------------------------------------------------
+EMAIL_OTP_LOGIN_REQUIRED = env.bool('EMAIL_OTP_LOGIN_REQUIRED', default=True)
+EMAIL_OTP_TTL_MINUTES = env.int('EMAIL_OTP_TTL_MINUTES', default=10)
+EMAIL_OTP_MAX_ATTEMPTS = env.int('EMAIL_OTP_MAX_ATTEMPTS', default=5)
+EMAIL_OTP_RESEND_SECONDS = env.int('EMAIL_OTP_RESEND_SECONDS', default=60)
+# Only for automated tests — never enable in production
+EMAIL_OTP_RETURN_CODE_IN_DEBUG = env.bool('EMAIL_OTP_RETURN_CODE_IN_DEBUG', default=False)
 MIN_WITHDRAWAL = env('MIN_WITHDRAWAL')
 MAX_WITHDRAWAL = env('MAX_WITHDRAWAL')
 REFERRAL_BONUS_PERCENT = env('REFERRAL_BONUS_PERCENT')
