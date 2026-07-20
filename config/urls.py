@@ -12,16 +12,52 @@ from core.spa import spa_asset, spa_index, spa_root_file
 
 def ads_txt(_request):
     """Google AdSense publisher file — must be at domain root /ads.txt"""
+    pub = getattr(settings, 'ADSENSE_CLIENT', 'ca-pub-4816791058478135').replace('ca-pub-', 'pub-')
     return HttpResponse(
-        'google.com, pub-4816791058478135, DIRECT, f08c47fec0942fa0\n',
+        f'google.com, {pub}, DIRECT, f08c47fec0942fa0\n',
         content_type='text/plain; charset=utf-8',
     )
 
 
+def robots_txt(_request):
+    """Allow AdSense / Google crawlers to index the public site."""
+    body = (
+        'User-agent: *\n'
+        'Allow: /\n'
+        'Disallow: /admin/\n'
+        'Disallow: /staff/\n'
+        'Disallow: /accounts/\n'
+        'Disallow: /api/\n'
+        f'Sitemap: {getattr(settings, "SITE_URL", "").rstrip("/")}/sitemap.xml\n'
+    )
+    return HttpResponse(body, content_type='text/plain; charset=utf-8')
+
+
+def adsense_html_verify(_request):
+    """Serve AdSense HTML verification file when configured in .env."""
+    name = getattr(settings, 'ADSENSE_HTML_VERIFY_NAME', '') or ''
+    content = getattr(settings, 'ADSENSE_HTML_VERIFY_CONTENT', '') or ''
+    if not name or not content:
+        return HttpResponse('Not configured', status=404, content_type='text/plain')
+    return HttpResponse(content, content_type='text/html; charset=utf-8')
+
+
 urlpatterns = [
-    # AdSense verification (root URL — do not nest under other apps)
+    # AdSense / crawler verification (root URLs)
     path('ads.txt', ads_txt, name='ads_txt'),
+    path('robots.txt', robots_txt, name='robots_txt'),
     path('admin/', admin.site.urls),
+]
+
+# AdSense "Upload an HTML file" method — e.g. /adsenseXXXX.html
+_adsense_html = getattr(settings, 'ADSENSE_HTML_VERIFY_NAME', '') or ''
+if _adsense_html and '/' not in _adsense_html and '..' not in _adsense_html:
+    urlpatterns.insert(
+        2,
+        path(_adsense_html, adsense_html_verify, name='adsense_html_verify'),
+    )
+
+urlpatterns += [
     path('staff/', include('staffpanel.urls')),
     path('', include('core.urls')),
     path('accounts/', include('accounts.urls')),

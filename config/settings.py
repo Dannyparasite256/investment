@@ -31,6 +31,13 @@ CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
 SITE_NAME = env('SITE_NAME', default='CryptoInvest')
 SITE_URL = env('SITE_URL', default='http://127.0.0.1:8000')
 DEFAULT_CURRENCY = env('DEFAULT_CURRENCY', default='USD')
+# Google AdSense / Search Console site verification (optional)
+# Meta: paste content= value only from AdSense "Add a meta tag"
+GOOGLE_SITE_VERIFICATION = env('GOOGLE_SITE_VERIFICATION', default='')
+# HTML file method: filename e.g. adsense1234567890.html and full file body
+ADSENSE_HTML_VERIFY_NAME = env('ADSENSE_HTML_VERIFY_NAME', default='').strip().lstrip('/')
+ADSENSE_HTML_VERIFY_CONTENT = env('ADSENSE_HTML_VERIFY_CONTENT', default='')
+ADSENSE_CLIENT = env('ADSENSE_CLIENT', default='ca-pub-4816791058478135')
 MIN_WITHDRAWAL = env('MIN_WITHDRAWAL')
 MAX_WITHDRAWAL = env('MAX_WITHDRAWAL')
 REFERRAL_BONUS_PERCENT = env('REFERRAL_BONUS_PERCENT')

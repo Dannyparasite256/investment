@@ -20,6 +20,8 @@ def site_settings(request):
         'risk_disclaimer': '',
         'show_tour': False,
         'user_vip_tier': None,
+        'ADSENSE_CLIENT': getattr(settings, 'ADSENSE_CLIENT', 'ca-pub-4816791058478135'),
+        'GOOGLE_SITE_VERIFICATION': getattr(settings, 'GOOGLE_SITE_VERIFICATION', '') or '',
     }
     try:
         from core.models import SiteConfiguration

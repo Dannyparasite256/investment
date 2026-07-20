@@ -8,6 +8,11 @@
   <meta name="theme-color" content="#09090B" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#F8FAFC" media="(prefers-color-scheme: light)">
   <meta name="color-scheme" content="dark light">
+  {# AdSense site ownership (official meta) + optional Search Console meta #}
+  <meta name="google-adsense-account" content="{{ ADSENSE_CLIENT|default:'ca-pub-4816791058478135' }}">
+  {% if GOOGLE_SITE_VERIFICATION %}
+  <meta name="google-site-verification" content="{{ GOOGLE_SITE_VERIFICATION }}">
+  {% endif %}
   <title>{% block title %}{{ SITE_NAME }}{% endblock %}</title>
   <script>
     /* Prevent theme flash: apply cookie / localStorage before CSS paints */
@@ -42,7 +47,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="{% static 'img/icon-192.png' %}">
   {# Google AdSense — Auto ads / site-wide client #}
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4816791058478135"
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ ADSENSE_CLIENT|default:'ca-pub-4816791058478135' }}"
        crossorigin="anonymous"></script>
   {% block extra_css %}{% endblock %}
 </head>
