@@ -135,9 +135,21 @@ def send_email_otp(user, purpose: str, *, force: bool = False, extra_body: str =
         return OtpResult(False, f'Could not send email: {exc}')
 
     logger.info('Email OTP sent purpose=%s user=%s', purpose, user.email)
-    # Return code only in DEBUG for automated tests
     result = OtpResult(True, f'We sent a 6-digit code to {user.email}.')
-    if getattr(settings, 'DEBUG', False) and getattr(settings, 'EMAIL_OTP_RETURN_CODE_IN_DEBUG', False):
+    # Dev / misconfigured SMTP: console backend never reaches the inbox
+    console = 'console' in (getattr(settings, 'EMAIL_BACKEND', '') or '').lower()
+    if console:
+        logger.warning(
+            'EMAIL_BACKEND is console — OTP was NOT emailed. Code for %s: %s',
+            user.email, code,
+        )
+        if getattr(settings, 'DEBUG', False):
+            result.message = (
+                f'DEV MODE (email console): code for {user.email} is {code}. '
+                f'Set real SMTP in .env to send real emails.'
+            )
+            result.code = code
+    elif getattr(settings, 'DEBUG', False) and getattr(settings, 'EMAIL_OTP_RETURN_CODE_IN_DEBUG', False):
         result.code = code
     return result
 
