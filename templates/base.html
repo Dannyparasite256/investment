@@ -41,6 +41,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="{% static 'img/icon-192.png' %}">
+  {# Google AdSense — Auto ads / site-wide client #}
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4816791058478135"
+       crossorigin="anonymous"></script>
   {% block extra_css %}{% endblock %}
 </head>
 <body {% if user.is_authenticated %}data-user-authenticated="1"{% endif %}

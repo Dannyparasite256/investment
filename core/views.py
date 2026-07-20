@@ -21,6 +21,13 @@ def home(request):
     return render(request, 'core/home.html', {'plans': plans})
 
 
+@require_GET
+def ads_txt(request):
+    """Google AdSense publisher verification — must be at https://yourdomain.com/ads.txt"""
+    body = 'google.com, pub-4816791058478135, DIRECT, f08c47fec0942fa0\n'
+    return HttpResponse(body, content_type='text/plain; charset=utf-8')
+
+
 @login_required
 def dashboard(request):
     user = request.user
