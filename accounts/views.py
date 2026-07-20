@@ -7,7 +7,6 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.core.mail import send_mail
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -63,14 +62,21 @@ def _complete_login(request, user, remember=True, auth_method='password'):
 def _send_verification_email(user, request):
     token = user.generate_email_token()
     link = request.build_absolute_uri(reverse('accounts:verify_email', args=[token]))
-    subject = f'Verify your email — {settings.SITE_NAME}'
-    body = (
-        f'Hi {user.get_full_name()},\n\n'
-        f'Please verify your email by clicking the link below:\n{link}\n\n'
-        f'If you did not create an account, ignore this email.\n\n'
-        f'— {settings.SITE_NAME}'
+    from core.mail import send_action_email
+    send_action_email(
+        user,
+        subject=f'Verify your email — {settings.SITE_NAME}',
+        heading='Confirm your email address',
+        badge='Welcome',
+        paragraphs=[
+            f'Thanks for joining {settings.SITE_NAME}. Confirm your email so we can secure your account and send important alerts.',
+            'This link expires after a period of inactivity — request a new one anytime from your profile.',
+        ],
+        action_url=link,
+        action_label='Verify email address',
+        secondary_note='If you did not create an account, you can safely ignore this message.',
+        fail_silently=True,
     )
-    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=True)
 
 
 @ratelimit(key='ip', rate='10/h', method='POST', block=True)
@@ -285,11 +291,12 @@ def password_reset_request_view(request):
             link = request.build_absolute_uri(
                 reverse('accounts:password_reset_confirm', args=[pr.token])
             )
-            extra = (
-                f'Or open this link to set a new password (valid 24 hours):\n{link}\n'
-            )
             result = send_email_otp(
-                user, PURPOSE_PASSWORD_RESET, force=True, extra_body=extra,
+                user,
+                PURPOSE_PASSWORD_RESET,
+                force=True,
+                action_url=link,
+                action_label='Reset password securely',
             )
             create_audit_log(
                 request=request, user=user,
@@ -329,8 +336,10 @@ def password_reset_code_view(request):
                 reverse('accounts:password_reset_confirm', args=[pr.token])
             )
             result = send_email_otp(
-                user, PURPOSE_PASSWORD_RESET,
-                extra_body=f'Or open this link (valid 24h):\n{link}\n',
+                user,
+                PURPOSE_PASSWORD_RESET,
+                action_url=link,
+                action_label='Reset password securely',
             )
             if result.ok:
                 messages.success(request, result.message)

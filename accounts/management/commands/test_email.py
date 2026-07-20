@@ -46,19 +46,31 @@ class Command(BaseCommand):
             return
 
         try:
-            n = send_mail(
-                subject=f'Test email — {settings.SITE_NAME}',
-                message=(
-                    f'This is a test from {settings.SITE_NAME}.\n'
-                    f'If you received this, SMTP is working.\n'
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[to],
-                fail_silently=False,
+            from core.mail import send_branded_email, render_action_email, site_name, site_url
+            html, plain = render_action_email(
+                name='there',
+                heading='SMTP test successful',
+                paragraphs=[
+                    f'This is a branded test message from {site_name()}.',
+                    'If you can read this email with the purple gradient button, HTML email is working.',
+                ],
+                action_url=site_url() or 'https://pythonanywhere.com',
+                action_label='Open platform',
+                badge='System test',
+                subject_line=f'Test email — {site_name()}',
             )
-            self.stdout.write(self.style.SUCCESS(
-                f'Sent OK (send_mail returned {n}). Check inbox + spam for {to}.'
-            ))
+            ok = send_branded_email(
+                to=to,
+                subject=f'Test email — {settings.SITE_NAME}',
+                text_body=plain,
+                html_body=html,
+            )
+            if ok:
+                self.stdout.write(self.style.SUCCESS(
+                    f'Sent OK (branded HTML). Check inbox + spam for {to}.'
+                ))
+            else:
+                self.stderr.write(self.style.ERROR('Send returned False'))
         except Exception as exc:
             self.stderr.write(self.style.ERROR(f'Send failed: {exc}'))
             self.stderr.write(

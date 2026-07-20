@@ -13,21 +13,36 @@ from notifications.models import Notification, notify
 logger = logging.getLogger('core')
 
 
-def send_platform_email(user, subject, body):
+def send_platform_email(user, subject, body, *, action_url='', action_label=''):
     if not user or not getattr(user, 'email', None):
         return False
     try:
-        send_mail(
-            subject,
-            body,
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email],
+        from core.mail import send_action_email, site_url
+        paragraphs = [p.strip() for p in body.replace('\r\n', '\n').split('\n\n') if p.strip()]
+        if not paragraphs:
+            paragraphs = [body.strip() or subject]
+        # Prefer explicit CTA; fall back to site home for engagement
+        url = action_url or site_url()
+        label = action_label or (f'Open {getattr(settings, "SITE_NAME", "platform")}' if url else '')
+        return send_action_email(
+            user,
+            subject=subject,
+            heading=subject.split('—')[0].strip() if '—' in subject else subject,
+            paragraphs=paragraphs,
+            action_url=url,
+            action_label=label,
+            badge='Update',
             fail_silently=True,
         )
-        return True
     except Exception as exc:
         logger.warning('Email failed for %s: %s', user.email, exc)
-        return False
+        try:
+            send_mail(
+                subject, body, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=True,
+            )
+            return True
+        except Exception:
+            return False
 
 
 def send_sms(phone: str, message: str):

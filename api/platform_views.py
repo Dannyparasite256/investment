@@ -67,8 +67,11 @@ class PasswordResetRequestAPI(APIView):
             pr = PasswordResetToken.create_for_user(user)
             link = request.build_absolute_uri(f'/accounts/password-reset/{pr.token}/')
             send_email_otp(
-                user, PURPOSE_PASSWORD_RESET, force=True,
-                extra_body=f'Or open this link (valid 24h):\n{link}\n',
+                user,
+                PURPOSE_PASSWORD_RESET,
+                force=True,
+                action_url=link,
+                action_label='Reset password securely',
             )
         # Always same response (no email enumeration)
         return Response({

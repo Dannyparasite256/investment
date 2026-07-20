@@ -14,7 +14,6 @@ from typing import Optional
 
 from django.conf import settings
 from django.core.cache import cache
-from django.core.mail import send_mail
 from django.utils import timezone
 
 logger = logging.getLogger('accounts')
@@ -79,11 +78,20 @@ def _purpose_labels(purpose: str) -> tuple[str, str]:
     )
 
 
-def send_email_otp(user, purpose: str, *, force: bool = False, extra_body: str = '') -> OtpResult:
+def send_email_otp(
+    user,
+    purpose: str,
+    *,
+    force: bool = False,
+    extra_body: str = '',
+    action_url: str = '',
+    action_label: str = '',
+) -> OtpResult:
     """
-    Generate a 6-digit code, store hash in cache, email the user.
+    Generate a 6-digit code, store hash in cache, email the user (branded HTML).
     Rate-limited per user+purpose unless force=True.
-    extra_body: optional text appended (e.g. password-reset link).
+    action_url / action_label: optional CTA button (e.g. password reset link).
+    extra_body: optional plain note (legacy); prefer action_url for links.
     """
     if purpose not in VALID_PURPOSES:
         return OtpResult(False, 'Invalid OTP purpose.')
@@ -111,23 +119,60 @@ def send_email_otp(user, purpose: str, *, force: bool = False, extra_body: str =
 
     subject, label = _purpose_labels(purpose)
     minutes = max(1, ttl // 60)
-    name = user.get_full_name() if hasattr(user, 'get_full_name') else ''
-    body = (
-        f'Hi {name or user.email},\n\n'
-        f'Your {label} code is: {code}\n\n'
-        f'This code expires in {minutes} minutes. '
-        f'If you did not request this, ignore this email and secure your account.\n'
-    )
-    if extra_body:
-        body += f'\n{extra_body.strip()}\n'
-    body += f'\n— {settings.SITE_NAME}\n'
+
+    headings = {
+        PURPOSE_LOGIN: 'Confirm it’s you',
+        PURPOSE_WITHDRAW: 'Confirm your withdrawal',
+        PURPOSE_PASSWORD_RESET: 'Reset your password',
+    }
+    badges = {
+        PURPOSE_LOGIN: 'Login security',
+        PURPOSE_WITHDRAW: 'Withdrawal security',
+        PURPOSE_PASSWORD_RESET: 'Password reset',
+    }
+    intros = {
+        PURPOSE_LOGIN: (
+            'Enter this code on the login screen to finish signing in. '
+            'If you did not try to log in, change your password immediately.'
+        ),
+        PURPOSE_WITHDRAW: (
+            'Enter this code on the withdrawal page to authorize cashing out. '
+            'If you did not start a withdrawal, secure your account now.'
+        ),
+        PURPOSE_PASSWORD_RESET: (
+            'Enter this code to choose a new password. '
+            'You can also use the button below if you prefer a one-click reset link.'
+        ),
+    }
+    # Parse legacy "Or open this link" from extra_body if action_url not set
+    if not action_url and extra_body:
+        for line in extra_body.splitlines():
+            line = line.strip()
+            if line.startswith('http://') or line.startswith('https://'):
+                action_url = line
+                action_label = action_label or 'Reset password securely'
+                break
+
+    if purpose == PURPOSE_PASSWORD_RESET and action_url and not action_label:
+        action_label = 'Reset password securely'
+    elif purpose == PURPOSE_LOGIN and action_url and not action_label:
+        action_label = 'Open login'
+    elif action_url and not action_label:
+        action_label = 'Open platform'
+
     try:
-        send_mail(
-            subject,
-            body,
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email],
-            fail_silently=False,
+        from core.mail import send_otp_email
+        send_otp_email(
+            user,
+            subject=subject,
+            code=code,
+            purpose_label=label,
+            minutes=minutes,
+            heading=headings.get(purpose, 'Your verification code'),
+            intro=intros.get(purpose, ''),
+            badge=badges.get(purpose, 'Security code'),
+            action_url=action_url,
+            action_label=action_label,
         )
     except Exception as exc:
         logger.exception('Failed to send email OTP purpose=%s user=%s', purpose, user.pk)
