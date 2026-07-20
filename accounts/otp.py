@@ -21,8 +21,9 @@ logger = logging.getLogger('accounts')
 
 PURPOSE_LOGIN = 'login'
 PURPOSE_WITHDRAW = 'withdraw'
+PURPOSE_PASSWORD_RESET = 'password_reset'
 
-VALID_PURPOSES = frozenset({PURPOSE_LOGIN, PURPOSE_WITHDRAW})
+VALID_PURPOSES = frozenset({PURPOSE_LOGIN, PURPOSE_WITHDRAW, PURPOSE_PASSWORD_RESET})
 
 
 @dataclass
@@ -67,16 +68,22 @@ def _purpose_labels(purpose: str) -> tuple[str, str]:
             f'Withdrawal verification code — {settings.SITE_NAME}',
             'withdrawal confirmation',
         )
+    if purpose == PURPOSE_PASSWORD_RESET:
+        return (
+            f'Password reset code — {settings.SITE_NAME}',
+            'password reset',
+        )
     return (
         f'Login verification code — {settings.SITE_NAME}',
         'login verification',
     )
 
 
-def send_email_otp(user, purpose: str, *, force: bool = False) -> OtpResult:
+def send_email_otp(user, purpose: str, *, force: bool = False, extra_body: str = '') -> OtpResult:
     """
     Generate a 6-digit code, store hash in cache, email the user.
     Rate-limited per user+purpose unless force=True.
+    extra_body: optional text appended (e.g. password-reset link).
     """
     if purpose not in VALID_PURPOSES:
         return OtpResult(False, 'Invalid OTP purpose.')
@@ -109,9 +116,11 @@ def send_email_otp(user, purpose: str, *, force: bool = False) -> OtpResult:
         f'Hi {name or user.email},\n\n'
         f'Your {label} code is: {code}\n\n'
         f'This code expires in {minutes} minutes. '
-        f'If you did not request this, ignore this email and secure your account.\n\n'
-        f'— {settings.SITE_NAME}\n'
+        f'If you did not request this, ignore this email and secure your account.\n'
     )
+    if extra_body:
+        body += f'\n{extra_body.strip()}\n'
+    body += f'\n— {settings.SITE_NAME}\n'
     try:
         send_mail(
             subject,

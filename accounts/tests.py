@@ -115,3 +115,57 @@ class EmailOTPLoginTests(TestCase):
         )
         self.assertEqual(r2.status_code, 200)
         self.assertIn('token', r2.json())
+
+
+@override_settings(
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    EMAIL_OTP_RESEND_SECONDS=0,
+)
+class PasswordResetEmailTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(email='reset@test.com', password='OldPass123!')
+        cache.clear()
+        mail.outbox.clear()
+
+    def _code_from_mail(self):
+        body = mail.outbox[-1].body
+        return next(p for p in body.split() if p.isdigit() and len(p) == 6)
+
+    def test_request_sends_email_and_code_flow(self):
+        r = self.client.post(reverse('accounts:password_reset'), {'email': 'reset@test.com'})
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('/accounts/password-reset/code/', r['Location'])
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Password reset', mail.outbox[0].subject)
+        code = self._code_from_mail()
+
+        r2 = self.client.post(reverse('accounts:password_reset_code'), {
+            'otp-code': code,
+        })
+        self.assertEqual(r2.status_code, 200)
+        self.assertTrue(self.client.session.get('password_reset_code_ok'))
+
+        r3 = self.client.post(reverse('accounts:password_reset_code'), {
+            'new_password1': 'NewPass123!',
+            'new_password2': 'NewPass123!',
+        })
+        self.assertEqual(r3.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('NewPass123!'))
+
+    def test_api_password_reset(self):
+        from rest_framework.test import APIClient
+
+        api = APIClient()
+        r = api.post('/api/v1/auth/password-reset/', {'email': 'reset@test.com'}, format='json')
+        self.assertEqual(r.status_code, 200)
+        code = self._code_from_mail()
+        r2 = api.post(
+            '/api/v1/auth/password-reset/confirm/',
+            {'email': 'reset@test.com', 'code': code, 'new_password': 'BrandNew99!'},
+            format='json',
+        )
+        self.assertEqual(r2.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('BrandNew99!'))

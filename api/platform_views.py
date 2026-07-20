@@ -49,6 +49,71 @@ from wallets.models import Cryptocurrency, UserWalletAddress, Wallet
 User = get_user_model()
 
 
+class PasswordResetRequestAPI(APIView):
+    """POST {email} → send free 6-digit password-reset code by email."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope = 'login'
+
+    def post(self, request):
+        from accounts.models import PasswordResetToken
+        from accounts.otp import PURPOSE_PASSWORD_RESET, send_email_otp
+
+        email = (request.data.get('email') or '').lower().strip()
+        if not email:
+            return Response({'email': ['Email is required.']}, status=400)
+        user = User.objects.filter(email__iexact=email).first()
+        if user:
+            pr = PasswordResetToken.create_for_user(user)
+            link = request.build_absolute_uri(f'/accounts/password-reset/{pr.token}/')
+            send_email_otp(
+                user, PURPOSE_PASSWORD_RESET, force=True,
+                extra_body=f'Or open this link (valid 24h):\n{link}\n',
+            )
+        # Always same response (no email enumeration)
+        return Response({
+            'detail': 'If an account exists with that email, we sent a 6-digit reset code.',
+            'ok': True,
+        })
+
+
+class PasswordResetConfirmAPI(APIView):
+    """POST {email, code, new_password} → reset password after email OTP."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope = 'login'
+
+    def post(self, request):
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        from accounts.models import PasswordResetToken
+        from accounts.otp import PURPOSE_PASSWORD_RESET, verify_email_otp
+
+        email = (request.data.get('email') or '').lower().strip()
+        code = (request.data.get('code') or request.data.get('otp_code') or '').strip()
+        password = request.data.get('new_password') or request.data.get('password') or ''
+        if not email or not code or not password:
+            return Response(
+                {'detail': 'email, code, and new_password are required.'},
+                status=400,
+            )
+        user = User.objects.filter(email__iexact=email).first()
+        if not user:
+            return Response({'detail': 'Invalid code or email.'}, status=400)
+        result = verify_email_otp(user, PURPOSE_PASSWORD_RESET, code)
+        if not result.ok:
+            return Response({'detail': result.message}, status=400)
+        try:
+            validate_password(password, user=user)
+        except DjangoValidationError as exc:
+            return Response({'new_password': list(exc.messages)}, status=400)
+        user.set_password(password)
+        user.save(update_fields=['password'])
+        PasswordResetToken.objects.filter(user=user, used=False).update(used=True)
+        return Response({'detail': 'Password updated. You can log in now.', 'ok': True})
+
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []

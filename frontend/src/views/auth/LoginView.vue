@@ -144,7 +144,7 @@ function backToPassword() {
         No account?
         <RouterLink to="/register">Create one</RouterLink>
         ·
-        <a href="/accounts/password-reset/">Forgot password</a>
+        <RouterLink to="/forgot-password">Forgot password</RouterLink>
       </p>
       <p class="foot muted small">
         Prefer classic site?

@@ -14,6 +14,7 @@ urlpatterns = [
     path('verify-email/<str:token>/', views.verify_email_view, name='verify_email'),
     path('resend-verification/', views.resend_verification_view, name='resend_verification'),
     path('password-reset/', views.password_reset_request_view, name='password_reset'),
+    path('password-reset/code/', views.password_reset_code_view, name='password_reset_code'),
     path('password-reset/<str:token>/', views.password_reset_confirm_view, name='password_reset_confirm'),
     path('profile/', views.profile_view, name='profile'),
     path('connections/', social_views.social_connections, name='social_connections'),

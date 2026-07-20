@@ -31,6 +31,7 @@ from accounts.forms import (
 from accounts.models import ActivityEvent, KYCDocument, PasswordResetToken, User
 from accounts.otp import (
     PURPOSE_LOGIN,
+    PURPOSE_PASSWORD_RESET,
     send_email_otp,
     user_needs_step_up,
     verify_email_otp,
@@ -270,28 +271,137 @@ def resend_verification_view(request):
 @ratelimit(key='ip', rate='5/h', method='POST', block=True)
 @require_http_methods(['GET', 'POST'])
 def password_reset_request_view(request):
+    """
+    Forgot password step 1: email a free 6-digit code (+ optional magic link).
+    Always show the same success message (do not reveal whether email exists).
+    """
     form = PasswordResetRequestForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         email = form.cleaned_data['email'].lower().strip()
         user = User.objects.filter(email__iexact=email).first()
+        request.session['password_reset_email'] = email
         if user:
             pr = PasswordResetToken.create_for_user(user)
-            link = request.build_absolute_uri(reverse('accounts:password_reset_confirm', args=[pr.token]))
-            send_mail(
-                f'Password reset — {settings.SITE_NAME}',
-                f'Use this link to reset your password (valid 24h):\n{link}\n',
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=True,
+            link = request.build_absolute_uri(
+                reverse('accounts:password_reset_confirm', args=[pr.token])
             )
-            create_audit_log(request=request, user=user, action=AuditLog.Action.PASSWORD_RESET, message='Password reset requested')
-        messages.success(request, 'If an account exists with that email, a reset link has been sent.')
-        return redirect('accounts:login')
+            extra = (
+                f'Or open this link to set a new password (valid 24 hours):\n{link}\n'
+            )
+            result = send_email_otp(
+                user, PURPOSE_PASSWORD_RESET, force=True, extra_body=extra,
+            )
+            create_audit_log(
+                request=request, user=user,
+                action=AuditLog.Action.PASSWORD_RESET,
+                message='Password reset code emailed',
+            )
+            if not result.ok:
+                # Still continue to code page so UX is consistent; log failure
+                logger.warning('Password reset email failed for %s: %s', email, result.message)
+        messages.success(
+            request,
+            'If an account exists with that email, we sent a 6-digit code. '
+            'Check your inbox (and spam).',
+        )
+        return redirect('accounts:password_reset_code')
     return render(request, 'accounts/password_reset_request.html', {'form': form})
+
+
+@ratelimit(key='ip', rate='20/h', method='POST', block=True)
+@require_http_methods(['GET', 'POST'])
+def password_reset_code_view(request):
+    """Step 2: enter the email OTP, then set a new password."""
+    email = (request.session.get('password_reset_email') or '').strip().lower()
+    if not email:
+        messages.info(request, 'Enter your email to receive a reset code.')
+        return redirect('accounts:password_reset')
+
+    user = User.objects.filter(email__iexact=email).first()
+    code_form = EmailOTPForm(request.POST or None, prefix='otp')
+    # Only show password fields after code is verified in this POST, or session flag
+    code_ok = bool(request.session.get('password_reset_code_ok'))
+
+    if request.method == 'POST' and request.POST.get('action') == 'resend':
+        if user:
+            pr = PasswordResetToken.create_for_user(user)
+            link = request.build_absolute_uri(
+                reverse('accounts:password_reset_confirm', args=[pr.token])
+            )
+            result = send_email_otp(
+                user, PURPOSE_PASSWORD_RESET,
+                extra_body=f'Or open this link (valid 24h):\n{link}\n',
+            )
+            if result.ok:
+                messages.success(request, result.message)
+            else:
+                messages.error(request, result.message)
+        else:
+            messages.success(request, 'If an account exists, a new code was sent.')
+        return redirect('accounts:password_reset_code')
+
+    pwd_form = None
+    if request.method == 'POST' and request.POST.get('action') != 'resend':
+        # Verify code first (unless already verified this session)
+        if not code_ok:
+            if code_form.is_valid() and user:
+                result = verify_email_otp(
+                    user, PURPOSE_PASSWORD_RESET, code_form.cleaned_data['code'],
+                )
+                if result.ok:
+                    request.session['password_reset_code_ok'] = True
+                    request.session['password_reset_user_id'] = user.pk
+                    code_ok = True
+                    messages.success(request, 'Code verified. Choose a new password.')
+                else:
+                    messages.error(request, result.message)
+            elif not user:
+                messages.error(request, 'Invalid or expired code. Request a new one.')
+            else:
+                messages.error(request, 'Enter the 6-digit code from your email.')
+
+        if code_ok:
+            uid = request.session.get('password_reset_user_id')
+            reset_user = User.objects.filter(pk=uid).first() if uid else user
+            if not reset_user:
+                messages.error(request, 'Session expired. Start again.')
+                return redirect('accounts:password_reset')
+            pwd_form = PasswordResetConfirmForm(
+                user=reset_user, data=request.POST if 'new_password1' in request.POST else None,
+            )
+            if request.POST.get('new_password1') and pwd_form.is_valid():
+                pwd_form.save()
+                # Invalidate outstanding tokens
+                PasswordResetToken.objects.filter(user=reset_user, used=False).update(used=True)
+                for key in (
+                    'password_reset_email', 'password_reset_code_ok', 'password_reset_user_id',
+                ):
+                    request.session.pop(key, None)
+                create_audit_log(
+                    request=request, user=reset_user,
+                    action=AuditLog.Action.PASSWORD_RESET,
+                    message='Password reset completed via email code',
+                )
+                messages.success(request, 'Password updated. You can now log in.')
+                return redirect('accounts:login')
+
+    if code_ok and pwd_form is None:
+        uid = request.session.get('password_reset_user_id')
+        reset_user = User.objects.filter(pk=uid).first()
+        if reset_user:
+            pwd_form = PasswordResetConfirmForm(user=reset_user)
+
+    return render(request, 'accounts/password_reset_code.html', {
+        'email_masked': _mask_email(email),
+        'code_form': code_form,
+        'pwd_form': pwd_form,
+        'code_ok': code_ok,
+    })
 
 
 @require_http_methods(['GET', 'POST'])
 def password_reset_confirm_view(request, token):
+    """Magic-link path (from email) — set new password without typing the OTP."""
     pr = get_object_or_404(PasswordResetToken, token=token)
     if not pr.is_valid():
         messages.error(request, 'This reset link is invalid or has expired.')
@@ -301,7 +411,11 @@ def password_reset_confirm_view(request, token):
         form.save()
         pr.used = True
         pr.save(update_fields=['used'])
-        create_audit_log(request=request, user=pr.user, action=AuditLog.Action.PASSWORD_RESET, message='Password reset completed')
+        create_audit_log(
+            request=request, user=pr.user,
+            action=AuditLog.Action.PASSWORD_RESET,
+            message='Password reset completed via link',
+        )
         messages.success(request, 'Password updated. You can now log in.')
         return redirect('accounts:login')
     return render(request, 'accounts/password_reset_confirm.html', {'form': form})

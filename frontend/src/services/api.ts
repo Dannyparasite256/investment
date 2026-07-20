@@ -64,6 +64,12 @@ export const api = {
   }) {
     return http.post<AuthResponse>('/api/v1/auth/register/', payload)
   },
+  requestPasswordReset(email: string) {
+    return http.post<{ detail: string; ok: boolean }>('/api/v1/auth/password-reset/', { email })
+  },
+  confirmPasswordReset(payload: { email: string; code: string; new_password: string }) {
+    return http.post<{ detail: string; ok: boolean }>('/api/v1/auth/password-reset/confirm/', payload)
+  },
   me() {
     return http.get<MeResponse>('/api/v1/me/')
   },
