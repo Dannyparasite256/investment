@@ -225,6 +225,11 @@ class StaffDepositActionView(APIView):
                     link='/app/deposits',
                 )
                 try:
+                    from core.email_events import email_deposit_approved
+                    email_deposit_approved(dep, amount_label=credit_label)
+                except Exception:
+                    pass
+                try:
                     from support.services import maybe_notify_vip_upgrade
                     maybe_notify_vip_upgrade(dep.user)
                 except Exception:
@@ -247,6 +252,11 @@ class StaffDepositActionView(APIView):
                     f'Your deposit of {dep.amount} was rejected. {reason}',
                     level=Notification.Level.DANGER, category=Notification.Category.DEPOSIT,
                 )
+                try:
+                    from core.email_events import email_deposit_rejected
+                    email_deposit_rejected(dep, reason=reason)
+                except Exception:
+                    pass
                 create_audit_log(
                     request=request, action=AuditLog.Action.DEPOSIT_REJECT,
                     message=f'Rejected deposit {dep.id}', object_type='Deposit', object_id=dep.id,
@@ -307,6 +317,11 @@ class StaffWithdrawalActionView(APIView):
                     f'Your withdrawal of {amt_label} was approved and is being processed.',
                     level=Notification.Level.SUCCESS, category=Notification.Category.WITHDRAWAL,
                 )
+                try:
+                    from core.email_events import email_withdrawal_approved
+                    email_withdrawal_approved(w, amount_label=amt_label)
+                except Exception:
+                    pass
                 log_admin_activity(request, 'withdrawal_approve', notes, 'Withdrawal', w.id)
                 return Response({'ok': True, 'status': w.status})
             if action == 'paid':
@@ -322,6 +337,11 @@ class StaffWithdrawalActionView(APIView):
                     f'Your withdrawal of {amt_label} has been paid.' + (f' Tx: {tx_hash}' if tx_hash else ''),
                     level=Notification.Level.SUCCESS, category=Notification.Category.WITHDRAWAL,
                 )
+                try:
+                    from core.email_events import email_withdrawal_paid
+                    email_withdrawal_paid(w, amount_label=amt_label, tx_hash=tx_hash)
+                except Exception:
+                    pass
                 log_admin_activity(request, 'withdrawal_paid', f'hash={tx_hash}', 'Withdrawal', w.id)
                 return Response({'ok': True, 'status': w.status})
             if action == 'reject':
@@ -336,6 +356,11 @@ class StaffWithdrawalActionView(APIView):
                     f'Your withdrawal of {amt_label} was rejected. Funds unlocked. {reason}',
                     level=Notification.Level.WARNING, category=Notification.Category.WITHDRAWAL,
                 )
+                try:
+                    from core.email_events import email_withdrawal_rejected
+                    email_withdrawal_rejected(w, amount_label=amt_label, reason=reason)
+                except Exception:
+                    pass
                 log_admin_activity(request, 'withdrawal_reject', reason, 'Withdrawal', w.id)
                 return Response({'ok': True, 'status': w.status})
         except ValueError as e:
@@ -379,6 +404,11 @@ class StaffKYCActionView(APIView):
             doc.user.save(update_fields=['is_kyc_verified'])
             notify(doc.user, 'KYC approved', 'Your identity verification was approved.',
                    level=Notification.Level.SUCCESS, category=Notification.Category.KYC)
+            try:
+                from core.email_events import email_kyc_approved
+                email_kyc_approved(doc.user)
+            except Exception:
+                pass
             log_admin_activity(request, 'kyc_approve', '', 'KYCDocument', doc.id)
             return Response({'ok': True, 'status': doc.status})
         if action == 'reject':
@@ -389,6 +419,11 @@ class StaffKYCActionView(APIView):
             doc.reviewed_at = timezone.now()
             doc.save(update_fields=['status', 'rejection_reason', 'reviewed_by', 'reviewed_at', 'updated_at'])
             notify(doc.user, 'KYC rejected', reason, level=Notification.Level.WARNING, category=Notification.Category.KYC)
+            try:
+                from core.email_events import email_kyc_rejected
+                email_kyc_rejected(doc.user, reason=reason)
+            except Exception:
+                pass
             log_admin_activity(request, 'kyc_reject', reason, 'KYCDocument', doc.id)
             return Response({'ok': True, 'status': doc.status})
         return Response({'detail': 'Unknown action'}, status=400)

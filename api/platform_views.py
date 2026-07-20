@@ -114,6 +114,11 @@ class PasswordResetConfirmAPI(APIView):
         user.set_password(password)
         user.save(update_fields=['password'])
         PasswordResetToken.objects.filter(user=user, used=False).update(used=True)
+        try:
+            from core.email_events import email_password_changed
+            email_password_changed(user)
+        except Exception:
+            pass
         return Response({'detail': 'Password updated. You can log in now.', 'ok': True})
 
 
@@ -145,6 +150,15 @@ class RegisterView(APIView):
             f'Welcome to the platform. Complete KYC and make your first deposit to get started.',
             category=Notification.Category.SYSTEM,
         )
+        try:
+            from accounts.models import ActivityEvent
+            from core.email_events import email_welcome
+            email_welcome(user, day=0)
+            ActivityEvent.objects.create(
+                user=user, event_type='welcome_email_d0', title='Welcome email sent',
+            )
+        except Exception:
+            pass
         token, _ = Token.objects.get_or_create(user=user)
         return Response({
             'token': token.key,
@@ -173,6 +187,11 @@ class ChangePasswordView(APIView):
         request.user.save(update_fields=['password'])
         Token.objects.filter(user=request.user).delete()
         token = Token.objects.create(user=request.user)
+        try:
+            from core.email_events import email_password_changed
+            email_password_changed(request.user)
+        except Exception:
+            pass
         return Response({'detail': 'Password updated.', 'token': token.key})
 
 

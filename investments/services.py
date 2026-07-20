@@ -135,6 +135,13 @@ def create_investment(user, plan: InvestmentPlan, amount, auto_reinvest=False, d
         link=f'/app/investments/{inv.id}',
     )
     try:
+        from core.email_events import email_investment_created
+        email_investment_created(
+            user, plan.name, amount, inv.matures_at.date() if inv.matures_at else '', inv.id,
+        )
+    except Exception:
+        pass
+    try:
         from support.services import maybe_notify_vip_upgrade
         maybe_notify_vip_upgrade(user)
     except Exception:
@@ -233,6 +240,13 @@ def process_earning(investment: Investment):
         level=Notification.Level.SUCCESS,
         category=Notification.Category.EARNING,
     )
+    try:
+        from core.email_events import email_profit_credited
+        email_profit_credited(
+            inv.user, inv.plan.name, profit, inv_id=inv.id, reinvested=reinvested,
+        )
+    except Exception:
+        pass
 
     logger.info('Earning %s for investment %s amount=%s reinvest=%s', earning.id, inv.id, profit, reinvested)
     return earning
@@ -301,6 +315,13 @@ def complete_investment(inv: Investment):
         level=Notification.Level.SUCCESS,
         category=Notification.Category.INVESTMENT,
     )
+    try:
+        from core.email_events import email_investment_matured
+        email_investment_matured(
+            inv.user, inv.plan.name, inv.amount, inv.total_earned, inv.id,
+        )
+    except Exception:
+        pass
 
     create_audit_log(
         user=inv.user,

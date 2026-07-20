@@ -54,6 +54,18 @@ def _complete_login(request, user, remember=True, auth_method='password'):
     record_login(request, user=user, result=LoginHistory.Result.SUCCESS, auth_method=auth_method)
     create_audit_log(request=request, user=user, action=AuditLog.Action.LOGIN, message=f'User logged in ({auth_method})')
     ActivityEvent.objects.create(user=user, event_type='login', title='Logged in')
+    try:
+        from core.email_events import email_new_login
+        from core.middleware import AuditLogMiddleware
+        ip = AuditLogMiddleware._get_client_ip(request) if hasattr(AuditLogMiddleware, '_get_client_ip') else request.META.get('REMOTE_ADDR', '')
+        email_new_login(
+            user,
+            ip=ip or '',
+            method=auth_method,
+            user_agent=request.META.get('HTTP_USER_AGENT', '')[:200],
+        )
+    except Exception:
+        pass
     messages.success(request, f'Welcome back, {user.display_name}!')
     next_url = request.GET.get('next') or request.session.pop('pre_2fa_next', None) or reverse('core:dashboard')
     return redirect(next_url)
@@ -104,6 +116,14 @@ def register_view(request):
                 link='/referrals/',
             )
         notify(user, 'Welcome!', f'Welcome to {settings.SITE_NAME}. Please verify your email.', category=Notification.Category.SYSTEM)
+        try:
+            from core.email_events import email_welcome
+            email_welcome(user, day=0)
+            ActivityEvent.objects.create(
+                user=user, event_type='welcome_email_d0', title='Welcome email sent',
+            )
+        except Exception:
+            pass
         messages.success(request, 'Account created! Check your email to verify your address.')
         login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         record_login(request, user=user, result=LoginHistory.Result.SUCCESS)
@@ -391,6 +411,11 @@ def password_reset_code_view(request):
                     action=AuditLog.Action.PASSWORD_RESET,
                     message='Password reset completed via email code',
                 )
+                try:
+                    from core.email_events import email_password_changed
+                    email_password_changed(reset_user)
+                except Exception:
+                    pass
                 messages.success(request, 'Password updated. You can now log in.')
                 return redirect('accounts:login')
 
@@ -425,6 +450,11 @@ def password_reset_confirm_view(request, token):
             action=AuditLog.Action.PASSWORD_RESET,
             message='Password reset completed via link',
         )
+        try:
+            from core.email_events import email_password_changed
+            email_password_changed(pr.user)
+        except Exception:
+            pass
         messages.success(request, 'Password updated. You can now log in.')
         return redirect('accounts:login')
     return render(request, 'accounts/password_reset_confirm.html', {'form': form})
@@ -503,6 +533,11 @@ def change_password_view(request):
         form.save()
         update_session_auth_hash(request, form.user)
         create_audit_log(request=request, user=request.user, action=AuditLog.Action.PASSWORD_CHANGE, message='Password changed')
+        try:
+            from core.email_events import email_password_changed
+            email_password_changed(request.user)
+        except Exception:
+            pass
         messages.success(request, 'Password changed successfully.')
         return redirect('accounts:profile')
     return render(request, 'accounts/change_password.html', {'form': form})
@@ -547,6 +582,11 @@ def setup_2fa_view(request):
             user.save(update_fields=['two_factor_enabled'])
             create_audit_log(request=request, user=user, action=AuditLog.Action.TWO_FA_ENABLE, message='2FA enabled')
             notify(user, '2FA Enabled', 'Two-factor authentication is now active.', level=Notification.Level.SUCCESS, category=Notification.Category.SECURITY)
+            try:
+                from core.email_events import email_2fa_enabled
+                email_2fa_enabled(user)
+            except Exception:
+                pass
             messages.success(request, 'Two-factor authentication enabled.')
             return redirect('accounts:profile')
         messages.error(request, 'Invalid code. Scan the QR and try again.')
@@ -580,5 +620,10 @@ def disable_2fa_view(request):
     user.two_factor_enabled = False
     user.save(update_fields=['two_factor_enabled'])
     create_audit_log(request=request, user=user, action=AuditLog.Action.TWO_FA_DISABLE, message='2FA disabled')
+    try:
+        from core.email_events import email_2fa_disabled
+        email_2fa_disabled(user)
+    except Exception:
+        pass
     messages.success(request, 'Two-factor authentication disabled.')
     return redirect('accounts:profile')

@@ -23,6 +23,9 @@ def send_platform_email(user, subject, body, *, action_url='', action_label=''):
             paragraphs = [body.strip() or subject]
         # Prefer explicit CTA; fall back to site home for engagement
         url = action_url or site_url()
+        if url and url.startswith('/'):
+            base = site_url()
+            url = f'{base}{url}' if base else url
         label = action_label or (f'Open {getattr(settings, "SITE_NAME", "platform")}' if url else '')
         return send_action_email(
             user,
@@ -96,11 +99,18 @@ def alert_user(
     sms=False,
     event_name='',
     event_payload=None,
+    action_label='',
 ):
-    """In-app notify + optional email/SMS + webhooks."""
+    """In-app notify + optional branded email/SMS + webhooks."""
     n = notify(user, title, message, level=level, category=category, link=link)
     if email:
-        send_platform_email(user, f'{settings.SITE_NAME}: {title}', message)
+        send_platform_email(
+            user,
+            f'{settings.SITE_NAME}: {title}',
+            message,
+            action_url=link or '',
+            action_label=action_label or ('Open app' if link else ''),
+        )
     if sms and getattr(user, 'phone', None):
         send_sms(user.phone, f'{title}: {message}'[:160])
     if event_name:

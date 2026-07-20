@@ -226,8 +226,8 @@ def deposit_approve(request, pk):
                 dep.user, 'Deposit approved',
                 f'Your deposit of {crypto_label} (≈ {credit_label}) was approved and credited.',
                 level=Notification.Level.SUCCESS, category=Notification.Category.DEPOSIT,
-                link='/transactions/deposits/',
-                email=getattr(dep.user, 'email_alerts', True),
+                link='/app/wallet',
+                email=False,  # branded email below
                 sms=getattr(dep.user, 'sms_alerts', False),
                 event_name='deposit.approved',
                 event_payload={
@@ -236,6 +236,11 @@ def deposit_approve(request, pk):
                     'credit_label': credit_label,
                 },
             )
+            try:
+                from core.email_events import email_deposit_approved
+                email_deposit_approved(dep, amount_label=credit_label)
+            except Exception:
+                pass
             record_snapshot(dep.user)
         except Exception:
             notify(
@@ -291,8 +296,15 @@ def deposit_reject(request, pk):
                 dep.user, 'Deposit rejected',
                 f'Your deposit of {dep.amount} was rejected. {reason}',
                 level=Notification.Level.DANGER, category=Notification.Category.DEPOSIT,
-                email=True, event_name='deposit.rejected',
+                link='/app/deposits',
+                email=False,
+                event_name='deposit.rejected',
             )
+            try:
+                from core.email_events import email_deposit_rejected
+                email_deposit_rejected(dep, reason=reason)
+            except Exception:
+                pass
         except Exception:
             notify(
                 dep.user, 'Deposit rejected',
@@ -344,6 +356,11 @@ def withdrawal_approve(request, pk):
             f'Your withdrawal of {amt_label} was approved and is being processed.',
             level=Notification.Level.SUCCESS, category=Notification.Category.WITHDRAWAL,
         )
+        try:
+            from core.email_events import email_withdrawal_approved
+            email_withdrawal_approved(w, amount_label=amt_label)
+        except Exception:
+            pass
         create_audit_log(
             request=request, action=AuditLog.Action.WITHDRAW_APPROVE,
             message=f'Approved withdrawal {w.id}', object_type='Withdrawal', object_id=w.id,
@@ -373,9 +390,15 @@ def withdrawal_paid(request, pk):
                 w.user, 'Withdrawal paid',
                 paid_msg,
                 level=Notification.Level.SUCCESS, category=Notification.Category.WITHDRAWAL,
-                email=True, sms=getattr(w.user, 'sms_alerts', False),
+                link='/app/withdrawals',
+                email=False, sms=getattr(w.user, 'sms_alerts', False),
                 event_name='withdrawal.paid',
             )
+            try:
+                from core.email_events import email_withdrawal_paid
+                email_withdrawal_paid(w, amount_label=amt_label, tx_hash=tx_hash)
+            except Exception:
+                pass
             record_snapshot(w.user)
         except Exception:
             notify(
@@ -408,6 +431,11 @@ def withdrawal_reject(request, pk):
             f'Your withdrawal of {amt_label} was rejected. Funds unlocked. {reason}',
             level=Notification.Level.WARNING, category=Notification.Category.WITHDRAWAL,
         )
+        try:
+            from core.email_events import email_withdrawal_rejected
+            email_withdrawal_rejected(w, amount_label=amt_label, reason=reason)
+        except Exception:
+            pass
         create_audit_log(
             request=request, action=AuditLog.Action.WITHDRAW_REJECT,
             message=f'Rejected withdrawal {w.id}', object_type='Withdrawal', object_id=w.id,
@@ -570,6 +598,11 @@ def kyc_approve(request, pk):
     doc.approve(request.user)
     notify(doc.user, 'KYC approved', 'Your identity verification was approved.',
            level=Notification.Level.SUCCESS, category=Notification.Category.KYC)
+    try:
+        from core.email_events import email_kyc_approved
+        email_kyc_approved(doc.user)
+    except Exception:
+        pass
     create_audit_log(request=request, action=AuditLog.Action.KYC_APPROVE, object_id=doc.id, message='KYC approved')
     log_admin_activity(request, 'kyc_approve', '', 'KYCDocument', doc.id)
     messages.success(request, 'KYC approved.')
@@ -583,6 +616,11 @@ def kyc_reject(request, pk):
     reason = request.POST.get('reason', 'Documents not acceptable')
     doc.reject(request.user, reason=reason)
     notify(doc.user, 'KYC rejected', reason, level=Notification.Level.WARNING, category=Notification.Category.KYC)
+    try:
+        from core.email_events import email_kyc_rejected
+        email_kyc_rejected(doc.user, reason=reason)
+    except Exception:
+        pass
     create_audit_log(request=request, action=AuditLog.Action.KYC_REJECT, object_id=doc.id, message=reason)
     log_admin_activity(request, 'kyc_reject', reason, 'KYCDocument', doc.id)
     messages.success(request, 'KYC rejected.')

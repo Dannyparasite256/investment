@@ -43,6 +43,26 @@ app.conf.beat_schedule = {
         'task': 'core.tasks.send_weekly_digests',
         'schedule': crontab(minute=0, hour=8, day_of_week=1),
     },
+    'welcome-email-series': {
+        'task': 'core.tasks.send_welcome_series',
+        'schedule': crontab(minute=20, hour='*/6'),
+    },
+    'nudge-stale-deposits': {
+        'task': 'core.tasks.nudge_stale_deposits',
+        'schedule': crontab(minute=40, hour='*/12'),
+    },
+    'winback-inactive-users': {
+        'task': 'core.tasks.winback_inactive_users',
+        'schedule': crontab(minute=30, hour=10),
+    },
+    'withdrawal-sla-breaches': {
+        'task': 'core.tasks.check_withdrawal_sla_breaches',
+        'schedule': crontab(minute='*/30'),
+    },
+    'monthly-statement-emails': {
+        'task': 'core.tasks.monthly_statement_emails',
+        'schedule': crontab(minute=0, hour=9, day_of_month=1),
+    },
 }
 
 

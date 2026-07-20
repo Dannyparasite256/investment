@@ -409,6 +409,11 @@ def withdraw_create(request):
                 f'({crypto_amt} {w.cryptocurrency.symbol}) is pending approval.',
                 category=Notification.Category.WITHDRAWAL,
             )
+            try:
+                from core.email_events import email_withdrawal_requested
+                email_withdrawal_requested(w, amount_label=display_label)
+            except Exception:
+                pass
             messages.success(
                 request,
                 f'Withdrawal submitted: {display_label} → '

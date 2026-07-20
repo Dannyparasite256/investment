@@ -162,22 +162,20 @@ def maybe_email_support_message(ticket, msg) -> None:
     if not preview or preview == '(attachment)':
         preview = 'You have a new attachment from support.'
     preview = ' '.join(preview.split())[:200]
-    subject = f'Support reply: {ticket.subject[:80]}'
-    body = (
-        f'Hello,\n\nSupport replied on your ticket "{ticket.subject}":\n\n'
-        f'{preview}\n\n'
-        f'Open chat: {getattr(settings, "SITE_URL", "")}/app/support/{ticket.id}\n'
-    )
     try:
-        send_mail(
-            subject,
-            body,
-            getattr(settings, 'DEFAULT_FROM_EMAIL', None) or 'noreply@localhost',
-            [email],
-            fail_silently=True,
-        )
+        from core.email_events import email_support_reply
+        email_support_reply(user, ticket, preview)
     except Exception:
-        pass
+        try:
+            send_mail(
+                f'Support reply: {ticket.subject[:80]}',
+                f'Support replied: {preview}\n',
+                getattr(settings, 'DEFAULT_FROM_EMAIL', None) or 'noreply@localhost',
+                [email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
 
 
 def last_message_dict(msg) -> dict | None:
@@ -354,4 +352,9 @@ def maybe_notify_vip_upgrade(user) -> None:
         category=Notification.Category.VIP,
         link='/app/vip',
     )
+    try:
+        from core.email_events import email_vip_upgrade
+        email_vip_upgrade(user, name)
+    except Exception:
+        pass
     type(user).objects.filter(pk=user.pk).update(last_vip_tier_slug=slug)

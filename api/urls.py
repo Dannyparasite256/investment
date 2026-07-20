@@ -72,6 +72,7 @@ urlpatterns = [
     path('staff/fraud/', features_views.StaffFraudView.as_view(), name='api-staff-fraud'),
     path('staff/broadcast/', features_views.StaffBroadcastView.as_view(), name='api-staff-broadcast'),
     path('staff/export/', features_views.StaffExportView.as_view(), name='api-staff-export'),
+    path('staff/email-user/', features_views.StaffEmailUserView.as_view(), name='api-staff-email-user'),
     # Staff admin
     path('staff/dashboard/', staff_views.StaffDashboardView.as_view(), name='api-staff-dashboard'),
     path('staff/deposits/', staff_views.StaffDepositListView.as_view(), name='api-staff-deposits'),

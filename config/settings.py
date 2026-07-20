@@ -48,6 +48,10 @@ EMAIL_OTP_MAX_ATTEMPTS = env.int('EMAIL_OTP_MAX_ATTEMPTS', default=5)
 EMAIL_OTP_RESEND_SECONDS = env.int('EMAIL_OTP_RESEND_SECONDS', default=60)
 # Only for automated tests — never enable in production
 EMAIL_OTP_RETURN_CODE_IN_DEBUG = env.bool('EMAIL_OTP_RETURN_CODE_IN_DEBUG', default=False)
+# Comma-separated staff emails for ops digests / large-withdraw alerts (fallback: is_staff users)
+STAFF_ALERT_EMAILS = env('STAFF_ALERT_EMAILS', default='')
+# Platform USD amount that triggers staff large-withdrawal email
+LARGE_WITHDRAW_ALERT = env.float('LARGE_WITHDRAW_ALERT', default=5000.0)
 MIN_WITHDRAWAL = env('MIN_WITHDRAWAL')
 MAX_WITHDRAWAL = env('MAX_WITHDRAWAL')
 REFERRAL_BONUS_PERCENT = env('REFERRAL_BONUS_PERCENT')

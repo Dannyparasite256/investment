@@ -408,15 +408,28 @@ class StaffBroadcastView(APIView):
                     if user_total_invested(u) >= tier.min_total_invested:
                         ids.append(u.pk)
                 users = User.objects.filter(pk__in=ids)
+        action_url = (request.data.get('action_url') or '/app/announcements').strip()
+        action_label = (request.data.get('action_label') or 'Open app').strip()
+        send_email = str(request.data.get('send_email', '1')).lower() not in ('0', 'false', 'no')
         count = 0
+        emailed = 0
+        from core.email_events import email_broadcast
         for u in users.iterator():
-            notify(u, title, message, category=Notification.Category.ANNOUNCEMENT, link='/app/announcements')
+            notify(u, title, message, category=Notification.Category.ANNOUNCEMENT, link=action_url or '/app/announcements')
             count += 1
+            if send_email:
+                try:
+                    email_broadcast(u, title, message, action_url=action_url, action_label=action_label)
+                    emailed += 1
+                except Exception:
+                    pass
         camp = BroadcastCampaign.objects.create(
             title=title, message=message, vip_slug=vip_slug,
             sent_count=count, created_by=request.user,
         )
-        return Response({'ok': True, 'sent_count': count, 'id': str(camp.id)})
+        return Response({
+            'ok': True, 'sent_count': count, 'emailed_count': emailed, 'id': str(camp.id),
+        })
 
 
 class StaffExportView(APIView):
@@ -439,9 +452,52 @@ class StaffExportView(APIView):
             for u in User.objects.all().order_by('-date_joined')[:5000]:
                 wal, _ = Wallet.objects.get_or_create(user=u)
                 w.writerow([u.pk, u.email, u.is_kyc_verified, u.date_joined.isoformat(), wal.balance])
+        # Optional: email staff that export was generated
+        if str(request.query_params.get('notify') or '') in ('1', 'true', 'yes'):
+            try:
+                from core.email_events import email_export_ready
+                email_export_ready(request.user, kind, note=f'Rows generated for {kind} export.')
+            except Exception:
+                pass
         resp = HttpResponse(buf.getvalue(), content_type='text/csv')
         resp['Content-Disposition'] = f'attachment; filename="{kind}-export.csv"'
         return resp
+
+
+class StaffEmailUserView(APIView):
+    """One-off branded email from staff to a user."""
+    permission_classes = [IsStaffPanel]
+
+    def post(self, request):
+        from core.email_events import email_staff_to_user
+        from core.utils import create_audit_log
+        from core.models import AuditLog
+
+        user_id = request.data.get('user_id')
+        email = (request.data.get('email') or '').strip()
+        subject = (request.data.get('subject') or '').strip()
+        message = (request.data.get('message') or '').strip()
+        action_url = (request.data.get('action_url') or '/app/support').strip()
+        action_label = (request.data.get('action_label') or 'Open platform').strip()
+        if not subject or not message:
+            return Response({'detail': 'subject and message required'}, status=400)
+        user = None
+        if user_id:
+            user = User.objects.filter(pk=user_id).first()
+        if not user and email:
+            user = User.objects.filter(email__iexact=email).first()
+        if not user:
+            return Response({'detail': 'User not found'}, status=404)
+        ok = email_staff_to_user(user, subject, message, action_url=action_url, action_label=action_label)
+        try:
+            create_audit_log(
+                request=request, user=request.user,
+                action=AuditLog.Action.PROFILE_UPDATE,
+                message=f'Staff email to {user.email}: {subject}',
+            )
+        except Exception:
+            pass
+        return Response({'ok': bool(ok), 'to': user.email})
 
 
 class SupportTriageView(APIView):
