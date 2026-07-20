@@ -2,13 +2,25 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.http import HttpResponse
 from django.urls import include, path, re_path
 from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from core.spa import spa_asset, spa_index, spa_root_file
 
+
+def ads_txt(_request):
+    """Google AdSense publisher file — must be at domain root /ads.txt"""
+    return HttpResponse(
+        'google.com, pub-4816791058478135, DIRECT, f08c47fec0942fa0\n',
+        content_type='text/plain; charset=utf-8',
+    )
+
+
 urlpatterns = [
+    # AdSense verification (root URL — do not nest under other apps)
+    path('ads.txt', ads_txt, name='ads_txt'),
     path('admin/', admin.site.urls),
     path('staff/', include('staffpanel.urls')),
     path('', include('core.urls')),
